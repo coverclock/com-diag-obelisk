@@ -1,5 +1,5 @@
 # com-diag-obelisk
-Musings with Software Defined Radio (SDR) and Inter-Range Instrumentation Group (IRIG) time codes.
+Musings with WWVB and Inter-Range Instrumentation Group (IRIG) time codes.
 ## Copyright
 Copyright 2017 by the Digital Aggregates Corporation, Arvada Colorado U.S.A.
 ## License
