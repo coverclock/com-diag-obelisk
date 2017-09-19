@@ -1,6 +1,6 @@
 # vi: set ts=4 shiftwidth=4:
 # Copyright 2017 Digital Aggregates Corporation
-# Licensed under the terms in README.h
+# Licensed under the terms in LICENSE.txt
 # author:Chip Overclock
 # mailto:coverclock@diag.com
 # http://www.diag.com/navigation/downloads/Hazer.html

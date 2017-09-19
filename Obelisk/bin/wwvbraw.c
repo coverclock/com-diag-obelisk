@@ -4,7 +4,7 @@
  * @file
  *
  * Copyright 2017 Digital Aggregates Corporation, Colorado, USA<BR>
- * Licensed under the terms in README.h<BR>
+ * Licensed under the terms in LICENSE.txt<BR>
  * Chip Overclock<BR>
  * mailto:coverclock@diag.com<BR>
  * http://github.com/coverclock/com-diag-obelisk<BR>
