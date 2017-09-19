@@ -13,3 +13,7 @@ Digital Aggregates Corporation
 Suite 209  
 Wheat Ridge CO 80033  
 U.S.A.  
+## Notes
+
+    systemctl enable timeservice
+
