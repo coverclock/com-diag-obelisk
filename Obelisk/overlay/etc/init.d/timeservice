@@ -21,7 +21,7 @@ DAEMON3=/home/pi/bin/hourglass.py
 PIDFILE3=/var/run/hourglass.pid
 
 #test -x $DAEMON1 || exit 5
-test -x $DAEMON2 || exit 5
+#test -x $DAEMON2 || exit 5
 test -x $DAEMON3 || exit 5
 
 LOCKFILE=/var/lock/ntpdate
@@ -63,19 +63,19 @@ case $1 in
 		log_end_msg $status
 		# Make sure the UART device is in a good state
 	        # Adafruit HAT starts at some weird baud rate unknown to man.
-		# stty -F /dev/gpsd0 raw 9600 cs8 clocal -cstopb
+		#stty -F /dev/gpsd0 raw 9600 cs8 clocal -cstopb
 		# Launch gpsd
-		# log_daemon_msg "Starting GPSD server" "timeservice"
-		# start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE1 --startas $DAEMON1 -- -P $PIDFILE1 $GPSD_OPTS /dev/gpsd0
-		# status=$?
-		# log_end_msg $status
-		lock_ntpdate
-		Launch ntpd
-		log_daemon_msg "Starting NTP server" "timeservice"
-		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE2 --startas $DAEMON2 -- -p $PIDFILE2 $NTPD_OPTS
-		status=$?
-		log_end_msg $status
-		unlock_ntpdate
+		#log_daemon_msg "Starting GPSD server" "timeservice"
+		#start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE1 --startas $DAEMON1 -- -P $PIDFILE1 $GPSD_OPTS /dev/gpsd0
+		#status=$?
+		#log_end_msg $status
+		#lock_ntpdate
+		# Launch ntpd
+		#log_daemon_msg "Starting NTP server" "timeservice"
+		#start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE2 --startas $DAEMON2 -- -p $PIDFILE2 $NTPD_OPTS
+		#status=$?
+		#log_end_msg $status
+		#unlock_ntpdate
 		# Launch hourglass
 		log_daemon_msg "Starting hourglass daemon" "timeservice"
 		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE3 --startas $DAEMON3 --make-pidfile --background --
@@ -113,7 +113,7 @@ case $1 in
 		;;
 	status)
 		#status_of_proc $DAEMON1 "time service"
-		status_of_proc $DAEMON2 "time service"
+		#status_of_proc $DAEMON2 "time service"
 		status_of_proc $DAEMON3 "time service"
 		;;
 	*)
