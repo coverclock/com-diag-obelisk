@@ -13,6 +13,12 @@ Digital Aggregates Corporation
 Suite 209  
 Wheat Ridge CO 80033  
 U.S.A.  
+## Links
+<https://en.wikipedia.org/wiki/WWVB>    
+<https://universal-solder.com/product/60khz-wwvb-atomic-radio-clock-receiver-replaces-c-max-cmmr-6p-60/>    
+<http://www.popsci.com/diy/article/2010-03/build-clock-uses-atomic-timekeeping>    
+<https://github.com/spuder/WWVB-Clock>    
+<https://www.rs-online.com/designspark/atomic-time-for-the-raspberry-pi>    
 ## Notes
 
     systemctl enable timeservice
