@@ -12,11 +12,13 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include "com/diag/diminuto/diminuto_log.h"
 #include "com/diag/diminuto/diminuto_pin.h"
 #include "com/diag/diminuto/diminuto_delay.h"
 #include "com/diag/diminuto/diminuto_time.h"
 #include "com/diag/diminuto/diminuto_cue.h"
 #include "com/diag/diminuto/diminuto_countof.h"
+#include "com/diag/diminuto/diminuto_dump.h"
 
 static const int PIN_OUT_P1 = 23; /* output, radio enable, active low. */
 static const int PIN_IN_T = 24; /* input, modulated pulse, active high */
@@ -24,25 +26,56 @@ static const int HERTZ_RESET = 2;
 static const int HERTZ_POLL = 100;
 static const int MILLISECONDS_POLL = 1000 / 100;
 
-typedef enum Token {
-    TOKEN_ZERO = 0,
-    TOKEN_ONE = 1, 
-    TOKEN_MARKER = 2,
-    TOKEN_INVALID = 3,
-} token_t;
+typedef enum ObeliskLevel {
+    LEVEL_ZERO  = 0,    /*   0 dBr */
+    LEVEL_ONE   = 1,    /* -17 dBr */
+} obelisk_level_t;
 
-typedef struct Range {
+typedef enum ObeliskToken {
+    TOKEN_ZERO      = 0,    /* 200ms */
+    TOKEN_ONE       = 1,    /* 500ms */
+    TOKEN_MARKER    = 2,    /* 800ms */
+    TOKEN_INVALID   = 3,
+    TOKEN_MISSING   = 4,
+} obelisk_token_t;
+
+typedef struct ObeliskRange {
     int symbol;
     int minimum;
     int maximum;
-} range_t;
+} obelisk_range_t;
 
-static const range_t RANGE[] = {
+static const obelisk_range_t RANGE[] = {
     { '0', 180, 220, }, /* TOKEN_ZERO */
     { '1', 480, 520, }, /* TOKEN_ONE */
     { 'M', 780, 820, }, /* TOKEN_MARKER */
     { '?', 0,   0,   }, /* TOKEN_INVALID */
+    { '-', 0,   0,   }, /* TOKEN_MISSING */
 };
+
+typedef enum ObeliskState {
+    STATE_WAITING   = 0,
+    STATE_START     = 1,
+    STATE_DATA      = 2,
+    STATE_END       = 3,
+} obelisk_state_t;
+
+typedef struct ObeliskRecord {
+    int minutes :  8;   /* :01 .. :08 */
+    int         :  2;   /* :10 .. :11 */
+    int hours   :  7;   /* :12 .. :18 */
+    int         :  2;   /* :20 .. :21 */
+    int day     : 11;   /* :22 .. :28, :30 .. :33 */
+    int         :  2;   /* :34 .. :35 */
+    int sign    :  3;   /* :36 .. :38 */
+    int dut1    :  4;   /* :40 .. :43 */
+    int         :  1;
+    int year    :  8;   /* :45 .. :53 */
+    int         :  1;   /* :54 */
+    int lyi     :  1;   /* :55 */
+    int lsw     :  1;   /* :56 */
+    int dst     :  2;   /* :57 .. :58 */
+} obelisk_record_t;
 
 int main(int argc, char ** argv)
 {
@@ -54,15 +87,23 @@ int main(int argc, char ** argv)
     diminuto_sticks_t ticks_slack = -1;
     diminuto_sticks_t ticks_before = -1;
     diminuto_sticks_t ticks_after = -1;
+    diminuto_sticks_t ticks_epoch = -1;
+    diminuto_sticks_t ticks_now = -1;
     diminuto_ticks_t ticks_elapsed = -1;
     diminuto_cue_state_t cue = { 0 };
     diminuto_cue_edge_t edge = (diminuto_cue_edge_t)-1;
-    int state_raw = -1;
-    int state_before = -1;
-    int state_after = -1;
+    int level_raw = -1;
+    int level_before = -1;
+    int level_after = -1;
     int cycles_count = -1;
     int milliseconds_pulse = -1;
-    token_t token = TOKEN_INVALID;
+    obelisk_token_t token = (obelisk_token_t)-1;
+    obelisk_state_t state = (obelisk_state_t)-1;
+    int fields = -1;
+    int bits = -1;
+    int length = -1;
+
+    diminuto_log_setmask();
 
     /*
     ** Configure P1 output and T input pins.
@@ -105,7 +146,7 @@ int main(int argc, char ** argv)
     assert(ticks_slack == 0);
 
     /*
-    ** Poll for T input pin changes.
+    ** Initialize.
     */
 
     diminuto_cue_init(&cue, 0);
@@ -114,25 +155,44 @@ int main(int argc, char ** argv)
 
     cycles_count = 0;
     milliseconds_pulse = 0;
-    state_before = 0;
+    level_before = LEVEL_ZERO;
+
+    token = TOKEN_MISSING;
+    state = STATE_WAITING;
+
+    /*
+    ** Enter work loop.
+    */
 
     while (!0) {
+
+        /*
+        ** Poll for T input pin changes.
+        */
 
         ticks_before = diminuto_time_elapsed();
         assert(ticks_before >= 0);
 
-        state_raw = diminuto_pin_get(pin_in_t_fp);
-        assert(state_raw >= 0);
+        level_raw = diminuto_pin_get(pin_in_t_fp);
+        assert(level_raw >= 0);
 
-        state_after = diminuto_cue_debounce(&cue, state_raw);
+        level_after = diminuto_cue_debounce(&cue, level_raw);
 
-        if (state_after > state_before) {
-            fprintf(stderr, "RISING!\n");
-        } else if (state_after < state_before) {
-            fprintf(stderr, "FALLING!\n");
+        if (diminuto_cue_is_rising(&cue)) {
+            ticks_epoch = ticks_before;
+        }
+
+        if (level_after > level_before) {
+            DIMINUTO_LOG_DEBUG("0. RISING.\n");
+        } else if (level_after < level_before) {
+            DIMINUTO_LOG_DEBUG("0. FALLING.\n");
         } else {
             /* Do nothing. */
         }
+
+        /*
+        ** Respond to edge transitions.
+        */
 
         edge = diminuto_cue_edge(&cue);
 
@@ -156,30 +216,162 @@ int main(int argc, char ** argv)
             break;
 
         default:
-            assert(edge == edge);
+            assert(edge != edge);
             break;
 
         }
 
+        /*
+        ** Classify pulse.
+        */
+
         if (milliseconds_pulse > 0) {
 
             token = TOKEN_INVALID;
-            for (token_t tt = TOKEN_ZERO; tt <= TOKEN_MARKER; ++tt) {
+            for (obelisk_token_t tt = TOKEN_ZERO; tt <= TOKEN_MARKER; ++tt) {
                 if (milliseconds_pulse < RANGE[tt].minimum) {
                     /* Do nothing. */
                 } else if (milliseconds_pulse > RANGE[tt].maximum) {
                     /* Do nothing. */
                 } else {
                     token = tt;
+                    break;
                 }
             }
 
-            fprintf(stderr, "PULSE %dms %c\n", milliseconds_pulse, RANGE[token].symbol);
+            DIMINUTO_LOG_INFORMATION("1. PULSE %dms '%c'.\n", milliseconds_pulse, RANGE[token].symbol);
 
             milliseconds_pulse = 0;
+
+        } else {
+
+            token = TOKEN_MISSING;
+
         }
 
-        state_before = state_after;
+        /*
+        ** Transition state based on token.
+        */
+
+        switch (state) {
+
+        case STATE_WAITING:
+
+            switch (token) {
+
+            case TOKEN_ZERO:
+            case TOKEN_ONE:
+            case TOKEN_INVALID:
+            case TOKEN_MISSING:
+                break;
+
+            case TOKEN_MARKER:
+                state = STATE_END;
+                break;
+
+            default:
+                assert(token != token);
+                break;
+
+            }
+
+            break;
+
+        case STATE_END:
+
+            switch (token) {
+
+            case TOKEN_ZERO:
+            case TOKEN_ONE:
+            case TOKEN_INVALID:
+            case TOKEN_MISSING:
+                state = STATE_WAITING;
+                break;
+
+            case TOKEN_MARKER:
+                /* TODO RESET */
+                state = STATE_START;
+                break;
+
+            default:
+                assert(token != token);
+                state = STATE_WAITING;
+                break;
+
+            }
+
+            break;
+
+        case STATE_START:
+
+            switch (token) {
+
+            case TOKEN_ZERO:
+            case TOKEN_ONE:
+                /* TODO SAVE */
+                state = STATE_DATA;
+                break;
+
+            case TOKEN_MARKER:
+                /* TODO LEAP SECOND */
+                state = STATE_DATA;
+                break;
+
+            case TOKEN_INVALID:
+            case TOKEN_MISSING:
+                state = STATE_WAITING;
+                break;
+
+            default:
+                assert(token != token);
+                state = STATE_WAITING;
+                break;
+
+            }
+
+            break;
+
+        case STATE_DATA:
+
+            switch (token) {
+
+            case TOKEN_ZERO:
+            case TOKEN_ONE:
+                /* TODO SAVE */
+                break;
+
+            case TOKEN_MARKER:
+                /* TODO PROCESS  */
+                state = STATE_WAITING;
+                state = STATE_DATA;
+                state = STATE_END;
+                break;
+
+            case TOKEN_INVALID:
+            case TOKEN_MISSING:
+                state = STATE_WAITING;
+                break;
+
+            default:
+                assert(token != token);
+                state = STATE_WAITING;
+                break;
+
+            }
+
+            break;
+
+        default:
+            assert(state != state);
+            break;
+
+        }
+
+        /*
+        ** Iterate while controlling jitter.
+        */
+
+        level_before = level_after;
 
         ticks_after = diminuto_time_elapsed();
         assert(ticks_after >= 0);
