@@ -12,6 +12,7 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include "com/diag/diminuto/diminuto_types.h"
 #include "com/diag/diminuto/diminuto_log.h"
 #include "com/diag/diminuto/diminuto_pin.h"
 #include "com/diag/diminuto/diminuto_delay.h"
@@ -60,22 +61,42 @@ typedef enum ObeliskState {
     STATE_END       = 3,
 } obelisk_state_t;
 
-typedef struct ObeliskRecord {
-    int minutes :  8;   /* :01 .. :08 */
-    int         :  2;   /* :10 .. :11 */
-    int hours   :  7;   /* :12 .. :18 */
-    int         :  2;   /* :20 .. :21 */
-    int day     : 11;   /* :22 .. :28, :30 .. :33 */
-    int         :  2;   /* :34 .. :35 */
-    int sign    :  3;   /* :36 .. :38 */
-    int dut1    :  4;   /* :40 .. :43 */
-    int         :  1;
-    int year    :  8;   /* :45 .. :53 */
-    int         :  1;   /* :54 */
-    int lyi     :  1;   /* :55 */
-    int lsw     :  1;   /* :56 */
-    int dst     :  2;   /* :57 .. :58 */
+typedef struct ObeliskRecord {  /* TIME */          /* SPACE */
+                                /* :00 MARKER */
+    unsigned minutes    :  8;   /* :01 .. :08 */    /* 00 .. 07 */
+                                /* :09 MARKER */
+    unsigned unused0    :  2;   /* :10 .. :11 */    /* 08 .. 09 */
+    unsigned hours      :  7;   /* :12 .. :18 */    /* 10 .. 16 */
+                                /* :19 MARKER */
+    unsigned unused1    :  2;   /* :20 .. :21 */    /* 17 .. 18 */
+    unsigned day        : 11;   /* :22 .. :28 */    /* 19 .. 29 */
+                                /* :29 MARKER */
+                                /* :30 .. :33 */
+    unsigned unused2    :  2;   /* :34 .. :35 */    /* 30 .. 31 */
+    unsigned sign       :  3;   /* :36 .. :38 */    /* 32 .. 34 */
+                                /* :39 MARKER */
+    unsigned dut1       :  4;   /* :40 .. :43 */    /* 35 .. 38 */
+    unsigned unused3    :  1;   /* :44 */           /* 39 .. 39 */
+    unsigned year       :  8;   /* :45 .. :48 */    /* 40 .. 47 */
+                                /* :49 MARKER */
+                                /* :50 .. :53 */
+    unsigned unused4    :  1;   /* :54 */           /* 48 .. 48 */
+    unsigned lyi        :  1;   /* :55 */           /* 49 .. 49 */
+    unsigned lsw        :  1;   /* :56 */           /* 50 .. 50 */
+    unsigned dst        :  2;   /* :57 .. :58 */    /* 51 .. 52 */
+                                /* :60 MARKER */
+    unsigned filler     : 11;                       /* 53 .. 63 */
 } obelisk_record_t;
+
+typedef union ObeliskBuffer {
+    uint64_t word;
+    obelisk_record_t record;
+    uint8_t octet[sizeof(obelisk_record_t)];
+} obelisk_buffer_t;
+
+static const int LENGTH[] = {
+    8, 9, 9, 9, 9, 9,
+};
 
 int main(int argc, char ** argv)
 {
