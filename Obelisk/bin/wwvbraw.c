@@ -1,4 +1,4 @@
-/* vi: set ts=4 expandtab shiftwidth=4: */
+/* vim: set ts=4 expandtab shiftwidth=4: */
 
 /**
  * @file
@@ -12,7 +12,7 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include "com/diag/diminuto/diminuto_types.h"
+#include <stdint.h>
 #include "com/diag/diminuto/diminuto_log.h"
 #include "com/diag/diminuto/diminuto_pin.h"
 #include "com/diag/diminuto/diminuto_delay.h"
@@ -37,7 +37,7 @@ typedef enum ObeliskToken {
     TOKEN_ONE       = 1,    /* 500ms */
     TOKEN_MARKER    = 2,    /* 800ms */
     TOKEN_INVALID   = 3,
-    TOKEN_MISSING   = 4,
+    TOKEN_PENDING   = 4,
 } obelisk_token_t;
 
 typedef struct ObeliskRange {
@@ -51,15 +51,26 @@ static const obelisk_range_t RANGE[] = {
     { '1', 480, 520, }, /* TOKEN_ONE */
     { 'M', 780, 820, }, /* TOKEN_MARKER */
     { '?', 0,   0,   }, /* TOKEN_INVALID */
-    { '-', 0,   0,   }, /* TOKEN_MISSING */
+    { '-', 0,   0,   }, /* TOKEN_PENDING */
 };
 
 typedef enum ObeliskState {
-    STATE_WAITING   = 0,
-    STATE_START     = 1,
-    STATE_DATA      = 2,
-    STATE_END       = 3,
+    STATE_WAIT      = 0,
+    STATE_SYNC      = 1,
+    STATE_START     = 2,
+    STATE_DATA      = 3,
+    STATE_MARK      = 4,
+    STATE_END       = 5,
 } obelisk_state_t;
+
+static const char * STATE[] = {
+    "WAIT",
+    "SYNC",
+    "START",
+    "DATA",
+    "MARK",
+    "END",
+};
 
 typedef struct ObeliskRecord {  /* TIME */          /* SPACE */
                                 /* :00 MARKER */
@@ -88,15 +99,15 @@ typedef struct ObeliskRecord {  /* TIME */          /* SPACE */
     unsigned filler     : 11;                       /* 53 .. 63 */
 } obelisk_record_t;
 
+static const int LENGTH[] = {
+    8, 9, 9, 9, 9, 9,
+};
+
 typedef union ObeliskBuffer {
     uint64_t word;
     obelisk_record_t record;
     uint8_t octet[sizeof(obelisk_record_t)];
 } obelisk_buffer_t;
-
-static const int LENGTH[] = {
-    8, 9, 9, 9, 9, 9,
-};
 
 int main(int argc, char ** argv)
 {
@@ -119,10 +130,13 @@ int main(int argc, char ** argv)
     int cycles_count = -1;
     int milliseconds_pulse = -1;
     obelisk_token_t token = (obelisk_token_t)-1;
+    obelisk_state_t prior = (obelisk_state_t)-1;
     obelisk_state_t state = (obelisk_state_t)-1;
-    int fields = -1;
-    int bits = -1;
+    obelisk_buffer_t buffer = { 0 };
+    int field = -1;
+    int bit = -1;
     int length = -1;
+    int leap = -1;
 
     diminuto_log_setmask();
 
@@ -178,8 +192,8 @@ int main(int argc, char ** argv)
     milliseconds_pulse = 0;
     level_before = LEVEL_ZERO;
 
-    token = TOKEN_MISSING;
-    state = STATE_WAITING;
+    token = TOKEN_PENDING;
+    state = STATE_WAIT;
 
     /*
     ** Enter work loop.
@@ -248,6 +262,8 @@ int main(int argc, char ** argv)
 
         if (milliseconds_pulse > 0) {
 
+            DIMINUTO_LOG_DEBUG("1. PULSE %dms.\n", milliseconds_pulse);
+
             token = TOKEN_INVALID;
             for (obelisk_token_t tt = TOKEN_ZERO; tt <= TOKEN_MARKER; ++tt) {
                 if (milliseconds_pulse < RANGE[tt].minimum) {
@@ -260,38 +276,171 @@ int main(int argc, char ** argv)
                 }
             }
 
-            DIMINUTO_LOG_INFORMATION("1. PULSE %dms '%c'.\n", milliseconds_pulse, RANGE[token].symbol);
-
             milliseconds_pulse = 0;
+
+            DIMINUTO_LOG_DEBUG("1. TOKEN '%c'.\n", RANGE[token].symbol);
 
         } else {
 
-            token = TOKEN_MISSING;
+            token = TOKEN_PENDING;
 
         }
 
         /*
-        ** Transition state based on token.
+        ** Parse grammar by transitioning state based on token.
         */
+
+        prior = state;
 
         switch (state) {
 
-        case STATE_WAITING:
+        case STATE_WAIT:
 
             switch (token) {
 
             case TOKEN_ZERO:
             case TOKEN_ONE:
             case TOKEN_INVALID:
-            case TOKEN_MISSING:
+            case TOKEN_PENDING:
+                /* Do nothing. */
                 break;
 
             case TOKEN_MARKER:
-                state = STATE_END;
+                state = STATE_SYNC;
                 break;
 
             default:
                 assert(token != token);
+                break;
+
+            }
+
+            break;
+
+        case STATE_SYNC:
+
+            switch (token) {
+
+            case TOKEN_ZERO:
+            case TOKEN_ONE:
+            case TOKEN_INVALID:
+            case TOKEN_PENDING:
+                state = STATE_WAIT;
+                break;
+
+            case TOKEN_MARKER:
+                field = 0;
+                length = LENGTH[field];
+                bit = sizeof(buffer.word) * 8;
+                leap = 0;
+                buffer.word = 0;
+                state = STATE_START;
+                break;
+
+            default:
+                assert(token != token);
+                state = STATE_WAIT;
+                break;
+
+            }
+
+            break;
+
+        case STATE_START:
+
+            switch (token) {
+
+            case TOKEN_ZERO:
+                --bit;
+                --length;
+                state = STATE_DATA;
+                break;
+
+            case TOKEN_ONE:
+                buffer.word |= 1ULL << (--bit);
+                --length;
+                state = STATE_DATA;
+                break;
+
+            case TOKEN_MARKER:
+                leap = !0;
+                state = STATE_DATA;
+                break;
+
+            case TOKEN_INVALID:
+            case TOKEN_PENDING:
+                state = STATE_WAIT;
+                break;
+
+            default:
+                assert(token != token);
+                state = STATE_WAIT;
+                break;
+
+            }
+
+            break;
+
+        case STATE_DATA:
+
+            switch (token) {
+
+            case TOKEN_ZERO:
+                --bit;
+                if (--length > 0) {
+                    state = STATE_DATA;
+                } else if (field < (countof(LENGTH) - 1)) {
+                    state = STATE_MARK;
+                } else {
+                    state = STATE_END;
+                }
+                break;
+
+            case TOKEN_ONE:
+                buffer.word |= 1ULL << (--bit);
+                if (--length > 0) {
+                    state = STATE_DATA;
+                } else if (field < (countof(LENGTH) - 1)) {
+                    state = STATE_MARK;
+                } else {
+                    state = STATE_END;
+                }
+                break;
+
+            case TOKEN_MARKER:
+            case TOKEN_INVALID:
+            case TOKEN_PENDING:
+                state = STATE_WAIT;
+                break;
+
+            default:
+                assert(token != token);
+                state = STATE_WAIT;
+                break;
+
+            }
+
+            break;
+
+        case STATE_MARK:
+
+            switch (token) {
+
+            case TOKEN_MARKER:
+                ++field;
+                state = STATE_DATA;
+                break;
+
+            case TOKEN_ZERO:
+            case TOKEN_ONE:
+            case TOKEN_INVALID:
+            case TOKEN_PENDING:
+                state = STATE_WAIT;
+                break;
+
+            default:
+                assert(token != token);
+                state = STATE_WAIT;
                 break;
 
             }
@@ -305,77 +454,23 @@ int main(int argc, char ** argv)
             case TOKEN_ZERO:
             case TOKEN_ONE:
             case TOKEN_INVALID:
-            case TOKEN_MISSING:
-                state = STATE_WAITING;
+            case TOKEN_PENDING:
+                state = STATE_WAIT;
                 break;
 
             case TOKEN_MARKER:
-                /* TODO RESET */
+                DIMINUTO_LOG_DEBUG("3. FRAME 0x%llx\n", buffer.word);
+                field = 0;
+                length = LENGTH[field];
+                bit = sizeof(buffer.word) * 8;
+                leap = 0;
+                buffer.word = 0;
                 state = STATE_START;
                 break;
 
             default:
                 assert(token != token);
-                state = STATE_WAITING;
-                break;
-
-            }
-
-            break;
-
-        case STATE_START:
-
-            switch (token) {
-
-            case TOKEN_ZERO:
-            case TOKEN_ONE:
-                /* TODO SAVE */
-                state = STATE_DATA;
-                break;
-
-            case TOKEN_MARKER:
-                /* TODO LEAP SECOND */
-                state = STATE_DATA;
-                break;
-
-            case TOKEN_INVALID:
-            case TOKEN_MISSING:
-                state = STATE_WAITING;
-                break;
-
-            default:
-                assert(token != token);
-                state = STATE_WAITING;
-                break;
-
-            }
-
-            break;
-
-        case STATE_DATA:
-
-            switch (token) {
-
-            case TOKEN_ZERO:
-            case TOKEN_ONE:
-                /* TODO SAVE */
-                break;
-
-            case TOKEN_MARKER:
-                /* TODO PROCESS  */
-                state = STATE_WAITING;
-                state = STATE_DATA;
-                state = STATE_END;
-                break;
-
-            case TOKEN_INVALID:
-            case TOKEN_MISSING:
-                state = STATE_WAITING;
-                break;
-
-            default:
-                assert(token != token);
-                state = STATE_WAITING;
+                state = STATE_WAIT;
                 break;
 
             }
@@ -384,8 +479,13 @@ int main(int argc, char ** argv)
 
         default:
             assert(state != state);
+            state = STATE_WAIT;
             break;
 
+        }
+
+        if ((token != TOKEN_PENDING) && (state != STATE_WAIT)) {
+            DIMINUTO_LOG_DEBUG("2. MACHINE %s->%s %d %d %d 0x%llx\n", STATE[prior], STATE[state], field, length, bit, buffer.word);
         }
 
         /*
