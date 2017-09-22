@@ -138,6 +138,9 @@ int main(int argc, char ** argv)
     int length = -1;
     int leap = -1;
 
+    assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
+    assert(sizeof(obelisk_record_t) == sizeof(uint64_t));
+
     diminuto_log_setmask();
 
     /*
@@ -202,7 +205,7 @@ int main(int argc, char ** argv)
     while (!0) {
 
         /*
-        ** Poll for T input pin changes.
+        ** Poll for T input pin change.
         */
 
         ticks_before = diminuto_time_elapsed();
