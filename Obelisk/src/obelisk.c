@@ -35,7 +35,7 @@ static const int LENGTH[] = {
 
 int obelisk_measure(diminuto_cue_state_t * cuep, int cycles_count)
 {
-    diminuto_cue_edge_t edge = (diminuto_cue_edge_t)-1;
+    diminuto_cue_edge_t edge;
 
     edge = diminuto_cue_edge(cuep);
 

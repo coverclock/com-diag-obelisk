@@ -65,8 +65,8 @@ int main(int argc, char ** argv)
     int cycles_after = -1;
     int milliseconds_pulse = -1;
     obelisk_token_t token = (obelisk_token_t)-1;
-    obelisk_state_t prior = (obelisk_state_t)-1;
-    obelisk_state_t state = (obelisk_state_t)-1;
+    obelisk_state_t state_before = (obelisk_state_t)-1;
+    obelisk_state_t state_after = (obelisk_state_t)-1;
     obelisk_buffer_t buffer = { 0 };
     int field = -1;
     int bit = -1;
@@ -134,7 +134,8 @@ int main(int argc, char ** argv)
     level_before = LEVEL_ZERO;
 
     token = TOKEN_PENDING;
-    state = STATE_WAIT;
+
+    state_after = STATE_WAIT;
 
     /*
     ** Enter work loop.
@@ -156,12 +157,13 @@ int main(int argc, char ** argv)
 
         if (diminuto_cue_is_rising(&cue)) {
             ticks_epoch = ticks_before;
+            DIMINUTO_LOG_DEBUG("EPOCH.\n");
         }
 
         if (level_after > level_before) {
-            DIMINUTO_LOG_DEBUG("0. RISING.\n");
+            DIMINUTO_LOG_DEBUG("RISING.\n");
         } else if (level_after < level_before) {
-            DIMINUTO_LOG_DEBUG("0. FALLING.\n");
+            DIMINUTO_LOG_DEBUG("FALLING.\n");
         } else {
             /* Do nothing. */
         }
@@ -172,12 +174,12 @@ int main(int argc, char ** argv)
 
         cycles_after = obelisk_measure(&cue, cycles_before);
 
-	if (cycles_after < cycles_before) {
+        if (cycles_after < cycles_before) {
             milliseconds_pulse = cycles_before * MILLISECONDS_POLL;
-            DIMINUTO_LOG_DEBUG("1. PULSE %dms.\n", milliseconds_pulse);
-	}
+            DIMINUTO_LOG_DEBUG("PULSE %dms.\n", milliseconds_pulse);
+        }
 
-	cycles_before = cycles_after;
+        cycles_before = cycles_after;
 
         /*
         ** Classify pulse.
@@ -187,24 +189,24 @@ int main(int argc, char ** argv)
 
         if (token != TOKEN_PENDING) {
             assert((0 <= token) && (token < countof(TOKEN)));
-            DIMINUTO_LOG_DEBUG("1. TOKEN %s.\n", TOKEN[token]);
+            DIMINUTO_LOG_DEBUG("TOKEN %s.\n", TOKEN[token]);
         }
 
         /*
         ** Parse grammar by transitioning state based on token.
         */
 
-        prior = state;
-        state = obelisk_parse(prior, token, &field, &length, &bit, &leap, &buffer);
+        state_before = state_after;
+        state_after = obelisk_parse(state_before, token, &field, &length, &bit, &leap, &buffer);
 
-        if ((token != TOKEN_PENDING) && (state != STATE_WAIT)) {
-            assert((0 <= prior) && (prior < countof(STATE)));
-            assert((0 <= state) && (state < countof(STATE)));
-            DIMINUTO_LOG_DEBUG("2. MACHINE %s->%s %d %d %d 0x%llx\n", STATE[prior], STATE[state], field, length, bit, buffer.word);
+        if ((token != TOKEN_PENDING) && (state_after != STATE_WAIT)) {
+            assert((0 <= state_before) && (state_before < countof(STATE)));
+            assert((0 <= state_after) && (state_after < countof(STATE)));
+            DIMINUTO_LOG_DEBUG("STATE %s->%s %d %d %d 0x%llx.\n", STATE[state_before], STATE[state_after], field, length, bit, buffer.word);
         }
 
-        if ((prior == STATE_END) && (state == STATE_START)) {
-            DIMINUTO_LOG_DEBUG("3. FRAME 0x%llx\n", buffer.word);
+        if ((state_before == STATE_END) && (state_after == STATE_START)) {
+            DIMINUTO_LOG_DEBUG("FRAME 0x%llx.\n", buffer.word);
         }
 
         /*
