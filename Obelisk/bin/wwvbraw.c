@@ -99,15 +99,15 @@ typedef struct ObeliskRecord {  /* TIME */          /* SPACE */
     unsigned filler     : 11;                       /* 53 .. 63 */
 } obelisk_record_t;
 
-static const int LENGTH[] = {
-    8, 9, 9, 9, 9, 9,
-};
-
 typedef union ObeliskBuffer {
     uint64_t word;
     obelisk_record_t record;
     uint8_t octet[sizeof(obelisk_record_t)];
 } obelisk_buffer_t;
+
+static const int LENGTH[] = {
+    8, 9, 9, 9, 9, 9,
+};
 
 int main(int argc, char ** argv)
 {
@@ -246,12 +246,14 @@ int main(int argc, char ** argv)
             break;
 
         case DIMINUTO_CUE_EDGE_FALLING:
-            milliseconds_pulse = cycles_count * MILLISECONDS_POLL;;
+            milliseconds_pulse = cycles_count * MILLISECONDS_POLL;
+            DIMINUTO_LOG_DEBUG("1. PULSE %dms.\n", milliseconds_pulse);
             cycles_count = 0;
             break;
 
         default:
             assert(edge != edge);
+            milliseconds_pulse = 0;
             break;
 
         }
@@ -262,10 +264,9 @@ int main(int argc, char ** argv)
 
         if (milliseconds_pulse > 0) {
 
-            DIMINUTO_LOG_DEBUG("1. PULSE %dms.\n", milliseconds_pulse);
-
             token = TOKEN_INVALID;
             for (obelisk_token_t tt = TOKEN_ZERO; tt <= TOKEN_MARKER; ++tt) {
+                assert((0 <= tt) && (tt < countof(RANGE)));
                 if (milliseconds_pulse < RANGE[tt].minimum) {
                     /* Do nothing. */
                 } else if (milliseconds_pulse > RANGE[tt].maximum) {
@@ -278,6 +279,7 @@ int main(int argc, char ** argv)
 
             milliseconds_pulse = 0;
 
+            assert((0 <= token) && (token < countof(RANGE)));
             DIMINUTO_LOG_DEBUG("1. TOKEN '%c'.\n", RANGE[token].symbol);
 
         } else {
@@ -330,6 +332,7 @@ int main(int argc, char ** argv)
 
             case TOKEN_MARKER:
                 field = 0;
+                assert((0 <= field) && (field < countof(LENGTH)));
                 length = LENGTH[field];
                 bit = sizeof(buffer.word) * 8;
                 leap = 0;
@@ -461,6 +464,7 @@ int main(int argc, char ** argv)
             case TOKEN_MARKER:
                 DIMINUTO_LOG_DEBUG("3. FRAME 0x%llx\n", buffer.word);
                 field = 0;
+                assert((0 <= field) && (field < countof(LENGTH)));
                 length = LENGTH[field];
                 bit = sizeof(buffer.word) * 8;
                 leap = 0;
@@ -485,6 +489,8 @@ int main(int argc, char ** argv)
         }
 
         if ((token != TOKEN_PENDING) && (state != STATE_WAIT)) {
+            assert((0 <= prior) && (prior < countof(STATE)));
+            assert((0 <= state) && (state < countof(STATE)));
             DIMINUTO_LOG_DEBUG("2. MACHINE %s->%s %d %d %d 0x%llx\n", STATE[prior], STATE[state], field, length, bit, buffer.word);
         }
 
