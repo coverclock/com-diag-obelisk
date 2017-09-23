@@ -40,6 +40,8 @@ typedef enum ObeliskState {
     STATE_END       = 5,
 } obelisk_state_t;
 
+typedef uint64_t obelisk_buffer_t;
+
 typedef struct ObeliskRecord {  /* TIME */          /* SPACE */
                                 /* :00 MARKER */
     unsigned minutes    :  8;   /* :01 .. :08 */    /* 00 .. 07 */
@@ -65,15 +67,9 @@ typedef struct ObeliskRecord {  /* TIME */          /* SPACE */
     unsigned dst        :  2;   /* :57 .. :58 */    /* 51 .. 52 */
                                 /* :60 MARKER */
     unsigned filler     : 11;                       /* 53 .. 63 */
-} obelisk_record_t;
+} obelisk_frame_t;
 
-typedef union ObeliskBuffer {
-    uint64_t word;
-    obelisk_record_t record;
-    uint8_t octet[sizeof(obelisk_record_t)];
-} obelisk_buffer_t;
-
-extern int obelisk_measure(diminuto_cue_state_t * cuep, int cycles_count);
+extern int obelisk_measure(diminuto_cue_state_t * cuep, int milliseconds_pulse, int milliseconds_cycle);
 
 extern obelisk_token_t obelisk_tokenize(int milliseconds_pulse);
 

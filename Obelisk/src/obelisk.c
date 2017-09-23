@@ -33,7 +33,7 @@ static const int LENGTH[] = {
     9,
 };
 
-int obelisk_measure(diminuto_cue_state_t * cuep, int cycles_count)
+int obelisk_measure(diminuto_cue_state_t * cuep, int milliseconds_pulse, int milliseconds_cycle)
 {
     diminuto_cue_edge_t edge;
 
@@ -42,29 +42,29 @@ int obelisk_measure(diminuto_cue_state_t * cuep, int cycles_count)
     switch (edge) {
 
     case DIMINUTO_CUE_EDGE_LOW:
-        cycles_count = 0;
+        milliseconds_pulse = 0;
         break;
 
     case DIMINUTO_CUE_EDGE_RISING:
-        cycles_count = 1;
+        milliseconds_pulse = milliseconds_cycle;
         break;
 
     case DIMINUTO_CUE_EDGE_HIGH:
-        cycles_count += 1;
+        milliseconds_pulse += milliseconds_cycle;
         break;
 
     case DIMINUTO_CUE_EDGE_FALLING:
-        cycles_count = 0;
+        milliseconds_pulse = 0;
         break;
 
     default:
         assert(edge != edge);
-        cycles_count = 0;
+        milliseconds_pulse = 0;
         break;
 
     }
 
-    return cycles_count;
+    return milliseconds_pulse;
 }
 
 obelisk_token_t obelisk_tokenize(int milliseconds_pulse)
@@ -137,9 +137,9 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
             *fieldp = 0;
             assert((0 <= *fieldp) && (*fieldp < countof(LENGTH)));
             *lengthp = LENGTH[*fieldp];
-            *bitp = sizeof(bufferp->word) * 8;
+            *bitp = sizeof(*bufferp) * 8;
             *leapp = 0;
-            bufferp->word = 0;
+            *bufferp = 0;
             state = STATE_START;
             break;
 
@@ -164,7 +164,7 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
 
         case TOKEN_ONE:
             *bitp -= 1;
-            bufferp->word |= 1ULL << *bitp;
+            *bufferp |= 1ULL << *bitp;
             *lengthp -= 1;
             state = STATE_DATA;
             break;
@@ -206,7 +206,7 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
 
         case TOKEN_ONE:
             *bitp -= 1;
-            bufferp->word |= 1ULL << *bitp;
+            *bufferp |= 1ULL << *bitp;
             *lengthp -= 1;
             if (*lengthp > 0) {
                 state = STATE_DATA;
@@ -272,7 +272,7 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
             *fieldp = 0;
             assert((0 <= *fieldp) && (*fieldp < countof(LENGTH)));
             *lengthp = LENGTH[*fieldp];
-            *bitp = sizeof(bufferp->word) * 8;
+            *bitp = sizeof(*bufferp) * 8;
             state = STATE_START;
             break;
 
