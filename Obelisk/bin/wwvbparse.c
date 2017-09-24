@@ -163,11 +163,11 @@ int main(int argc, char ** argv)
     milliseconds_before = 0;
     milliseconds_pulse = 0;
 
-    level_before = LEVEL_ZERO;
+    level_before = OBELISK_LEVEL_ZERO;
 
-    token = TOKEN_PENDING;
+    token = OBELISK_TOKEN_PENDING;
 
-    state_before = STATE_WAIT;
+    state_before = OBELISK_STATE_WAIT;
 
     /*
     ** Enter work loop.
@@ -240,7 +240,7 @@ int main(int argc, char ** argv)
 
         if (!debug) {
             /* Do nothing. */
-        } else if (token != TOKEN_PENDING) {
+        } else if (token != OBELISK_TOKEN_PENDING) {
             LOG("4: TOKEN %s.\n", TOKEN[token]);
         } else {
             /* Do nothing. */
@@ -256,7 +256,7 @@ int main(int argc, char ** argv)
 
         if (!debug) {
             /* Do nothing. */
-        } else if ((token != TOKEN_PENDING) && (state_after != STATE_WAIT)) {
+        } else if ((token != OBELISK_TOKEN_PENDING) && (state_after != OBELISK_STATE_WAIT)) {
             LOG("5: STATE %s %s %d %d %d 0x%llx.\n", STATE[state_before], STATE[state_after], field, length, bit, buffer);
         } else {
             /* Do nothing. */
@@ -264,7 +264,7 @@ int main(int argc, char ** argv)
 
         if (!debug) {
             /* Do nothing. */
-        } else if ((state_before == STATE_END) && (state_after == STATE_START)) {
+        } else if ((state_before == OBELISK_STATE_END) && (state_after == OBELISK_STATE_START)) {
             LOG("6: FRAME 0x%llx.\n", buffer);
         } else {
             /* Do nothing. */

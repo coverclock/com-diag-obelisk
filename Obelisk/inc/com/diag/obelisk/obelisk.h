@@ -14,16 +14,16 @@
 #include "com/diag/diminuto/diminuto_cue.h"
 
 typedef enum ObeliskLevel {
-    LEVEL_ZERO  = 0,    /*   0 dBr */
-    LEVEL_ONE   = 1,    /* -17 dBr */
+    OBELISK_LEVEL_ZERO  = 0,    /*   0 dBr */
+    OBELISK_LEVEL_ONE   = 1,    /* -17 dBr */
 } obelisk_level_t;
 
 typedef enum ObeliskToken {
-    TOKEN_ZERO      = 0,    /* 200ms */
-    TOKEN_ONE       = 1,    /* 500ms */
-    TOKEN_MARKER    = 2,    /* 800ms */
-    TOKEN_INVALID   = 3,
-    TOKEN_PENDING   = 4,
+    OBELISK_TOKEN_ZERO      = 0,    /* 200ms */
+    OBELISK_TOKEN_ONE       = 1,    /* 500ms */
+    OBELISK_TOKEN_MARKER    = 2,    /* 800ms */
+    OBELISK_TOKEN_INVALID   = 3,
+    OBELISK_TOKEN_PENDING   = 4,
 } obelisk_token_t;
 
 typedef struct ObeliskRange {
@@ -32,12 +32,12 @@ typedef struct ObeliskRange {
 } obelisk_range_t;
 
 typedef enum ObeliskState {
-    STATE_WAIT      = 0,
-    STATE_SYNC      = 1,
-    STATE_START     = 2,
-    STATE_DATA      = 3,
-    STATE_MARK      = 4,
-    STATE_END       = 5,
+    OBELISK_STATE_WAIT      = 0,
+    OBELISK_STATE_SYNC      = 1,
+    OBELISK_STATE_START     = 2,
+    OBELISK_STATE_DATA      = 3,
+    OBELISK_STATE_MARK      = 4,
+    OBELISK_STATE_END       = 5,
 } obelisk_state_t;
 
 typedef uint64_t obelisk_buffer_t;

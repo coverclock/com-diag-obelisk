@@ -17,25 +17,26 @@
 #include "com/diag/obelisk/obelisk.h"
 
 static const obelisk_range_t MILLISECONDS[] = {
-    { 180, 220, }, /* TOKEN_ZERO */
-    { 480, 520, }, /* TOKEN_ONE */
-    { 780, 820, }, /* TOKEN_MARKER */
+    { 180, 220, },  /* OBELISK_TOKEN_ZERO */
+    { 480, 520, },  /* OBELISK_TOKEN_ONE */
+    { 780, 820, },  /* OBELISK_TOKEN_MARKER */
 };
 
 static const int LENGTH[] = {
-    /* STATE_START */
+    /* OBELISK_STATE_START */
+    /* (OBELISK_STATE_MARK for leap second) */
     8,
-    /* STATE_MARK */
+    /* OBELISK_STATE_MARK */
     9,
-    /* STATE_MARK */
+    /* OBELISK_STATE_MARK */
     9,
-    /* STATE_MARK */
+    /* OBELISK_STATE_MARK */
     9,
-    /* STATE_MARK */
+    /* OBELISK_STATE_MARK */
     9,
-    /* STATE_MARK */
+    /* OBELISK_STATE_MARK */
     9,
-    /* STATE_END */
+    /* OBELISK_STATE_END */
 };
 
 int obelisk_measure(diminuto_cue_state_t * cuep, int milliseconds_pulse, int milliseconds_cycle)
@@ -74,13 +75,13 @@ int obelisk_measure(diminuto_cue_state_t * cuep, int milliseconds_pulse, int mil
 
 obelisk_token_t obelisk_tokenize(int milliseconds_pulse)
 {
-    obelisk_token_t token = TOKEN_PENDING;
+    obelisk_token_t token = OBELISK_TOKEN_PENDING;
 
     if (milliseconds_pulse > 0) {
 
-        token = TOKEN_INVALID;
+        token = OBELISK_TOKEN_INVALID;
 
-        for (obelisk_token_t tt = TOKEN_ZERO; tt <= TOKEN_MARKER; ++tt) {
+        for (obelisk_token_t tt = OBELISK_TOKEN_ZERO; tt <= OBELISK_TOKEN_MARKER; ++tt) {
             assert((0 <= tt) && (tt < countof(MILLISECONDS)));
             if (milliseconds_pulse < MILLISECONDS[tt].minimum) {
                 /* Do nothing. */
@@ -101,19 +102,19 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
 {
     switch (state) {
 
-    case STATE_WAIT:
+    case OBELISK_STATE_WAIT:
 
         switch (token) {
 
-        case TOKEN_ZERO:
-        case TOKEN_ONE:
-        case TOKEN_INVALID:
-        case TOKEN_PENDING:
+        case OBELISK_TOKEN_ZERO:
+        case OBELISK_TOKEN_ONE:
+        case OBELISK_TOKEN_INVALID:
+        case OBELISK_TOKEN_PENDING:
             /* Do nothing. */
             break;
 
-        case TOKEN_MARKER:
-            state = STATE_SYNC;
+        case OBELISK_TOKEN_MARKER:
+            state = OBELISK_STATE_SYNC;
             break;
 
         default:
@@ -124,163 +125,163 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
 
         break;
 
-    case STATE_SYNC:
+    case OBELISK_STATE_SYNC:
 
         switch (token) {
 
-        case TOKEN_ZERO:
-        case TOKEN_ONE:
-        case TOKEN_INVALID:
-        case TOKEN_PENDING:
-            state = STATE_WAIT;
+        case OBELISK_TOKEN_ZERO:
+        case OBELISK_TOKEN_ONE:
+        case OBELISK_TOKEN_INVALID:
+        case OBELISK_TOKEN_PENDING:
+            state = OBELISK_STATE_WAIT;
             break;
 
-        case TOKEN_MARKER:
+        case OBELISK_TOKEN_MARKER:
             *fieldp = 0;
             assert((0 <= *fieldp) && (*fieldp < countof(LENGTH)));
             *lengthp = LENGTH[*fieldp];
             *bitp = sizeof(*bufferp) * 8;
             *leapp = 0;
             *bufferp = 0;
-            state = STATE_START;
+            state = OBELISK_STATE_START;
             break;
 
         default:
             assert(token != token);
-            state = STATE_WAIT;
+            state = OBELISK_STATE_WAIT;
             break;
 
         }
 
         break;
 
-    case STATE_START:
+    case OBELISK_STATE_START:
 
         switch (token) {
 
-        case TOKEN_ZERO:
+        case OBELISK_TOKEN_ZERO:
             *bitp -= 1;
             *lengthp -= 1;
-            state = STATE_DATA;
+            state = OBELISK_STATE_DATA;
             break;
 
-        case TOKEN_ONE:
+        case OBELISK_TOKEN_ONE:
             *bitp -= 1;
             *bufferp |= 1ULL << *bitp;
             *lengthp -= 1;
-            state = STATE_DATA;
+            state = OBELISK_STATE_DATA;
             break;
 
-        case TOKEN_MARKER:
+        case OBELISK_TOKEN_MARKER:
             *leapp = !0;
-            state = STATE_DATA;
+            state = OBELISK_STATE_DATA;
             break;
 
-        case TOKEN_INVALID:
-        case TOKEN_PENDING:
-            state = STATE_WAIT;
+        case OBELISK_TOKEN_INVALID:
+        case OBELISK_TOKEN_PENDING:
+            state = OBELISK_STATE_WAIT;
             break;
 
         default:
             assert(token != token);
-            state = STATE_WAIT;
+            state = OBELISK_STATE_WAIT;
             break;
 
         }
 
         break;
 
-    case STATE_DATA:
+    case OBELISK_STATE_DATA:
 
         switch (token) {
 
-        case TOKEN_ZERO:
+        case OBELISK_TOKEN_ZERO:
             *bitp -= 1;
             *lengthp -= 1;
             if (*lengthp > 0) {
-                state = STATE_DATA;
+                state = OBELISK_STATE_DATA;
             } else if (*fieldp < (countof(LENGTH) - 1)) {
-                state = STATE_MARK;
+                state = OBELISK_STATE_MARK;
             } else {
-                state = STATE_END;
+                state = OBELISK_STATE_END;
             }
             break;
 
-        case TOKEN_ONE:
+        case OBELISK_TOKEN_ONE:
             *bitp -= 1;
             *bufferp |= 1ULL << *bitp;
             *lengthp -= 1;
             if (*lengthp > 0) {
-                state = STATE_DATA;
+                state = OBELISK_STATE_DATA;
             } else if (*fieldp < (countof(LENGTH) - 1)) {
-                state = STATE_MARK;
+                state = OBELISK_STATE_MARK;
             } else {
-                state = STATE_END;
+                state = OBELISK_STATE_END;
             }
             break;
 
-        case TOKEN_MARKER:
-        case TOKEN_INVALID:
-        case TOKEN_PENDING:
-            state = STATE_WAIT;
+        case OBELISK_TOKEN_MARKER:
+        case OBELISK_TOKEN_INVALID:
+        case OBELISK_TOKEN_PENDING:
+            state = OBELISK_STATE_WAIT;
             break;
 
         default:
             assert(token != token);
-            state = STATE_WAIT;
+            state = OBELISK_STATE_WAIT;
             break;
 
         }
 
         break;
 
-    case STATE_MARK:
+    case OBELISK_STATE_MARK:
 
         switch (token) {
 
-        case TOKEN_MARKER:
+        case OBELISK_TOKEN_MARKER:
             *fieldp += 1;
-            state = STATE_DATA;
+            state = OBELISK_STATE_DATA;
             break;
 
-        case TOKEN_ZERO:
-        case TOKEN_ONE:
-        case TOKEN_INVALID:
-        case TOKEN_PENDING:
-            state = STATE_WAIT;
+        case OBELISK_TOKEN_ZERO:
+        case OBELISK_TOKEN_ONE:
+        case OBELISK_TOKEN_INVALID:
+        case OBELISK_TOKEN_PENDING:
+            state = OBELISK_STATE_WAIT;
             break;
 
         default:
             assert(token != token);
-            state = STATE_WAIT;
+            state = OBELISK_STATE_WAIT;
             break;
 
         }
 
         break;
 
-    case STATE_END:
+    case OBELISK_STATE_END:
 
         switch (token) {
 
-        case TOKEN_ZERO:
-        case TOKEN_ONE:
-        case TOKEN_INVALID:
-        case TOKEN_PENDING:
-            state = STATE_WAIT;
+        case OBELISK_TOKEN_ZERO:
+        case OBELISK_TOKEN_ONE:
+        case OBELISK_TOKEN_INVALID:
+        case OBELISK_TOKEN_PENDING:
+            state = OBELISK_STATE_WAIT;
             break;
 
-        case TOKEN_MARKER:
+        case OBELISK_TOKEN_MARKER:
             *fieldp = 0;
             assert((0 <= *fieldp) && (*fieldp < countof(LENGTH)));
             *lengthp = LENGTH[*fieldp];
             *bitp = sizeof(*bufferp) * 8;
-            state = STATE_START;
+            state = OBELISK_STATE_START;
             break;
 
         default:
             assert(token != token);
-            state = STATE_WAIT;
+            state = OBELISK_STATE_WAIT;
             break;
 
         }
@@ -289,7 +290,7 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
 
     default:
         assert(state != state);
-        state = STATE_WAIT;
+        state = OBELISK_STATE_WAIT;
         break;
 
     }
