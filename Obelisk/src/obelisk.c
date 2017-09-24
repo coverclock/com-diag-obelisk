@@ -16,21 +16,26 @@
 #include "com/diag/diminuto/diminuto_countof.h"
 #include "com/diag/obelisk/obelisk.h"
 
-static const obelisk_range_t RANGE[] = {
+static const obelisk_range_t MILLISECONDS[] = {
     { 180, 220, }, /* TOKEN_ZERO */
     { 480, 520, }, /* TOKEN_ONE */
     { 780, 820, }, /* TOKEN_MARKER */
-    { 0,   0,   }, /* TOKEN_INVALID */
-    { 0,   0,   }, /* TOKEN_PENDING */
 };
 
 static const int LENGTH[] = {
+    /* STATE_START */
     8,
+    /* STATE_MARK */
     9,
+    /* STATE_MARK */
     9,
+    /* STATE_MARK */
     9,
+    /* STATE_MARK */
     9,
+    /* STATE_MARK */
     9,
+    /* STATE_END */
 };
 
 int obelisk_measure(diminuto_cue_state_t * cuep, int milliseconds_pulse, int milliseconds_cycle)
@@ -74,21 +79,18 @@ obelisk_token_t obelisk_tokenize(int milliseconds_pulse)
     if (milliseconds_pulse > 0) {
 
         token = TOKEN_INVALID;
+
         for (obelisk_token_t tt = TOKEN_ZERO; tt <= TOKEN_MARKER; ++tt) {
-            assert((0 <= tt) && (tt < countof(RANGE)));
-            if (milliseconds_pulse < RANGE[tt].minimum) {
+            assert((0 <= tt) && (tt < countof(MILLISECONDS)));
+            if (milliseconds_pulse < MILLISECONDS[tt].minimum) {
                 /* Do nothing. */
-            } else if (milliseconds_pulse > RANGE[tt].maximum) {
+            } else if (milliseconds_pulse > MILLISECONDS[tt].maximum) {
                 /* Do nothing. */
             } else {
                 token = tt;
                 break;
             }
         }
-
-        milliseconds_pulse = 0;
-
-        assert((0 <= token) && (token < countof(RANGE)));
 
     }
 
@@ -293,4 +295,17 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
     }
 
     return state;
+}
+
+void obelisk_extract(obelisk_frame_t * framep, obelisk_buffer_t buffer)
+{
+    framep->minutes = 0;
+    framep->hours = 0;
+    framep->day = 0;
+    framep->sign = 0;
+    framep->dut1 = 0;
+    framep->year = 0;
+    framep->lyi = 0;
+    framep->lsw = 0;
+    framep->dst = 0;
 }

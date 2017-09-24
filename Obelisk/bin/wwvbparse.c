@@ -11,6 +11,8 @@
  */
 
 #include <stdio.h>
+#include <unistd.h>
+#include <string.h>
 #include <assert.h>
 #include "com/diag/diminuto/diminuto_log.h"
 #include "com/diag/diminuto/diminuto_pin.h"
@@ -75,6 +77,40 @@ int main(int argc, char ** argv)
     int bit = -1;
     int length = -1;
     int leap = -1;
+    const char * program = (const char *)0;
+    int opt = -1;
+    extern char * optarg;
+    int debug = 0;
+    int verbose = 0;
+
+    program = strrchr(argv[0], '/');
+    program = (program == (const char *)0) ? argv[0] : program + 1;
+
+    while ((opt = getopt(argc, argv, "dhv")) >= 0) {
+
+        switch (opt) {
+
+        case 'd':
+            debug = !0;
+            break;
+
+        case 'v':
+            verbose = !0;
+            break;
+
+        case 'h':
+        case '?':
+        default:
+            fprintf(stderr, "usage: %s [ -d ] [ -h ] [ -v ]\n", program);
+            fprintf(stderr, "       -d               Log debug output.\n");
+            fprintf(stderr, "       -h               Display help menu.\n");
+            fprintf(stderr, "       -v               Log verbose output.\n");
+            if (opt != 'h') { return 1; };
+            break;
+
+        }
+
+    }
 
     assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
     assert(sizeof(obelisk_frame_t) == sizeof(uint64_t));
@@ -88,21 +124,17 @@ int main(int argc, char ** argv)
     ** Configure P1 output and T input pins.
     */
 
-    pin_out_p1_fp = diminuto_pin_output(PIN_OUT_P1);
-    if (pin_out_p1_fp == (FILE *)0) {
-        rc = diminuto_pin_unexport(PIN_OUT_P1);
-        assert(rc >= 0);
-        pin_out_p1_fp = diminuto_pin_output(PIN_OUT_P1);
-        assert(pin_out_p1_fp != (FILE *)0);
-    }
+     rc = diminuto_pin_unexport(PIN_OUT_P1);
+     assert(rc >= 0);
 
-    pin_in_t_fp = diminuto_pin_input(PIN_IN_T);
-    if (pin_in_t_fp == (FILE *)0) {
-        rc = diminuto_pin_unexport(PIN_IN_T);
-        assert(rc >= 0);
-        pin_in_t_fp = diminuto_pin_input(PIN_IN_T);
-        assert(pin_in_t_fp != (FILE *)0);
-    }
+     pin_out_p1_fp = diminuto_pin_output(PIN_OUT_P1);
+     assert(pin_out_p1_fp != (FILE *)0);
+
+     rc = diminuto_pin_unexport(PIN_IN_T);
+     assert(rc >= 0);
+
+     pin_in_t_fp = diminuto_pin_input(PIN_IN_T);
+     assert(pin_in_t_fp != (FILE *)0);
 
     /*
     ** Toggle P1 output pin (active low).
@@ -158,6 +190,8 @@ int main(int argc, char ** argv)
             continue;
         }
 
+        if (verbose) { LOG("0: TICK.\n"); }
+
         /*
         ** Poll for T input pin change.
         */
@@ -165,20 +199,24 @@ int main(int argc, char ** argv)
         level_raw = diminuto_pin_get(pin_in_t_fp);
         assert(level_raw >= 0);
 
-        if (diminuto_cue_is_rising(&cue)) {
-            ticks_epoch = diminuto_time_elapsed();;
-            LOG("0: EPOCH.\n");
-        }
-
         level_after = diminuto_cue_debounce(&cue, level_raw);
 
-        if (level_after > level_before) {
-            LOG("1: RISING.\n");
+        if (diminuto_cue_is_rising(&cue)) {
+            ticks_epoch = diminuto_time_elapsed();;
+            if (debug) { LOG("1: EPOCH.\n"); }
+        }
+
+        if (!debug) {
+            /* Di nothing. */
+        } else if (level_after > level_before) {
+            LOG("2: RISING.\n");
         } else if (level_after < level_before) {
-            LOG("1: FALLING.\n");
+            LOG("2: FALLING.\n");
         } else {
             /* Do nothing. */
         }
+
+        level_before = level_after;
 
         /*
         ** Respond to edge transitions.
@@ -188,7 +226,7 @@ int main(int argc, char ** argv)
 
         if (milliseconds_after < milliseconds_before) {
             milliseconds_pulse = milliseconds_before;
-            LOG("2: PULSE %dms.\n", milliseconds_pulse);
+            if (debug) { LOG("3: PULSE %dms.\n", milliseconds_pulse); }
         }
 
         milliseconds_before = milliseconds_after;
@@ -198,10 +236,14 @@ int main(int argc, char ** argv)
         */
 
         token = obelisk_tokenize(milliseconds_pulse);
+        assert((0 <= token) && (token < countof(TOKEN)));
 
-        if (token != TOKEN_PENDING) {
-            assert((0 <= token) && (token < countof(TOKEN)));
-            LOG("3: TOKEN %s.\n", TOKEN[token]);
+        if (!debug) {
+            /* Do nothing. */
+        } else if (token != TOKEN_PENDING) {
+            LOG("4: TOKEN %s.\n", TOKEN[token]);
+        } else {
+            /* Do nothing. */
         }
 
         /*
@@ -209,24 +251,26 @@ int main(int argc, char ** argv)
         */
 
         state_after = obelisk_parse(state_before, token, &field, &length, &bit, &leap, &buffer);
+        assert((0 <= state_before) && (state_before < countof(STATE)));
+        assert((0 <= state_after) && (state_after < countof(STATE)));
 
-        if ((token != TOKEN_PENDING) && (state_after != STATE_WAIT)) {
-            assert((0 <= state_before) && (state_before < countof(STATE)));
-            assert((0 <= state_after) && (state_after < countof(STATE)));
-            LOG("4: STATE %s->%s %d %d %d 0x%llx.\n", STATE[state_before], STATE[state_after], field, length, bit, buffer);
+        if (!debug) {
+            /* Do nothing. */
+        } else if ((token != TOKEN_PENDING) && (state_after != STATE_WAIT)) {
+            LOG("5: STATE %s %s %d %d %d 0x%llx.\n", STATE[state_before], STATE[state_after], field, length, bit, buffer);
+        } else {
+            /* Do nothing. */
         }
 
-        if ((state_before == STATE_END) && (state_after == STATE_START)) {
-            LOG("5: FRAME 0x%llx.\n", buffer);
+        if (!debug) {
+            /* Do nothing. */
+        } else if ((state_before == STATE_END) && (state_after == STATE_START)) {
+            LOG("6: FRAME 0x%llx.\n", buffer);
+        } else {
+            /* Do nothing. */
         }
 
         state_before = state_after;
-
-        /*
-        ** Iterate while controlling jitter.
-        */
-
-        level_before = level_after;
 
     }
 
