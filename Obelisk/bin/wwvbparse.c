@@ -24,6 +24,7 @@
 #include "com/diag/diminuto/diminuto_alarm.h"
 #include "com/diag/diminuto/diminuto_cue.h"
 #include "com/diag/diminuto/diminuto_countof.h"
+#include "com/diag/diminuto/diminuto_terminator.h"
 #include "com/diag/obelisk/obelisk.h"
 
 static const int PIN_OUT_P1 = 23; /* output, radio enable, active low. */
@@ -87,18 +88,14 @@ int main(int argc, char ** argv)
     int verbose = 0;
     int pin_out_p1 = PIN_OUT_P1;
     int pin_in_t = PIN_IN_T;
-    int unexport = !0;
+    int unexport = 0;
 
     program = strrchr(argv[0], '/');
     program = (program == (const char *)0) ? argv[0] : program + 1;
 
-    while ((opt = getopt(argc, argv, "Udhp:rt:v")) >= 0) {
+    while ((opt = getopt(argc, argv, "dhp:rt:uv")) >= 0) {
 
         switch (opt) {
-
-        case 'U':
-            unexport = 0;
-            break;
 
         case 'd':
             debug = !0;
@@ -126,6 +123,10 @@ int main(int argc, char ** argv)
             }
             break;
 
+        case 'u':
+            unexport = !0;
+            break;
+
         case 'v':
             verbose = !0;
             break;
@@ -133,13 +134,13 @@ int main(int argc, char ** argv)
         case 'h':
         case '?':
         default:
-            fprintf(stderr, "usage: %s [ -U ] [ -d ] [ -h ] [ -p PIN ] [ -r ] [ -t PIN ] [ -v ]\n", program);
-            fprintf(stderr, "       -U               Supress unexporting pins initially.\n");
+            fprintf(stderr, "usage: %s [ -d ] [ -h ] [ -p PIN ] [ -r ] [ -t PIN ] [ -u ] [ -v ]\n", program);
             fprintf(stderr, "       -d               Display debug output.\n");
             fprintf(stderr, "       -h               Display help menu.\n");
             fprintf(stderr, "       -p PIN           Define P1 output PIN (default %d).\n", pin_out_p1);
             fprintf(stderr, "       -r               Reset device initially.\n");
             fprintf(stderr, "       -t PIN           Define T input PIN (default %d).\n", pin_in_t);
+            fprintf(stderr, "       -u               Unexport pins initially.\n");
             fprintf(stderr, "       -v               Display verbose output.\n");
             if (opt != 'h') { return 1; };
             break;
@@ -163,12 +164,20 @@ int main(int argc, char ** argv)
 
     if (unexport) {
 
+        if (debug) {
+            fprintf(stderr, "%s: 0 UNEXPORTING.\n", program);
+        }
+
         rc = diminuto_pin_unexport(pin_out_p1);
         assert(rc >= 0);
 
         rc = diminuto_pin_unexport(pin_in_t);
         assert(rc >= 0);
 
+    }
+
+    if (debug) {
+        fprintf(stderr, "%s: 0 EXPORTING.\n", program);
     }
 
      pin_out_p1_fp = diminuto_pin_output(pin_out_p1);
@@ -183,11 +192,11 @@ int main(int argc, char ** argv)
 
     if (reset) {
 
-        ticks_delay = ticks_frequency / HERTZ_DELAY;
-
         if (debug) {
-            fprintf(stderr, "%s: 0 RESETTING\n", program);
+            fprintf(stderr, "%s: 0 RESETTING.\n", program);
         }
+
+        ticks_delay = ticks_frequency / HERTZ_DELAY;
 
         rc = diminuto_pin_set(pin_out_p1_fp);
         assert(rc == 0);
@@ -201,15 +210,15 @@ int main(int argc, char ** argv)
         ticks_slack = diminuto_delay(ticks_delay, 0);
         assert(ticks_slack == 0);
 
-        if (debug) {
-            fprintf(stderr, "%s: 0 RESET\n", program);
-        }
-
     }
 
     /*
     ** Initialize.
     */
+
+    if (debug) {
+        fprintf(stderr, "%s: 0 INITIALIZING.\n", program);
+    }
 
     diminuto_cue_init(&cue, 0);
 
@@ -229,6 +238,9 @@ int main(int argc, char ** argv)
     rc = diminuto_alarm_install(!0);
     assert(rc >= 0);
 
+    rc = diminuto_terminator_install(0);
+    assert(rc >= 0);
+
     ticks_timer = ticks_frequency / HERTZ_TIMER;
 
     ticks_slack = diminuto_timer_periodic(ticks_timer);
@@ -239,8 +251,12 @@ int main(int argc, char ** argv)
         rc = pause();
         assert(rc == -1);
 
-        if (!diminuto_alarm_check()) {
+        if (diminuto_terminator_check()) {
+            break;
+        } else if (!diminuto_alarm_check()) {
             continue;
+        } else {
+            /* Do nothing. */
         }
 
         if (verbose) {
@@ -323,7 +339,7 @@ int main(int argc, char ** argv)
         } else if (state_after == OBELISK_STATE_WAIT) {
             /* Do nothing. */
         } else {
-            fprintf(stderr, "%s: 6 STATE %s %s %d %d %d 0x%llx.\n", program, STATE[state_before], STATE[state_after], field, length, bit, buffer);
+            fprintf(stderr, "%s: 6 STATE %s %s %d %d %d %d 0x%llx.\n", program, STATE[state_before], STATE[state_after], field, length, bit, leap, buffer);
         }
 
         if (!debug) {
@@ -352,6 +368,10 @@ int main(int argc, char ** argv)
     /*
     ** Release resources.
     */
+
+    if (debug) {
+        fprintf(stderr, "%s: 0 RELEASING.\n", program);
+    }
 
     pin_in_t_fp = diminuto_pin_unused(pin_in_t_fp, pin_in_t);
     assert(pin_in_t_fp == (FILE *)0);
