@@ -299,19 +299,33 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
     return state;
 }
 
-static const uint64_t MASK_MINUTES  = 0xffULL   << 56;
-static const uint64_t MASK_HOURS    = 0x7fULL   << 47;
-static const uint64_t MASK_DAY      = 0x7ffULL  << 34;
-static const uint64_t MASK_SIGN     = 0x7ULL    << 29;
-static const uint64_t MASK_DUT1     = 0xfULL    << 25;
-static const uint64_t MASK_YEAR     = 0xffULL   << 16;
-static const uint64_t MASK_LYI      = 0x1ULL    << 14;
-static const uint64_t MASK_LSW      = 0x1ULL    << 13;
-static const uint64_t MASK_DST      = 0x3ULL    << 11;
+static const uint64_t MASK_MINUTES10    = 0x7ULL    << 60;
+static const uint64_t MASK_MINUTES1     = 0xfULL    << 55;
+
+static const uint64_t MASK_HOURS10      = 0x3ULL    << 51;
+static const uint64_t MASK_HOURS1       = 0xfULL    << 46;
+
+static const uint64_t MASK_DAY100       = 0x3ULL    << 42;
+static const uint64_t MASK_DAY10        = 0xfULL    << 37;
+static const uint64_t MASK_DAY1         = 0xfULL    << 33;
+
+static const uint64_t MASK_SIGN         = 0x7ULL    << 28;
+
+static const uint64_t MASK_DUT1         = 0xfULL    << 24;
+
+static const uint64_t MASK_YEAR10       = 0xfULL    << 19;
+static const uint64_t MASK_YEAR1        = 0xfULL    << 15;
+
+static const uint64_t MASK_LYI          = 0x1ULL    << 13;
+
+static const uint64_t MASK_LSW          = 0x1ULL    << 12;
+
+static const uint64_t MASK_DST          = 0x3ULL    << 10;
 
 void obelisk_extract(obelisk_frame_t * framep, obelisk_buffer_t buffer)
 {
-    framep->minutes = (buffer & MASK_MINUTES)   >> 56;
+#if 0
+    framep->minutes = ((buffer & MASK_MINUTES10) >> 60);
     framep->hours   = (buffer & MASK_HOURS)     >> 47;
     framep->day     = (buffer & MASK_DAY)       >> 34;
     framep->sign    = (buffer & MASK_SIGN)      >> 29;
@@ -320,4 +334,5 @@ void obelisk_extract(obelisk_frame_t * framep, obelisk_buffer_t buffer)
     framep->lyi     = (buffer & MASK_LYI)       >> 14;
     framep->lsw     = (buffer & MASK_LSW)       >> 13;
     framep->dst     = (buffer & MASK_DST)       >> 11;
+#endif
 }

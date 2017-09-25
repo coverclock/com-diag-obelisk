@@ -50,29 +50,35 @@ extern obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t toke
 
 typedef struct ObeliskFrame {   /* TIME */          /* SPACE */
                                 /* :00 MARKER */
-    unsigned minutes    :  8;   /* :01 .. :08 */    /* 00 .. 07 */
+    unsigned minutes10  :  3;   /* :01 .. :03 */    /* 63 .. 61 */
+    unsigned            :  1;   /* :04 .. :04 */    /* 60 .. 60 */
+    unsigned minutes1   :  4;   /* :05 .. :08 */    /* 59 .. 56 */
                                 /* :09 MARKER */
-    unsigned unused0    :  2;   /* :10 .. :11 */    /* 08 .. 09 */
-    unsigned hours      :  7;   /* :12 .. :18 */    /* 10 .. 16 */
+    unsigned            :  2;   /* :10 .. :11 */    /* 55 .. 54 */
+    unsigned hours10    :  2;   /* :12 .. :13 */    /* 53 .. 52 */
+    unsigned            :  1;   /* :14 .. :14 */    /* 51 .. 51 */
+    unsigned hours1     :  4;   /* :15 .. :18 */    /* 50 .. 47 */
                                 /* :19 MARKER */
-    unsigned unused1    :  2;   /* :20 .. :21 */    /* 17 .. 18 */
-    unsigned day        : 11;   /* :22 .. :28 */    /* 19 .. 29 */
+    unsigned            :  2;   /* :20 .. :21 */    /* 46 .. 45 */
+    unsigned day100     :  2;   /* :22 .. :23 */    /* 44 .. 43 */
+    unsigned            :  1;   /* :24 .. :24 */    /* 42 .. 42 */
+    unsigned day10      :  4;   /* :25 .. :28 */    /* 41 .. 38 */
                                 /* :29 MARKER */
-                                /* :30 .. :33 */
-    unsigned unused2    :  2;   /* :34 .. :35 */    /* 30 .. 31 */
-    unsigned sign       :  3;   /* :36 .. :38 */    /* 32 .. 34 */
+    unsigned day1       :  4;   /* :30 .. :33 */    /* 37 .. 34 */
+    unsigned            :  2;   /* :34 .. :35 */    /* 33 .. 32 */
+    unsigned sign       :  3;   /* :36 .. :38 */    /* 31 .. 29 */
                                 /* :39 MARKER */
-    unsigned dut1       :  4;   /* :40 .. :43 */    /* 35 .. 38 */
-    unsigned unused3    :  1;   /* :44 */           /* 39 .. 39 */
-    unsigned year       :  8;   /* :45 .. :48 */    /* 40 .. 47 */
+    unsigned dut1       :  4;   /* :40 .. :43 */    /* 28 .. 25 */
+    unsigned            :  1;   /* :44 .. :44 */    /* 24 .. 24 */
+    unsigned year10     :  4;   /* :45 .. :48 */    /* 23 .. 20 */
                                 /* :49 MARKER */
-                                /* :50 .. :53 */
-    unsigned unused4    :  1;   /* :54 */           /* 48 .. 48 */
-    unsigned lyi        :  1;   /* :55 */           /* 49 .. 49 */
-    unsigned lsw        :  1;   /* :56 */           /* 50 .. 50 */
-    unsigned dst        :  2;   /* :57 .. :58 */    /* 51 .. 52 */
+    unsigned year1      :  4;   /* :50 .. :53 */    /* 19 .. 16 */
+    unsigned            :  1;   /* :54 */           /* 15 .. 15 */
+    unsigned lyi        :  1;   /* :55 */           /* 14 .. 14 */
+    unsigned lsw        :  1;   /* :56 */           /* 13 .. 13 */
+    unsigned dst        :  2;   /* :57 .. :58 */    /* 12 .. 11 */
                                 /* :60 MARKER */
-    unsigned filler     : 11;                       /* 53 .. 63 */
+    unsigned filler     : 11;                       /* 10 .. 00 */
 } obelisk_frame_t;
 
 extern void obelisk_extract(obelisk_frame_t * framep, obelisk_buffer_t buffer);

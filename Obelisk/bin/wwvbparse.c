@@ -168,11 +168,9 @@ int main(int argc, char ** argv)
             fprintf(stderr, "%s: 0 UNEXPORTING.\n", program);
         }
 
-        rc = diminuto_pin_unexport(pin_out_p1);
-        assert(rc >= 0);
+        (void)diminuto_pin_unexport(pin_out_p1);
 
-        rc = diminuto_pin_unexport(pin_in_t);
-        assert(rc >= 0);
+        (void)diminuto_pin_unexport(pin_in_t);
 
     }
 
@@ -263,7 +261,7 @@ int main(int argc, char ** argv)
             ticks_now = diminuto_time_elapsed();
             assert(ticks_now >= 0);
             assert(ticks_now >= ticks_then);
-            fprintf(stderr, "%s: 1 TICK %lldms\n", program, diminuto_frequency_ticks2units(ticks_now - ticks_then, 1000));
+            fprintf(stderr, "%s: 1 TICK %lldms.\n", program, diminuto_frequency_ticks2units(ticks_now - ticks_then, 1000));
         }
 
         /*
@@ -350,10 +348,12 @@ int main(int argc, char ** argv)
             /* Do nothing. */
         } else {
             obelisk_extract(&frame, buffer);
-            fprintf(stderr, "%s: 7 TIME %02d-%03d %02d:%02d %c0.%d %cLWI %cLSW %cDST\n",
+            fprintf(stderr, "%s: 7 TIME %d%d-%d%d%d %d%d:%d%d %c0.%d %cLWI %cLSW %cDST.\n",
                 program,
-                frame.year, frame.day,
-                frame.hours, frame.minutes,
+                frame.year10, frame.year1,
+                frame.day100, frame.day10, frame.day1,
+                frame.hours10, frame.hours1,
+                frame.minutes10, frame.minutes1,
                 (frame.sign == OBELISK_SIGN_POSITIVE) ? '+' : (frame.sign == OBELISK_SIGN_NEGATIVE) ? '-' : '?',
                 frame.dut1,
                 frame.lyi ? '+' : '-',
@@ -378,6 +378,14 @@ int main(int argc, char ** argv)
 
     pin_out_p1_fp = diminuto_pin_unused(pin_out_p1_fp, pin_out_p1);
     assert(pin_out_p1_fp == (FILE *)0);
+
+    /*
+    ** Exit.
+    */
+
+    if (debug) {
+        fprintf(stderr, "%s: 0 EXITING.\n", program);
+    }
 
     return 0;
 }
