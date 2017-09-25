@@ -12,8 +12,10 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
 #include "com/diag/diminuto/diminuto_pin.h"
 #include "com/diag/diminuto/diminuto_frequency.h"
 #include "com/diag/diminuto/diminuto_delay.h"
@@ -79,18 +81,49 @@ int main(int argc, char ** argv)
     const char * program = (const char *)0;
     int opt = -1;
     extern char * optarg;
+    char * endptr = (char *)0;
     int debug = 0;
+    int reset = 0;
     int verbose = 0;
+    int pin_out_p1 = PIN_OUT_P1;
+    int pin_in_t = PIN_IN_T;
+    int unexport = !0;
 
     program = strrchr(argv[0], '/');
     program = (program == (const char *)0) ? argv[0] : program + 1;
 
-    while ((opt = getopt(argc, argv, "dhv")) >= 0) {
+    while ((opt = getopt(argc, argv, "Udhp:rt:v")) >= 0) {
 
         switch (opt) {
 
+        case 'U':
+            unexport = 0;
+            break;
+
         case 'd':
             debug = !0;
+            break;
+
+        case 'p':
+            pin_out_p1 = strtol(optarg, &endptr, 0);
+            if ((*endptr != '\0') || (pin_out_p1 < 0)) {
+                errno = EINVAL;
+                perror(optarg);
+                return 1;
+            }
+            break;
+
+        case 'r':
+            reset = !0;
+            break;
+
+        case 't':
+            pin_in_t = strtol(optarg, &endptr, 0);
+            if ((*endptr != '\0') || (pin_in_t < 0)) {
+                errno = EINVAL;
+                perror(optarg);
+                return 1;
+            }
             break;
 
         case 'v':
@@ -100,10 +133,14 @@ int main(int argc, char ** argv)
         case 'h':
         case '?':
         default:
-            fprintf(stderr, "usage: %s [ -d ] [ -h ] [ -v ]\n", program);
-            fprintf(stderr, "       -d               Log debug output.\n");
+            fprintf(stderr, "usage: %s [ -U ] [ -d ] [ -h ] [ -p PIN ] [ -r ] [ -t PIN ] [ -v ]\n", program);
+            fprintf(stderr, "       -U               Supress unexporting pins initially.\n");
+            fprintf(stderr, "       -d               Display debug output.\n");
             fprintf(stderr, "       -h               Display help menu.\n");
-            fprintf(stderr, "       -v               Log verbose output.\n");
+            fprintf(stderr, "       -p PIN           Define P1 output PIN (default %d).\n", pin_out_p1);
+            fprintf(stderr, "       -r               Reset device initially.\n");
+            fprintf(stderr, "       -t PIN           Define T input PIN (default %d).\n", pin_in_t);
+            fprintf(stderr, "       -v               Display verbose output.\n");
             if (opt != 'h') { return 1; };
             break;
 
@@ -124,35 +161,51 @@ int main(int argc, char ** argv)
     ** Configure P1 output and T input pins.
     */
 
-     rc = diminuto_pin_unexport(PIN_OUT_P1);
-     assert(rc >= 0);
+    if (unexport) {
 
-     pin_out_p1_fp = diminuto_pin_output(PIN_OUT_P1);
+        rc = diminuto_pin_unexport(pin_out_p1);
+        assert(rc >= 0);
+
+        rc = diminuto_pin_unexport(pin_in_t);
+        assert(rc >= 0);
+
+    }
+
+     pin_out_p1_fp = diminuto_pin_output(pin_out_p1);
      assert(pin_out_p1_fp != (FILE *)0);
 
-     rc = diminuto_pin_unexport(PIN_IN_T);
-     assert(rc >= 0);
-
-     pin_in_t_fp = diminuto_pin_input(PIN_IN_T);
+     pin_in_t_fp = diminuto_pin_input(pin_in_t);
      assert(pin_in_t_fp != (FILE *)0);
 
     /*
-    ** Toggle P1 output pin (active low).
+    ** Toggle P1 output pin (active low) if requested.
     */
 
-    ticks_delay = ticks_frequency / HERTZ_DELAY;
+    if (reset) {
 
-    rc = diminuto_pin_set(pin_out_p1_fp);
-    assert(rc == 0);
+        ticks_delay = ticks_frequency / HERTZ_DELAY;
 
-    ticks_slack = diminuto_delay(ticks_delay, 0);
-    assert(ticks_slack == 0);
+        if (debug) {
+            fprintf(stderr, "%s: 0 RESETTING\n", program);
+        }
 
-    rc = diminuto_pin_clear(pin_out_p1_fp);
-    assert(rc == 0);
+        rc = diminuto_pin_set(pin_out_p1_fp);
+        assert(rc == 0);
 
-    ticks_slack = diminuto_delay(ticks_delay, 0);
-    assert(ticks_slack == 0);
+        ticks_slack = diminuto_delay(ticks_delay, 0);
+        assert(ticks_slack == 0);
+
+        rc = diminuto_pin_clear(pin_out_p1_fp);
+        assert(rc == 0);
+
+        ticks_slack = diminuto_delay(ticks_delay, 0);
+        assert(ticks_slack == 0);
+
+        if (debug) {
+            fprintf(stderr, "%s: 0 RESET\n", program);
+        }
+
+    }
 
     /*
     ** Initialize.
@@ -194,7 +247,7 @@ int main(int argc, char ** argv)
             ticks_now = diminuto_time_elapsed();
             assert(ticks_now >= 0);
             assert(ticks_now >= ticks_then);
-            fprintf(stderr, "%s: 0 TICK %lldms\n", program, diminuto_frequency_ticks2units(ticks_now - ticks_then, 1000));
+            fprintf(stderr, "%s: 1 TICK %lldms\n", program, diminuto_frequency_ticks2units(ticks_now - ticks_then, 1000));
         }
 
         /*
@@ -209,16 +262,16 @@ int main(int argc, char ** argv)
         if (diminuto_cue_is_rising(&cue)) {
             ticks_epoch = diminuto_time_elapsed();;
             if (debug) {
-                fprintf(stderr, "%s: 1 EPOCH.\n", program);
+                fprintf(stderr, "%s: 2 EPOCH.\n", program);
             }
         }
 
         if (!debug) {
             /* Di nothing. */
         } else if (level_after > level_before) {
-            fprintf(stderr, "%s: 2 RISING.\n", program);
+            fprintf(stderr, "%s: 3 RISING.\n", program);
         } else if (level_after < level_before) {
-            fprintf(stderr, "%s: 2 FALLING.\n", program);
+            fprintf(stderr, "%s: 3 FALLING.\n", program);
         } else {
             /* Do nothing. */
         }
@@ -234,7 +287,7 @@ int main(int argc, char ** argv)
         if (milliseconds_after < milliseconds_before) {
             milliseconds_pulse = milliseconds_before;
             if (debug) {
-                fprintf(stderr, "%s: 3 PULSE %dms.\n", program, milliseconds_pulse);
+                fprintf(stderr, "%s: 4 PULSE %dms.\n", program, milliseconds_pulse);
             }
         }
 
@@ -250,7 +303,7 @@ int main(int argc, char ** argv)
         if (!debug) {
             /* Do nothing. */
         } else if (token != OBELISK_TOKEN_PENDING) {
-            fprintf(stderr, "%s: 4 TOKEN %s.\n", program, TOKEN[token]);
+            fprintf(stderr, "%s: 5 TOKEN %s.\n", program, TOKEN[token]);
         } else {
             /* Do nothing. */
         }
@@ -270,7 +323,7 @@ int main(int argc, char ** argv)
         } else if (state_after == OBELISK_STATE_WAIT) {
             /* Do nothing. */
         } else {
-            fprintf(stderr, "%s: 5 STATE %s %s %d %d %d 0x%llx.\n", program, STATE[state_before], STATE[state_after], field, length, bit, buffer);
+            fprintf(stderr, "%s: 6 STATE %s %s %d %d %d 0x%llx.\n", program, STATE[state_before], STATE[state_after], field, length, bit, buffer);
         }
 
         if (!debug) {
@@ -281,7 +334,7 @@ int main(int argc, char ** argv)
             /* Do nothing. */
         } else {
             obelisk_extract(&frame, buffer);
-            fprintf(stderr, "%s: 6 TIME %02d-%03d %02d:%02d %c0.%d %cLWI %cLSW %cDST\n",
+            fprintf(stderr, "%s: 7 TIME %02d-%03d %02d:%02d %c0.%d %cLWI %cLSW %cDST\n",
                 program,
                 frame.year, frame.day,
                 frame.hours, frame.minutes,
@@ -300,10 +353,10 @@ int main(int argc, char ** argv)
     ** Release resources.
     */
 
-    pin_in_t_fp = diminuto_pin_unused(pin_in_t_fp, PIN_IN_T);
+    pin_in_t_fp = diminuto_pin_unused(pin_in_t_fp, pin_in_t);
     assert(pin_in_t_fp == (FILE *)0);
 
-    pin_out_p1_fp = diminuto_pin_unused(pin_out_p1_fp, PIN_OUT_P1);
+    pin_out_p1_fp = diminuto_pin_unused(pin_out_p1_fp, pin_out_p1);
     assert(pin_out_p1_fp == (FILE *)0);
 
     return 0;
