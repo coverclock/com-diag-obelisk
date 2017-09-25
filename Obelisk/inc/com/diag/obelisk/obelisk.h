@@ -18,6 +18,13 @@ typedef enum ObeliskLevel {
     OBELISK_LEVEL_ONE   = 1,    /* -17 dBr */
 } obelisk_level_t;
 
+extern int obelisk_measure(diminuto_cue_state_t * cuep, int milliseconds_pulse, int milliseconds_cycle);
+
+typedef struct ObeliskRange {
+    int minimum;
+    int maximum;
+} obelisk_range_t;
+
 typedef enum ObeliskToken {
     OBELISK_TOKEN_ZERO      = 0,    /* 200ms */
     OBELISK_TOKEN_ONE       = 1,    /* 500ms */
@@ -26,21 +33,20 @@ typedef enum ObeliskToken {
     OBELISK_TOKEN_PENDING   = 4,
 } obelisk_token_t;
 
-typedef struct ObeliskRange {
-    int minimum;
-    int maximum;
-} obelisk_range_t;
+extern obelisk_token_t obelisk_tokenize(int milliseconds_pulse);
 
 typedef enum ObeliskState {
-    OBELISK_STATE_WAIT      = 0,
-    OBELISK_STATE_SYNC      = 1,
-    OBELISK_STATE_START     = 2,
-    OBELISK_STATE_DATA      = 3,
-    OBELISK_STATE_MARK      = 4,
-    OBELISK_STATE_END       = 5,
+    OBELISK_STATE_WAIT  = 0,
+    OBELISK_STATE_SYNC  = 1,
+    OBELISK_STATE_START = 2,
+    OBELISK_STATE_DATA  = 3,
+    OBELISK_STATE_MARK  = 4,
+    OBELISK_STATE_END   = 5,
 } obelisk_state_t;
 
 typedef uint64_t obelisk_buffer_t;
+
+extern obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int * fieldp, int * lengthp, int * bitp, int * leapp, obelisk_buffer_t * bufferp);
 
 typedef struct ObeliskFrame {   /* TIME */          /* SPACE */
                                 /* :00 MARKER */
@@ -69,12 +75,18 @@ typedef struct ObeliskFrame {   /* TIME */          /* SPACE */
     unsigned filler     : 11;                       /* 53 .. 63 */
 } obelisk_frame_t;
 
-extern int obelisk_measure(diminuto_cue_state_t * cuep, int milliseconds_pulse, int milliseconds_cycle);
-
-extern obelisk_token_t obelisk_tokenize(int milliseconds_pulse);
-
-extern obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int * fieldp, int * lengthp, int * bitp, int * leapp, obelisk_buffer_t * bufferp);
-
 extern void obelisk_extract(obelisk_frame_t * framep, obelisk_buffer_t buffer);
+
+typedef enum ObeliskSign {
+    OBELISK_SIGN_NEGATIVE   = 0x2,  /* 0b010 */
+    OBELISK_SIGN_POSITIVE   = 0x3,  /* 0b101 */
+} obelisk_sign_t;
+
+typedef enum ObeliskDst {
+    OBELISK_DST_OFF     = 0x0,  /* 0b00 */
+    OBELISK_DST_ENDS    = 0x1,  /* 0b01 */
+    OBELISK_DST_BEGINS  = 0x2,  /* 0b10 */
+    OBELISK_DST_ON      = 0x3,  /* 0b11 */
+} obelisk_dst_t;
 
 #endif /*  _COM_DIAG_OBELISK_OBELISK_H_ */

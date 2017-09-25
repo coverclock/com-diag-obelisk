@@ -281,7 +281,15 @@ int main(int argc, char ** argv)
             /* Do nothing. */
         } else {
             obelisk_extract(&frame, buffer);
-            fprintf(stderr, "%s: 6 TIME minutes %d hours %d day %d sign %d dut1 %d year %d lyi %d lsw %d dst %d leap %d\n", program, frame.minutes, frame.hours, frame.day, frame.sign, frame.dut1, frame.year, frame.lyi, frame.lsw, frame.dst, leap);
+            fprintf(stderr, "%s: 6 TIME %02d-%03d %02d:%02d %c0.%d %cLWI %cLSW %cDST\n",
+                program,
+                frame.year, frame.day,
+                frame.hours, frame.minutes,
+                (frame.sign == OBELISK_SIGN_POSITIVE) ? '+' : (frame.sign == OBELISK_SIGN_NEGATIVE) ? '-' : '?',
+                frame.dut1,
+                frame.lyi ? '+' : '-',
+                frame.lsw ? '+' : '-',
+                (frame.dst == OBELISK_DST_OFF) ? '-' : (frame.dst == OBELISK_DST_ENDS) ? '<' : (frame.dst == OBELISK_DST_BEGINS) ? '>' : (frame.dst == OBELISK_DST_ON) ? '+' : '?');
         }
 
         state_before = state_after;
