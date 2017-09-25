@@ -16,29 +16,6 @@
 #include "com/diag/diminuto/diminuto_countof.h"
 #include "com/diag/obelisk/obelisk.h"
 
-static const obelisk_range_t MILLISECONDS[] = {
-    { 180, 220, },  /* OBELISK_TOKEN_ZERO */
-    { 480, 520, },  /* OBELISK_TOKEN_ONE */
-    { 780, 820, },  /* OBELISK_TOKEN_MARKER */
-};
-
-static const int LENGTH[] = {
-    /* OBELISK_STATE_START */
-    /* (OBELISK_STATE_MARK for leap second) */
-    8,
-    /* OBELISK_STATE_MARK */
-    9,
-    /* OBELISK_STATE_MARK */
-    9,
-    /* OBELISK_STATE_MARK */
-    9,
-    /* OBELISK_STATE_MARK */
-    9,
-    /* OBELISK_STATE_MARK */
-    9,
-    /* OBELISK_STATE_END */
-};
-
 int obelisk_measure(diminuto_cue_state_t * cuep, int milliseconds_pulse, int milliseconds_cycle)
 {
     diminuto_cue_edge_t edge;
@@ -73,6 +50,12 @@ int obelisk_measure(diminuto_cue_state_t * cuep, int milliseconds_pulse, int mil
     return milliseconds_pulse;
 }
 
+static const obelisk_range_t MILLISECONDS[] = {
+    { 180, 220, },  /* OBELISK_TOKEN_ZERO */
+    { 480, 520, },  /* OBELISK_TOKEN_ONE */
+    { 780, 820, },  /* OBELISK_TOKEN_MARKER */
+};
+
 obelisk_token_t obelisk_tokenize(int milliseconds_pulse)
 {
     obelisk_token_t token = OBELISK_TOKEN_PENDING;
@@ -97,6 +80,23 @@ obelisk_token_t obelisk_tokenize(int milliseconds_pulse)
 
     return token;
 }
+
+static const int LENGTH[] = {
+    /* OBELISK_STATE_START */
+    /* (OBELISK_STATE_MARK for leap second) */
+    8,
+    /* OBELISK_STATE_MARK */
+    9,
+    /* OBELISK_STATE_MARK */
+    9,
+    /* OBELISK_STATE_MARK */
+    9,
+    /* OBELISK_STATE_MARK */
+    9,
+    /* OBELISK_STATE_MARK */
+    9,
+    /* OBELISK_STATE_END */
+};
 
 obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int * fieldp, int * lengthp, int * bitp, int * leapp, obelisk_buffer_t * bufferp)
 {
@@ -161,13 +161,14 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
 
         case OBELISK_TOKEN_ZERO:
             *bitp -= 1;
+            *bufferp = 0;
             *lengthp -= 1;
             state = OBELISK_STATE_DATA;
             break;
 
         case OBELISK_TOKEN_ONE:
             *bitp -= 1;
-            *bufferp |= 1ULL << *bitp;
+            *bufferp = 1ULL << *bitp;
             *lengthp -= 1;
             state = OBELISK_STATE_DATA;
             break;
@@ -298,15 +299,25 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
     return state;
 }
 
+static const uint64_t MASK_MINUTES  = 0xffULL   << 56;
+static const uint64_t MASK_HOURS    = 0x7fULL   << 47;
+static const uint64_t MASK_DAY      = 0x7ffULL  << 34;
+static const uint64_t MASK_SIGN     = 0x7ULL    << 29;
+static const uint64_t MASK_DUT1     = 0xfULL    << 25;
+static const uint64_t MASK_YEAR     = 0xffULL   << 16;
+static const uint64_t MASK_LYI      = 0x1ULL    << 14;
+static const uint64_t MASK_LSW      = 0x1ULL    << 13;
+static const uint64_t MASK_DST      = 0x3ULL    << 11;
+
 void obelisk_extract(obelisk_frame_t * framep, obelisk_buffer_t buffer)
 {
-    framep->minutes = 0;
-    framep->hours = 0;
-    framep->day = 0;
-    framep->sign = 0;
-    framep->dut1 = 0;
-    framep->year = 0;
-    framep->lyi = 0;
-    framep->lsw = 0;
-    framep->dst = 0;
+    framep->minutes = (buffer & MASK_MINUTES)   >> 56;
+    framep->hours   = (buffer & MASK_HOURS)     >> 47;
+    framep->day     = (buffer & MASK_DAY)       >> 34;
+    framep->sign    = (buffer & MASK_SIGN)      >> 29;
+    framep->dut1    = (buffer & MASK_DUT1)      >> 25;
+    framep->year    = (buffer & MASK_YEAR)      >> 16;
+    framep->lyi     = (buffer & MASK_LYI)       >> 14;
+    framep->lsw     = (buffer & MASK_LSW)       >> 13;
+    framep->dst     = (buffer & MASK_DST)       >> 11;
 }

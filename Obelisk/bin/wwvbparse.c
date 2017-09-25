@@ -14,7 +14,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
-#include "com/diag/diminuto/diminuto_log.h"
 #include "com/diag/diminuto/diminuto_pin.h"
 #include "com/diag/diminuto/diminuto_frequency.h"
 #include "com/diag/diminuto/diminuto_delay.h"
@@ -25,28 +24,26 @@
 #include "com/diag/diminuto/diminuto_countof.h"
 #include "com/diag/obelisk/obelisk.h"
 
-#define LOG DIMINUTO_LOG_DEBUG
-
 static const int PIN_OUT_P1 = 23; /* output, radio enable, active low. */
 static const int PIN_IN_T = 24; /* input, modulated pulse, active high */
 static const int HERTZ_DELAY = 2;
 static const int HERTZ_TIMER = 10;
 
 static const const char * TOKEN[] = {
-    "ZERO",
-    "ONE",
-    "MARKER",
-    "INVALID",
-    "PENDING",
+    "ZERO",     /* OBELISK_TOKEN_ZERO */
+    "ONE",      /* OBELISK_TOKEN_ONE */
+    "MARKER",   /* OBELISK_TOKEN_MARKER */
+    "INVALID",  /* OBELISK_TOKEN_INVALID */
+    "PENDING",  /* OBELISK_TOKEN_PENDING */
 };
 
 static const char * STATE[] = {
-    "WAIT",
-    "SYNC",
-    "START",
-    "DATA",
-    "MARK",
-    "END",
+    "WAIT",     /* OBELISK_STATE_WAIT */
+    "SYNC",     /* OBELISK_STATE_SYNC */
+    "START",    /* OBELISK_STATE_START */
+    "DATA",     /* OBELISK_STATE_DATA */
+    "MARK",     /* OBELISK_STATE_MARK */
+    "END",      /* OBELISK_STATE_END */
 };
 
 int main(int argc, char ** argv)
@@ -59,6 +56,7 @@ int main(int argc, char ** argv)
     diminuto_ticks_t ticks_timer = -1;
     diminuto_sticks_t ticks_slack = -1;
     diminuto_sticks_t ticks_epoch = -1;
+    diminuto_sticks_t ticks_then = -1;
     diminuto_sticks_t ticks_now = -1;
     diminuto_ticks_t ticks_elapsed = -1;
     diminuto_cue_state_t cue = { 0 };
@@ -73,6 +71,7 @@ int main(int argc, char ** argv)
     obelisk_state_t state_before = (obelisk_state_t)-1;
     obelisk_state_t state_after = (obelisk_state_t)-1;
     obelisk_buffer_t buffer = (obelisk_buffer_t)-1;
+    obelisk_frame_t frame = { 0 };
     int field = -1;
     int bit = -1;
     int length = -1;
@@ -115,7 +114,8 @@ int main(int argc, char ** argv)
     assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
     assert(sizeof(obelisk_frame_t) == sizeof(uint64_t));
 
-    diminuto_log_setmask();
+    ticks_then = diminuto_time_elapsed();
+    assert(ticks_then >= 0);
 
     ticks_frequency = diminuto_frequency();
     assert(ticks_frequency > 0);
@@ -190,7 +190,12 @@ int main(int argc, char ** argv)
             continue;
         }
 
-        if (verbose) { LOG("0: TICK.\n"); }
+        if (verbose) {
+            ticks_now = diminuto_time_elapsed();
+            assert(ticks_now >= 0);
+            assert(ticks_now >= ticks_then);
+            fprintf(stderr, "%s: 0 TICK %lldms\n", program, diminuto_frequency_ticks2units(ticks_now - ticks_then, 1000));
+        }
 
         /*
         ** Poll for T input pin change.
@@ -203,15 +208,17 @@ int main(int argc, char ** argv)
 
         if (diminuto_cue_is_rising(&cue)) {
             ticks_epoch = diminuto_time_elapsed();;
-            if (debug) { LOG("1: EPOCH.\n"); }
+            if (debug) {
+                fprintf(stderr, "%s: 1 EPOCH.\n", program);
+            }
         }
 
         if (!debug) {
             /* Di nothing. */
         } else if (level_after > level_before) {
-            LOG("2: RISING.\n");
+            fprintf(stderr, "%s: 2 RISING.\n", program);
         } else if (level_after < level_before) {
-            LOG("2: FALLING.\n");
+            fprintf(stderr, "%s: 2 FALLING.\n", program);
         } else {
             /* Do nothing. */
         }
@@ -226,7 +233,9 @@ int main(int argc, char ** argv)
 
         if (milliseconds_after < milliseconds_before) {
             milliseconds_pulse = milliseconds_before;
-            if (debug) { LOG("3: PULSE %dms.\n", milliseconds_pulse); }
+            if (debug) {
+                fprintf(stderr, "%s: 3 PULSE %dms.\n", program, milliseconds_pulse);
+            }
         }
 
         milliseconds_before = milliseconds_after;
@@ -241,7 +250,7 @@ int main(int argc, char ** argv)
         if (!debug) {
             /* Do nothing. */
         } else if (token != OBELISK_TOKEN_PENDING) {
-            LOG("4: TOKEN %s.\n", TOKEN[token]);
+            fprintf(stderr, "%s: 4 TOKEN %s.\n", program, TOKEN[token]);
         } else {
             /* Do nothing. */
         }
@@ -256,18 +265,23 @@ int main(int argc, char ** argv)
 
         if (!debug) {
             /* Do nothing. */
-        } else if ((token != OBELISK_TOKEN_PENDING) && (state_after != OBELISK_STATE_WAIT)) {
-            LOG("5: STATE %s %s %d %d %d 0x%llx.\n", STATE[state_before], STATE[state_after], field, length, bit, buffer);
-        } else {
+        } else if (token == OBELISK_TOKEN_PENDING) {
             /* Do nothing. */
+        } else if (state_after == OBELISK_STATE_WAIT) {
+            /* Do nothing. */
+        } else {
+            fprintf(stderr, "%s: 5 STATE %s %s %d %d %d 0x%llx.\n", program, STATE[state_before], STATE[state_after], field, length, bit, buffer);
         }
 
         if (!debug) {
             /* Do nothing. */
-        } else if ((state_before == OBELISK_STATE_END) && (state_after == OBELISK_STATE_START)) {
-            LOG("6: FRAME 0x%llx.\n", buffer);
-        } else {
+        } else if (state_before != OBELISK_STATE_END) {
             /* Do nothing. */
+        } else if (state_after != OBELISK_STATE_START) {
+            /* Do nothing. */
+        } else {
+            obelisk_extract(&frame, buffer);
+            fprintf(stderr, "%s: 6 TIME minutes %d hours %d day %d sign %d dut1 %d year %d lyi %d lsw %d dst %d leap %d\n", program, frame.minutes, frame.hours, frame.day, frame.sign, frame.dut1, frame.year, frame.lyi, frame.lsw, frame.dst, leap);
         }
 
         state_before = state_after;
