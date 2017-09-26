@@ -46,42 +46,82 @@ typedef enum ObeliskState {
 
 typedef uint64_t obelisk_buffer_t;
 
-extern obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int * fieldp, int * lengthp, int * bitp, int * leapp, obelisk_buffer_t * bufferp);
+extern obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int * fieldp, int * lengthp, int * leapp, obelisk_buffer_t * bufferp);
 
-typedef struct ObeliskFrame {   /* TIME */          /* SPACE */
-                                /* :00 MARKER */
-    unsigned minutes10  :  3;   /* :01 .. :03 */    /* 63 .. 61 */
-    unsigned            :  1;   /* :04 .. :04 */    /* 60 .. 60 */
-    unsigned minutes1   :  4;   /* :05 .. :08 */    /* 59 .. 56 */
-                                /* :09 MARKER */
-    unsigned            :  2;   /* :10 .. :11 */    /* 55 .. 54 */
-    unsigned hours10    :  2;   /* :12 .. :13 */    /* 53 .. 52 */
-    unsigned            :  1;   /* :14 .. :14 */    /* 51 .. 51 */
-    unsigned hours1     :  4;   /* :15 .. :18 */    /* 50 .. 47 */
-                                /* :19 MARKER */
-    unsigned            :  2;   /* :20 .. :21 */    /* 46 .. 45 */
-    unsigned day100     :  2;   /* :22 .. :23 */    /* 44 .. 43 */
-    unsigned            :  1;   /* :24 .. :24 */    /* 42 .. 42 */
-    unsigned day10      :  4;   /* :25 .. :28 */    /* 41 .. 38 */
-                                /* :29 MARKER */
-    unsigned day1       :  4;   /* :30 .. :33 */    /* 37 .. 34 */
-    unsigned            :  2;   /* :34 .. :35 */    /* 33 .. 32 */
-    unsigned sign       :  3;   /* :36 .. :38 */    /* 31 .. 29 */
-                                /* :39 MARKER */
-    unsigned dut1       :  4;   /* :40 .. :43 */    /* 28 .. 25 */
-    unsigned            :  1;   /* :44 .. :44 */    /* 24 .. 24 */
-    unsigned year10     :  4;   /* :45 .. :48 */    /* 23 .. 20 */
-                                /* :49 MARKER */
-    unsigned year1      :  4;   /* :50 .. :53 */    /* 19 .. 16 */
-    unsigned            :  1;   /* :54 */           /* 15 .. 15 */
-    unsigned lyi        :  1;   /* :55 */           /* 14 .. 14 */
-    unsigned lsw        :  1;   /* :56 */           /* 13 .. 13 */
-    unsigned dst        :  2;   /* :57 .. :58 */    /* 12 .. 11 */
-                                /* :60 MARKER */
-    unsigned filler     : 11;                       /* 10 .. 00 */
+#define _MARKER
+#define _UNUSED
+#define _FILLER
+
+typedef struct ObeliskFrame {           /* TIME       */    /* SPACE    */
+    obelisk_buffer_t _FILLER    :  4;                       /* 63 .. 60 */
+    obelisk_buffer_t _MARKER    :  1;   /* :00 .. :00 */    /* 59 .. 59 */
+    obelisk_buffer_t minutes10  :  3;   /* :01 .. :03 */    /* 58 .. 56 */
+    obelisk_buffer_t _UNUSED    :  1;   /* :04 .. :04 */    /* 55 .. 55 */
+    obelisk_buffer_t minutes1   :  4;   /* :05 .. :08 */    /* 54 .. 51 */
+    obelisk_buffer_t _MARKER    :  1;   /* :09 .. :09 */    /* 50 .. 50 */
+    obelisk_buffer_t _UNUSED    :  2;   /* :10 .. :11 */    /* 49 .. 48 */
+    obelisk_buffer_t hours10    :  2;   /* :12 .. :13 */    /* 47 .. 46 */
+    obelisk_buffer_t _UNUSED    :  1;   /* :14 .. :14 */    /* 45 .. 45 */
+    obelisk_buffer_t hours1     :  4;   /* :15 .. :18 */    /* 44 .. 41 */
+    obelisk_buffer_t _MARKER    :  1;   /* :19 .. :19 */    /* 40 .. 40 */
+    obelisk_buffer_t _UNUSED    :  2;   /* :20 .. :21 */    /* 39 .. 38 */
+    obelisk_buffer_t day100     :  2;   /* :22 .. :23 */    /* 37 .. 36 */
+    obelisk_buffer_t _UNUSED    :  1;   /* :24 .. :24 */    /* 35 .. 35 */
+    obelisk_buffer_t day10      :  4;   /* :25 .. :28 */    /* 34 .. 31 */
+    obelisk_buffer_t _MARKER    :  1;   /* :29 .. :29 */    /* 30 .. 30 */
+    obelisk_buffer_t day1       :  4;   /* :30 .. :33 */    /* 29 .. 26 */
+    obelisk_buffer_t _UNUSED    :  2;   /* :34 .. :35 */    /* 25 .. 24 */
+    obelisk_buffer_t dutonesign :  3;   /* :36 .. :38 */    /* 23 .. 21 */
+    obelisk_buffer_t _MARKER    :  1;   /* :39 .. :39 */    /* 20 .. 20 */
+    obelisk_buffer_t dutone1    :  4;   /* :40 .. :43 */    /* 19 .. 16 */
+    obelisk_buffer_t _UNUSED    :  1;   /* :44 .. :44 */    /* 15 .. 15 */
+    obelisk_buffer_t year10     :  4;   /* :45 .. :48 */    /* 14 .. 11 */
+    obelisk_buffer_t _MARKER    :  1;   /* :49 .. :49 */    /* 10 .. 10 */
+    obelisk_buffer_t year1      :  4;   /* :50 .. :53 */    /*  9 ..  6 */
+    obelisk_buffer_t _UNUSED    :  1;   /* :54 .. :54 */    /*  5 ..  5 */
+    obelisk_buffer_t lyi        :  1;   /* :55 .. :55 */    /*  4 ..  4 */
+    obelisk_buffer_t lsw        :  1;   /* :56 .. :56 */    /*  3 ..  3 */
+    obelisk_buffer_t dst        :  2;   /* :57 .. :58 */    /*  2 ..  1 */
+    obelisk_buffer_t _MARKER    :  1;   /* :59 .. :59 */    /*  0 ..  0 */
 } obelisk_frame_t;
 
-extern void obelisk_extract(obelisk_frame_t * framep, obelisk_buffer_t buffer);
+#undef _FILLER
+#undef _UNUSED
+#undef _MARKER
+
+typedef enum ObeliskOffset {
+     OBELISK_OFFSET_MINUTES10   = 58,
+     OBELISK_OFFSET_MINUTES1    = 54,
+     OBELISK_OFFSET_HOURS10     = 47,
+     OBELISK_OFFSET_HOURS1      = 44,
+     OBELISK_OFFSET_DAY100      = 37,
+     OBELISK_OFFSET_DAY10       = 34,
+     OBELISK_OFFSET_DAY1        = 29,
+     OBELISK_OFFSET_DUTONESIGN  = 23,
+     OBELISK_OFFSET_DUTONE1     = 19,
+     OBELISK_OFFSET_YEAR10      = 14,
+     OBELISK_OFFSET_YEAR1       = 5,
+     OBELISK_OFFSET_LYI         = 4,
+     OBELISK_OFFSET_LSW         = 3,
+     OBELISK_OFFSET_DST         = 2,
+} obelisk_offset_t;
+
+typedef enum ObeliskMask {
+    OBELISK_MASK_MINUTES10    = 0x7,
+    OBELISK_MASK_MINUTES1     = 0xf,
+    OBELISK_MASK_HOURS10      = 0x3,
+    OBELISK_MASK_HOURS1       = 0xf,
+    OBELISK_MASK_DAY100       = 0x3,
+    OBELISK_MASK_DAY10        = 0xf,
+    OBELISK_MASK_DAY1         = 0xf,
+    OBELISK_MASK_DUTONESIGN   = 0x7,
+    OBELISK_MASK_DUTONE1      = 0xf,
+    OBELISK_MASK_YEAR10       = 0xf,
+    OBELISK_MASK_YEAR1        = 0xf,
+    OBELISK_MASK_LYI          = 0x1,
+    OBELISK_MASK_LSW          = 0x1,
+    OBELISK_MASK_DST          = 0x3,
+} obelisk_mask_t;
 
 typedef enum ObeliskSign {
     OBELISK_SIGN_NEGATIVE   = 0x2,  /* 0b010 */
@@ -94,5 +134,9 @@ typedef enum ObeliskDst {
     OBELISK_DST_BEGINS  = 0x2,  /* 0b10 */
     OBELISK_DST_ON      = 0x3,  /* 0b11 */
 } obelisk_dst_t;
+
+#define OBELISK_EXTRACT(_BUFFER_, _FIELD_) ((_BUFFER_ >> OBELISK_OFFSET_ ## _FIELD_) & OBELISK_MASK_ ## _FIELD_)
+
+extern void obelisk_extract(obelisk_frame_t * framep, obelisk_buffer_t buffer);
 
 #endif /*  _COM_DIAG_OBELISK_OBELISK_H_ */

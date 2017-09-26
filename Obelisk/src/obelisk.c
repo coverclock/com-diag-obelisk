@@ -98,7 +98,7 @@ static const int LENGTH[] = {
     /* OBELISK_STATE_END */
 };
 
-obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int * fieldp, int * lengthp, int * bitp, int * leapp, obelisk_buffer_t * bufferp)
+obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int * fieldp, int * lengthp, int * leapp, obelisk_buffer_t * bufferp)
 {
     switch (state) {
 
@@ -140,7 +140,6 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
             *fieldp = 0;
             assert((0 <= *fieldp) && (*fieldp < countof(LENGTH)));
             *lengthp = LENGTH[*fieldp];
-            *bitp = sizeof(*bufferp) * 8;
             *leapp = 0;
             *bufferp = 0;
             state = OBELISK_STATE_START;
@@ -160,15 +159,13 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
         switch (token) {
 
         case OBELISK_TOKEN_ZERO:
-            *bitp -= 1;
             *bufferp = 0;
             *lengthp -= 1;
             state = OBELISK_STATE_DATA;
             break;
 
         case OBELISK_TOKEN_ONE:
-            *bitp -= 1;
-            *bufferp = 1ULL << *bitp;
+            *bufferp = 1;
             *lengthp -= 1;
             state = OBELISK_STATE_DATA;
             break;
@@ -197,7 +194,7 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
         switch (token) {
 
         case OBELISK_TOKEN_ZERO:
-            *bitp -= 1;
+            *bufferp <<= 1;
             *lengthp -= 1;
             if (*lengthp > 0) {
                 state = OBELISK_STATE_DATA;
@@ -209,8 +206,8 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
             break;
 
         case OBELISK_TOKEN_ONE:
-            *bitp -= 1;
-            *bufferp |= 1ULL << *bitp;
+            *bufferp <<= 1;
+            *bufferp |= 1;
             *lengthp -= 1;
             if (*lengthp > 0) {
                 state = OBELISK_STATE_DATA;
@@ -276,7 +273,6 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
             *fieldp = 0;
             assert((0 <= *fieldp) && (*fieldp < countof(LENGTH)));
             *lengthp = LENGTH[*fieldp];
-            *bitp = sizeof(*bufferp) * 8;
             state = OBELISK_STATE_START;
             break;
 
@@ -299,40 +295,20 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
     return state;
 }
 
-static const uint64_t MASK_MINUTES10    = 0x7ULL    << 60;
-static const uint64_t MASK_MINUTES1     = 0xfULL    << 55;
-
-static const uint64_t MASK_HOURS10      = 0x3ULL    << 51;
-static const uint64_t MASK_HOURS1       = 0xfULL    << 46;
-
-static const uint64_t MASK_DAY100       = 0x3ULL    << 42;
-static const uint64_t MASK_DAY10        = 0xfULL    << 37;
-static const uint64_t MASK_DAY1         = 0xfULL    << 33;
-
-static const uint64_t MASK_SIGN         = 0x7ULL    << 28;
-
-static const uint64_t MASK_DUT1         = 0xfULL    << 24;
-
-static const uint64_t MASK_YEAR10       = 0xfULL    << 19;
-static const uint64_t MASK_YEAR1        = 0xfULL    << 15;
-
-static const uint64_t MASK_LYI          = 0x1ULL    << 13;
-
-static const uint64_t MASK_LSW          = 0x1ULL    << 12;
-
-static const uint64_t MASK_DST          = 0x3ULL    << 10;
-
 void obelisk_extract(obelisk_frame_t * framep, obelisk_buffer_t buffer)
 {
-#if 0
-    framep->minutes = ((buffer & MASK_MINUTES10) >> 60);
-    framep->hours   = (buffer & MASK_HOURS)     >> 47;
-    framep->day     = (buffer & MASK_DAY)       >> 34;
-    framep->sign    = (buffer & MASK_SIGN)      >> 29;
-    framep->dut1    = (buffer & MASK_DUT1)      >> 25;
-    framep->year    = (buffer & MASK_YEAR)      >> 16;
-    framep->lyi     = (buffer & MASK_LYI)       >> 14;
-    framep->lsw     = (buffer & MASK_LSW)       >> 13;
-    framep->dst     = (buffer & MASK_DST)       >> 11;
-#endif
+    framep->minutes10   = OBELISK_EXTRACT(buffer, MINUTES10);
+    framep->minutes1    = OBELISK_EXTRACT(buffer, MINUTES1);
+    framep->hours10     = OBELISK_EXTRACT(buffer, HOURS10);
+    framep->hours1      = OBELISK_EXTRACT(buffer, HOURS1);
+    framep->day100      = OBELISK_EXTRACT(buffer, DAY100);
+    framep->day10       = OBELISK_EXTRACT(buffer, DAY10);
+    framep->day1        = OBELISK_EXTRACT(buffer, DAY1);
+    framep->dutonesign  = OBELISK_EXTRACT(buffer, DUTONESIGN);
+    framep->dutone1     = OBELISK_EXTRACT(buffer, DUTONE1);
+    framep->year10      = OBELISK_EXTRACT(buffer, YEAR10);
+    framep->year1       = OBELISK_EXTRACT(buffer, YEAR1);
+    framep->lyi         = OBELISK_EXTRACT(buffer, LYI);
+    framep->lsw         = OBELISK_EXTRACT(buffer, LSW);
+    framep->dst         = OBELISK_EXTRACT(buffer, DST);
 }

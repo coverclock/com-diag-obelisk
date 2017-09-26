@@ -27,6 +27,8 @@
 #include "com/diag/diminuto/diminuto_terminator.h"
 #include "com/diag/obelisk/obelisk.h"
 
+#define LOG(_FORMAT_, ...) fprintf(stderr, "%s: " _FORMAT_ "\n", program, ## __VA_ARGS__)
+
 static const int PIN_OUT_P1 = 23; /* output, radio enable, active low. */
 static const int PIN_IN_T = 24; /* input, modulated pulse, active high */
 static const int HERTZ_DELAY = 2;
@@ -48,6 +50,26 @@ static const char * STATE[] = {
     "MARK",     /* OBELISK_STATE_MARK */
     "END",      /* OBELISK_STATE_END */
 };
+
+static const char * program = (const char *)0;
+static int debug = 0;
+static int reset = 0;
+static int verbose = 0;
+static int pin_out_p1 = -1;
+static int pin_in_t = -1;
+static int unexport = 0;
+
+static void usage(void)
+{
+    fprintf(stderr, "usage: %s [ -d ] [ -h ] [ -p PIN ] [ -r ] [ -t PIN ] [ -u ] [ -v ]\n", program);
+    fprintf(stderr, "       -d               Display debug output.\n");
+    fprintf(stderr, "       -h               Display help menu.\n");
+    fprintf(stderr, "       -p PIN           Define P1 output PIN (default %d).\n", pin_out_p1);
+    fprintf(stderr, "       -r               Reset device initially.\n");
+    fprintf(stderr, "       -t PIN           Define T input PIN (default %d).\n", pin_in_t);
+    fprintf(stderr, "       -u               Unexport pins initially.\n");
+    fprintf(stderr, "       -v               Display verbose output.\n");
+}
 
 int main(int argc, char ** argv)
 {
@@ -76,22 +98,18 @@ int main(int argc, char ** argv)
     obelisk_buffer_t buffer = (obelisk_buffer_t)-1;
     obelisk_frame_t frame = { 0 };
     int field = -1;
-    int bit = -1;
     int length = -1;
     int leap = -1;
-    const char * program = (const char *)0;
     int opt = -1;
     extern char * optarg;
+    char optstr[2] = { '\0', '\0' };
     char * endptr = (char *)0;
-    int debug = 0;
-    int reset = 0;
-    int verbose = 0;
-    int pin_out_p1 = PIN_OUT_P1;
-    int pin_in_t = PIN_IN_T;
-    int unexport = 0;
 
     program = strrchr(argv[0], '/');
     program = (program == (const char *)0) ? argv[0] : program + 1;
+
+    pin_out_p1 = PIN_OUT_P1;
+    pin_in_t = PIN_IN_T;
 
     while ((opt = getopt(argc, argv, "dhp:rt:uv")) >= 0) {
 
@@ -132,22 +150,22 @@ int main(int argc, char ** argv)
             break;
 
         case 'h':
+            usage();
+            break;
+
         case '?':
         default:
-            fprintf(stderr, "usage: %s [ -d ] [ -h ] [ -p PIN ] [ -r ] [ -t PIN ] [ -u ] [ -v ]\n", program);
-            fprintf(stderr, "       -d               Display debug output.\n");
-            fprintf(stderr, "       -h               Display help menu.\n");
-            fprintf(stderr, "       -p PIN           Define P1 output PIN (default %d).\n", pin_out_p1);
-            fprintf(stderr, "       -r               Reset device initially.\n");
-            fprintf(stderr, "       -t PIN           Define T input PIN (default %d).\n", pin_in_t);
-            fprintf(stderr, "       -u               Unexport pins initially.\n");
-            fprintf(stderr, "       -v               Display verbose output.\n");
-            if (opt != 'h') { return 1; };
+            optstr[0] = opt;
+            errno = EINVAL;
+            perror(optstr);
+            return 1;
             break;
 
         }
 
     }
+
+fprintf(stderr, "NOTE %zu %zu %zu\n", sizeof(uint64_t), sizeof(obelisk_buffer_t), sizeof(obelisk_frame_t));
 
     assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
     assert(sizeof(obelisk_frame_t) == sizeof(uint64_t));
@@ -165,7 +183,7 @@ int main(int argc, char ** argv)
     if (unexport) {
 
         if (debug) {
-            fprintf(stderr, "%s: 0 UNEXPORTING.\n", program);
+            LOG("0 UNEXPORTING.");
         }
 
         (void)diminuto_pin_unexport(pin_out_p1);
@@ -175,7 +193,7 @@ int main(int argc, char ** argv)
     }
 
     if (debug) {
-        fprintf(stderr, "%s: 0 EXPORTING.\n", program);
+        LOG("0 EXPORTING.");
     }
 
      pin_out_p1_fp = diminuto_pin_output(pin_out_p1);
@@ -191,7 +209,7 @@ int main(int argc, char ** argv)
     if (reset) {
 
         if (debug) {
-            fprintf(stderr, "%s: 0 RESETTING.\n", program);
+            LOG("0 RESETTING.");
         }
 
         ticks_delay = ticks_frequency / HERTZ_DELAY;
@@ -215,7 +233,7 @@ int main(int argc, char ** argv)
     */
 
     if (debug) {
-        fprintf(stderr, "%s: 0 INITIALIZING.\n", program);
+        LOG("0 INITIALIZING.");
     }
 
     diminuto_cue_init(&cue, 0);
@@ -261,7 +279,7 @@ int main(int argc, char ** argv)
             ticks_now = diminuto_time_elapsed();
             assert(ticks_now >= 0);
             assert(ticks_now >= ticks_then);
-            fprintf(stderr, "%s: 1 TICK %lldms.\n", program, diminuto_frequency_ticks2units(ticks_now - ticks_then, 1000));
+            LOG("1 TICK %lldms.", diminuto_frequency_ticks2units(ticks_now - ticks_then, 1000));
         }
 
         /*
@@ -276,16 +294,16 @@ int main(int argc, char ** argv)
         if (diminuto_cue_is_rising(&cue)) {
             ticks_epoch = diminuto_time_elapsed();;
             if (debug) {
-                fprintf(stderr, "%s: 2 EPOCH.\n", program);
+                LOG("2 EPOCH.");
             }
         }
 
         if (!debug) {
             /* Di nothing. */
         } else if (level_after > level_before) {
-            fprintf(stderr, "%s: 3 RISING.\n", program);
+            LOG("3 RISING.");
         } else if (level_after < level_before) {
-            fprintf(stderr, "%s: 3 FALLING.\n", program);
+            LOG("3 FALLING.");
         } else {
             /* Do nothing. */
         }
@@ -301,7 +319,7 @@ int main(int argc, char ** argv)
         if (milliseconds_after < milliseconds_before) {
             milliseconds_pulse = milliseconds_before;
             if (debug) {
-                fprintf(stderr, "%s: 4 PULSE %dms.\n", program, milliseconds_pulse);
+                LOG("4 PULSE %dms.", milliseconds_pulse);
             }
         }
 
@@ -317,7 +335,7 @@ int main(int argc, char ** argv)
         if (!debug) {
             /* Do nothing. */
         } else if (token != OBELISK_TOKEN_PENDING) {
-            fprintf(stderr, "%s: 5 TOKEN %s.\n", program, TOKEN[token]);
+            LOG("5 TOKEN %s.", TOKEN[token]);
         } else {
             /* Do nothing. */
         }
@@ -326,7 +344,7 @@ int main(int argc, char ** argv)
         ** Parse grammar by transitioning state based on token.
         */
 
-        state_after = obelisk_parse(state_before, token, &field, &length, &bit, &leap, &buffer);
+        state_after = obelisk_parse(state_before, token, &field, &length, &leap, &buffer);
         assert((0 <= state_before) && (state_before < countof(STATE)));
         assert((0 <= state_after) && (state_after < countof(STATE)));
 
@@ -337,7 +355,7 @@ int main(int argc, char ** argv)
         } else if (state_after == OBELISK_STATE_WAIT) {
             /* Do nothing. */
         } else {
-            fprintf(stderr, "%s: 6 STATE %s %s %d %d %d %d 0x%llx.\n", program, STATE[state_before], STATE[state_after], field, length, bit, leap, buffer);
+            LOG("6 STATE %s %s %d %d %d 0x%llx.", STATE[state_before], STATE[state_after], field, length, leap, buffer);
         }
 
         if (!debug) {
@@ -348,17 +366,17 @@ int main(int argc, char ** argv)
             /* Do nothing. */
         } else {
             obelisk_extract(&frame, buffer);
-            fprintf(stderr, "%s: 7 TIME %d%d-%d%d%d %d%d:%d%d %c0.%d %cLWI %cLSW %cDST.\n",
-                program,
+            LOG("7 TIME %d %d / %d %d %d T %d %d : %d %d - %d %d %d %d %d.",
                 frame.year10, frame.year1,
                 frame.day100, frame.day10, frame.day1,
                 frame.hours10, frame.hours1,
                 frame.minutes10, frame.minutes1,
-                (frame.sign == OBELISK_SIGN_POSITIVE) ? '+' : (frame.sign == OBELISK_SIGN_NEGATIVE) ? '-' : '?',
-                frame.dut1,
-                frame.lyi ? '+' : '-',
-                frame.lsw ? '+' : '-',
-                (frame.dst == OBELISK_DST_OFF) ? '-' : (frame.dst == OBELISK_DST_ENDS) ? '<' : (frame.dst == OBELISK_DST_BEGINS) ? '>' : (frame.dst == OBELISK_DST_ON) ? '+' : '?');
+                frame.dutonesign,
+                frame.dutone1,
+                frame.lyi,
+                frame.lsw,
+                frame.dst
+            );
         }
 
         state_before = state_after;
@@ -370,7 +388,7 @@ int main(int argc, char ** argv)
     */
 
     if (debug) {
-        fprintf(stderr, "%s: 0 RELEASING.\n", program);
+        LOG("0 RELEASING.");
     }
 
     pin_in_t_fp = diminuto_pin_unused(pin_in_t_fp, pin_in_t);
@@ -384,7 +402,7 @@ int main(int argc, char ** argv)
     */
 
     if (debug) {
-        fprintf(stderr, "%s: 0 EXITING.\n", program);
+        LOG("0 EXITING.");
     }
 
     return 0;
