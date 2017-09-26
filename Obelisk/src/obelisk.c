@@ -16,67 +16,27 @@
 #include "com/diag/diminuto/diminuto_countof.h"
 #include "com/diag/obelisk/obelisk.h"
 
-int obelisk_measure(diminuto_cue_state_t * cuep, int milliseconds_pulse, int milliseconds_cycle)
-{
-    diminuto_cue_edge_t edge;
-
-    edge = diminuto_cue_edge(cuep);
-
-    switch (edge) {
-
-    case DIMINUTO_CUE_EDGE_LOW:
-        milliseconds_pulse = 0;
-        break;
-
-    case DIMINUTO_CUE_EDGE_RISING:
-        milliseconds_pulse = milliseconds_cycle;
-        break;
-
-    case DIMINUTO_CUE_EDGE_HIGH:
-        milliseconds_pulse += milliseconds_cycle;
-        break;
-
-    case DIMINUTO_CUE_EDGE_FALLING:
-        milliseconds_pulse = 0;
-        break;
-
-    default:
-        assert(edge != edge);
-        milliseconds_pulse = 0;
-        break;
-
-    }
-
-    return milliseconds_pulse;
-}
-
 static const obelisk_range_t MILLISECONDS[] = {
-    { 180, 220, },  /* OBELISK_TOKEN_ZERO */
-    { 480, 520, },  /* OBELISK_TOKEN_ONE */
-    { 780, 820, },  /* OBELISK_TOKEN_MARKER */
+    { 100, 300, },  /* 200ms OBELISK_TOKEN_ZERO */
+    { 400, 600, },  /* 500ms OBELISK_TOKEN_ONE */
+    { 700, 900, },  /* 800ms OBELISK_TOKEN_MARKER */
 };
 
 obelisk_token_t obelisk_tokenize(int milliseconds_pulse)
 {
-    obelisk_token_t token = OBELISK_TOKEN_PENDING;
+    obelisk_token_t token = OBELISK_TOKEN_INVALID;
 
-    if (milliseconds_pulse > 0) {
-
-        token = OBELISK_TOKEN_INVALID;
-
-        for (obelisk_token_t tt = OBELISK_TOKEN_ZERO; tt <= OBELISK_TOKEN_MARKER; ++tt) {
-            assert((0 <= tt) && (tt < countof(MILLISECONDS)));
-            if (milliseconds_pulse < MILLISECONDS[tt].minimum) {
-                /* Do nothing. */
-            } else if (milliseconds_pulse > MILLISECONDS[tt].maximum) {
-                /* Do nothing. */
-            } else {
-                token = tt;
-                break;
-            }
-        }
-
-    }
+     for (obelisk_token_t tt = OBELISK_TOKEN_ZERO; tt <= OBELISK_TOKEN_MARKER; ++tt) {
+         assert((0 <= tt) && (tt < countof(MILLISECONDS)));
+         if (milliseconds_pulse < MILLISECONDS[tt].minimum) {
+             /* Do nothing. */
+         } else if (milliseconds_pulse > MILLISECONDS[tt].maximum) {
+             /* Do nothing. */
+         } else {
+             token = tt;
+             break;
+         }
+     }
 
     return token;
 }
@@ -109,7 +69,6 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
         case OBELISK_TOKEN_ZERO:
         case OBELISK_TOKEN_ONE:
         case OBELISK_TOKEN_INVALID:
-        case OBELISK_TOKEN_PENDING:
             break;
 
         case OBELISK_TOKEN_MARKER:
@@ -131,7 +90,6 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
         case OBELISK_TOKEN_ZERO:
         case OBELISK_TOKEN_ONE:
         case OBELISK_TOKEN_INVALID:
-        case OBELISK_TOKEN_PENDING:
             state = OBELISK_STATE_START;
             break;
 
@@ -187,7 +145,6 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
             break;
 
         case OBELISK_TOKEN_INVALID:
-        case OBELISK_TOKEN_PENDING:
             state = OBELISK_STATE_START;
             break;
 
@@ -231,7 +188,6 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
 
         case OBELISK_TOKEN_MARKER:
         case OBELISK_TOKEN_INVALID:
-        case OBELISK_TOKEN_PENDING:
             state = OBELISK_STATE_START;
             break;
 
@@ -257,7 +213,6 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
         case OBELISK_TOKEN_ZERO:
         case OBELISK_TOKEN_ONE:
         case OBELISK_TOKEN_INVALID:
-        case OBELISK_TOKEN_PENDING:
             state = OBELISK_STATE_START;
             break;
 
@@ -277,7 +232,6 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
         case OBELISK_TOKEN_ZERO:
         case OBELISK_TOKEN_ONE:
         case OBELISK_TOKEN_INVALID:
-        case OBELISK_TOKEN_PENDING:
             state = OBELISK_STATE_START;
             break;
 

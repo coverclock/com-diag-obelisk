@@ -32,14 +32,13 @@
 static const int PIN_OUT_P1 = 23; /* output, radio enable, active low. */
 static const int PIN_IN_T = 24; /* input, modulated pulse, active high */
 static const int HERTZ_DELAY = 2;
-static const int HERTZ_TIMER = 10;
+static const int HERTZ_TIMER = 100;
 
 static const const char * TOKEN[] = {
     "ZERO",     /* OBELISK_TOKEN_ZERO */
     "ONE",      /* OBELISK_TOKEN_ONE */
     "MARKER",   /* OBELISK_TOKEN_MARKER */
     "INVALID",  /* OBELISK_TOKEN_INVALID */
-    "PENDING",  /* OBELISK_TOKEN_PENDING */
 };
 
 static const char * STATE[] = {
@@ -87,10 +86,9 @@ int main(int argc, char ** argv)
     diminuto_cue_state_t cue = { 0 };
     diminuto_cue_edge_t edge = (diminuto_cue_edge_t)-1;
     int level_raw = -1;
-    int level_before = -1;
-    int level_after = -1;
-    int milliseconds_before = -1;
-    int milliseconds_after = -1;
+    int level_cooked = -1;
+    diminuto_sticks_t milliseconds_elapsed = -1;
+    int milliseconds_cycle = -1;
     int milliseconds_pulse = -1;
     obelisk_token_t token = (obelisk_token_t)-1;
     obelisk_state_t state_before = (obelisk_state_t)-1;
@@ -236,18 +234,15 @@ int main(int argc, char ** argv)
 
     diminuto_cue_init(&cue, 0);
 
-    milliseconds_before = 0;
     milliseconds_pulse = 0;
 
-    level_before = OBELISK_LEVEL_ZERO;
+    milliseconds_cycle  = 1000 / HERTZ_TIMER;
 
-    token = OBELISK_TOKEN_PENDING;
+    level_raw = OBELISK_LEVEL_ZERO;
+
+    token = OBELISK_TOKEN_INVALID;
 
     state_before = OBELISK_STATE_START;
-
-    /*
-    ** Enter work loop.
-    */
 
     rc = diminuto_alarm_install(!0);
     assert(rc >= 0);
@@ -260,6 +255,12 @@ int main(int argc, char ** argv)
     ticks_slack = diminuto_timer_periodic(ticks_timer);
     assert(ticks_slack == 0);
 
+    buffer = 0;
+
+    /*
+    ** Begin  work loop.
+    */
+
     while (!0) {
 
         rc = pause();
@@ -267,61 +268,69 @@ int main(int argc, char ** argv)
 
         if (diminuto_terminator_check()) {
             break;
-        } else if (!diminuto_alarm_check()) {
-            continue;
-        } else {
-            /* Do nothing. */
         }
 
-        if (verbose) {
-            ticks_now = diminuto_time_elapsed();
-            assert(ticks_now >= 0);
-            assert(ticks_now >= ticks_then);
-            LOG("1 TICK %lldms.", diminuto_frequency_ticks2units(ticks_now - ticks_then, 1000));
+        if (!diminuto_alarm_check()) {
+            continue;
         }
+
+        ticks_now = diminuto_time_elapsed();
+        assert(ticks_now >= 0);
+        assert(ticks_now >= ticks_then);
+        milliseconds_elapsed = diminuto_frequency_ticks2units(ticks_now - ticks_then, 1000);
+        if (verbose) { LOG("1 TICK %lldms.", milliseconds_elapsed); }
 
         /*
-        ** Poll for T input pin change.
+        ** Determine T input pin state.
         */
 
         level_raw = diminuto_pin_get(pin_in_t_fp);
         assert(level_raw >= 0);
 
-        level_after = diminuto_cue_debounce(&cue, level_raw);
+        level_cooked = diminuto_cue_debounce(&cue, level_raw);
 
         if (diminuto_cue_is_rising(&cue)) {
             ticks_epoch = diminuto_time_elapsed();;
-            if (debug) {
-                LOG("2 EPOCH.");
-            }
+            if (debug) { LOG("2 EPOCH %lldms.", milliseconds_elapsed); }
         }
-
-        if (!debug) {
-            /* Di nothing. */
-        } else if (level_after > level_before) {
-            LOG("3 RISING.");
-        } else if (level_after < level_before) {
-            LOG("3 FALLING.");
-        } else {
-            /* Do nothing. */
-        }
-
-        level_before = level_after;
 
         /*
-        ** Respond to edge transitions.
+        ** Look for edge transitions and measure pulse duration.
         */
 
-        milliseconds_after = obelisk_measure(&cue, milliseconds_before, 1000 / HERTZ_TIMER);
+        edge = diminuto_cue_edge(&cue);
 
-        if (milliseconds_after < milliseconds_before) {
-            milliseconds_pulse = milliseconds_before;
-            if (debug) {
-                LOG("4 PULSE %dms.", milliseconds_pulse);
-            }
+        switch (edge) {
+
+        case DIMINUTO_CUE_EDGE_LOW:
+            /* Do nothing. */
+            break;
+
+        case DIMINUTO_CUE_EDGE_RISING:
+            if (debug) { LOG("3 RISING %lldms.", milliseconds_elapsed); }
+            milliseconds_pulse = milliseconds_cycle;
+            break;
+
+        case DIMINUTO_CUE_EDGE_HIGH:
+            milliseconds_pulse += milliseconds_cycle;
+            break;
+
+        case DIMINUTO_CUE_EDGE_FALLING:
+            if (debug) { LOG("3 FALLING %lldms.", milliseconds_elapsed); }
+            break;
+
+        default:
+            assert(edge != edge);
+            milliseconds_pulse = 0;
+            break;
+
         }
 
-        milliseconds_before = milliseconds_after;
+        if (edge != DIMINUTO_CUE_EDGE_FALLING) {
+            continue;
+        }
+
+       if (debug) { LOG("4 PULSE %dms.", milliseconds_pulse); }
 
         /*
         ** Classify pulse.
@@ -330,13 +339,7 @@ int main(int argc, char ** argv)
         token = obelisk_tokenize(milliseconds_pulse);
         assert((0 <= token) && (token < countof(TOKEN)));
 
-        if (!debug) {
-            /* Do nothing. */
-        } else if (token != OBELISK_TOKEN_PENDING) {
-            LOG("5 TOKEN %s.", TOKEN[token]);
-        } else {
-            /* Do nothing. */
-        }
+        if (debug) { LOG("5 TOKEN %s.", TOKEN[token]); }
 
         /*
         ** Parse grammar by transitioning state based on token.
@@ -356,13 +359,7 @@ int main(int argc, char ** argv)
             LOG("6 RESYNC!");
         }
 
-        if (!debug) {
-            /* Do nothing. */
-        } else if (token == OBELISK_TOKEN_PENDING) {
-            /* Do nothing. */
-        } else if (state_after == OBELISK_STATE_START) {
-            /* Do nothing. */
-        } else {
+        if (debug) {
             LOG("6 STATE %s %s %d %d %d 0x%llx.", STATE[state_before], STATE[state_after], field, length, leap, buffer);
         }
 

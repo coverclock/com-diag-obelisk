@@ -18,8 +18,6 @@ typedef enum ObeliskLevel {
     OBELISK_LEVEL_ONE   = 1,    /* -17 dBr */
 } obelisk_level_t;
 
-extern int obelisk_measure(diminuto_cue_state_t * cuep, int milliseconds_pulse, int milliseconds_cycle);
-
 typedef struct ObeliskRange {
     int minimum;
     int maximum;
@@ -30,18 +28,17 @@ typedef enum ObeliskToken {
     OBELISK_TOKEN_ONE       = 1,    /* 500ms */
     OBELISK_TOKEN_MARKER    = 2,    /* 800ms */
     OBELISK_TOKEN_INVALID   = 3,
-    OBELISK_TOKEN_PENDING   = 4,
 } obelisk_token_t;
 
 extern obelisk_token_t obelisk_tokenize(int milliseconds_pulse);
 
 typedef enum ObeliskState {
-    OBELISK_STATE_START = 0,
-    OBELISK_STATE_BEGIN = 1,
-    OBELISK_STATE_LEAP  = 2,
-    OBELISK_STATE_DATA  = 3,
-    OBELISK_STATE_MARK  = 4,
-    OBELISK_STATE_END   = 5,
+    OBELISK_STATE_START = 0,    /* Expecting END MARKER. */
+    OBELISK_STATE_BEGIN = 1,    /* Expecting BEGIN MARKER. */
+    OBELISK_STATE_LEAP  = 2,    /* Expecting LEAP MARKER, ZERO, or ONE. */
+    OBELISK_STATE_DATA  = 3,    /* Expecting ZERO or ONE. */
+    OBELISK_STATE_MARK  = 4,    /* Expecting intermediate MARKER. */
+    OBELISK_STATE_END   = 5,    /* Expecting END MARKER. */
 } obelisk_state_t;
 
 typedef uint64_t obelisk_buffer_t;
