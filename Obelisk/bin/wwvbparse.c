@@ -43,9 +43,9 @@ static const const char * TOKEN[] = {
 };
 
 static const char * STATE[] = {
-    "WAIT",     /* OBELISK_STATE_WAIT */
-    "SYNC",     /* OBELISK_STATE_SYNC */
     "START",    /* OBELISK_STATE_START */
+    "BEGIN",    /* OBELISK_STATE_BEGIN */
+    "LEAP",     /* OBELISK_STATE_LEAP */
     "DATA",     /* OBELISK_STATE_DATA */
     "MARK",     /* OBELISK_STATE_MARK */
     "END",      /* OBELISK_STATE_END */
@@ -165,8 +165,6 @@ int main(int argc, char ** argv)
 
     }
 
-fprintf(stderr, "NOTE %zu %zu %zu\n", sizeof(uint64_t), sizeof(obelisk_buffer_t), sizeof(obelisk_frame_t));
-
     assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
     assert(sizeof(obelisk_frame_t) == sizeof(uint64_t));
 
@@ -245,7 +243,7 @@ fprintf(stderr, "NOTE %zu %zu %zu\n", sizeof(uint64_t), sizeof(obelisk_buffer_t)
 
     token = OBELISK_TOKEN_PENDING;
 
-    state_before = OBELISK_STATE_WAIT;
+    state_before = OBELISK_STATE_START;
 
     /*
     ** Enter work loop.
@@ -350,9 +348,19 @@ fprintf(stderr, "NOTE %zu %zu %zu\n", sizeof(uint64_t), sizeof(obelisk_buffer_t)
 
         if (!debug) {
             /* Do nothing. */
+        } else if (state_before != OBELISK_STATE_START) {
+            /* Do nothing. */
+        } else if (state_after == OBELISK_STATE_START) {
+            /* Do nothing. */
+        } else {
+            LOG("6 RESYNC!");
+        }
+
+        if (!debug) {
+            /* Do nothing. */
         } else if (token == OBELISK_TOKEN_PENDING) {
             /* Do nothing. */
-        } else if (state_after == OBELISK_STATE_WAIT) {
+        } else if (state_after == OBELISK_STATE_START) {
             /* Do nothing. */
         } else {
             LOG("6 STATE %s %s %d %d %d 0x%llx.", STATE[state_before], STATE[state_after], field, length, leap, buffer);
@@ -362,7 +370,7 @@ fprintf(stderr, "NOTE %zu %zu %zu\n", sizeof(uint64_t), sizeof(obelisk_buffer_t)
             /* Do nothing. */
         } else if (state_before != OBELISK_STATE_END) {
             /* Do nothing. */
-        } else if (state_after != OBELISK_STATE_START) {
+        } else if (state_after != OBELISK_STATE_BEGIN) {
             /* Do nothing. */
         } else {
             obelisk_extract(&frame, buffer);

@@ -36,9 +36,9 @@ typedef enum ObeliskToken {
 extern obelisk_token_t obelisk_tokenize(int milliseconds_pulse);
 
 typedef enum ObeliskState {
-    OBELISK_STATE_WAIT  = 0,
-    OBELISK_STATE_SYNC  = 1,
-    OBELISK_STATE_START = 2,
+    OBELISK_STATE_START = 0,
+    OBELISK_STATE_BEGIN = 1,
+    OBELISK_STATE_LEAP  = 2,
     OBELISK_STATE_DATA  = 3,
     OBELISK_STATE_MARK  = 4,
     OBELISK_STATE_END   = 5,
