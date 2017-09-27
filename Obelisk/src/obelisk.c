@@ -12,9 +12,9 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include "com/diag/diminuto/diminuto_cue.h"
-#include "com/diag/diminuto/diminuto_countof.h"
 #include "com/diag/obelisk/obelisk.h"
+
+#define countof(_ARRAY_) (sizeof(_ARRAY_) / sizeof(_ARRAY_[0]))
 
 /**
  * Reference: MAS, "MAS6180C AM Receiver IC", DA6180C.001, Micro Analog Systems,
@@ -340,7 +340,7 @@ static int zeller(int year, int month, int day)
     m = month + (12 * a) - 2;
     d = day + y + (y / 4) - (y / 100) + (y / 400) + ((31 * m) / 12);
 
-    return d;
+    return (((((d % 7) + 6) % 7) + 1) % 7);
 }
 
 int obelisk_validate(struct tm * timep, const obelisk_frame_t * framep)
@@ -370,33 +370,33 @@ int obelisk_validate(struct tm * timep, const obelisk_frame_t * framep)
      * Reference: /usr/include/time.h
      */
     if (timep->tm_min < 0) {
-        /* Do nothing. */
+        rc = -2;
     } else if (timep->tm_min > 59) {
-        /* Do nothing. */
+        rc = -3;
     } else if (timep->tm_hour < 0) {
-        /* Do nothing. */
+        rc = -4;
     } else if (timep->tm_hour > 23) {
-        /* Do nothing. */
+        rc = -5;
     } else if (timep->tm_mday < 1) {
-        /* Do nothing. */
+        rc = -6;
     } else if (timep->tm_mday > 31) {
-        /* Do nothing. */
+        rc = -7;
     } else if (timep->tm_mon < 0) {
-        /* Do nothing. */
+        rc = -8;
     } else if (timep->tm_mon > 11) {
-        /* Do nothing. */
-    } else if (timep->tm_year < 2017) {
-        /* Do nothing. */
-    } else if (timep->tm_year > 2116) {
-        /* Do nothing. */
+        rc = -9;
+    } else if (timep->tm_year < 117) {
+        rc = -10;
+    } else if (timep->tm_year > 216) {
+        rc = -11;
     } else if (timep->tm_wday < 0) {
-        /* Do nothing. */
+        rc = -12;
     } else if (timep->tm_wday > 6) {
-        /* Do nothing. */
+        rc = -13;
     } else if (timep->tm_yday < 0) {
-        /* Do nothing. */
+        rc = -14;
     } else if (timep->tm_yday > 365) {
-        /* Do nothing. */
+        rc = -15;
     } else {
         rc = 0;
     }

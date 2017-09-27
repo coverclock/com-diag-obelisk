@@ -15,7 +15,6 @@
 #define __USE_MISC
 #endif
 #include <time.h>
-#include "com/diag/diminuto/diminuto_cue.h"
 
 typedef enum ObeliskLevel {
     OBELISK_LEVEL_ZERO  = 0,    /*   0 dBr */

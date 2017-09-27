@@ -16,6 +16,7 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <sys/time.h>
 #include "com/diag/diminuto/diminuto_pin.h"
 #include "com/diag/diminuto/diminuto_frequency.h"
 #include "com/diag/diminuto/diminuto_delay.h"
@@ -25,6 +26,8 @@
 #include "com/diag/diminuto/diminuto_cue.h"
 #include "com/diag/diminuto/diminuto_countof.h"
 #include "com/diag/diminuto/diminuto_terminator.h"
+#include "com/diag/diminuto/diminuto_daemon.h"
+#include "com/diag/diminuto/diminuto_daemon.h"
 #include "com/diag/obelisk/obelisk.h"
 
 #define LOG(_FORMAT_, ...) fprintf(stderr, "%s: " _FORMAT_ "\n", program, ## __VA_ARGS__)
@@ -50,24 +53,39 @@ static const char * STATE[] = {
     "END",      /* OBELISK_STATE_END */
 };
 
+static const char * DAY[] = {
+    "SUN",
+    "MON",
+    "TUE",
+    "WED",
+    "THU",
+    "FRI",
+    "SAT",
+};
+
 static const char * program = (const char *)0;
+
 static int debug = 0;
 static int reset = 0;
 static int verbose = 0;
 static int pin_out_p1 = -1;
 static int pin_in_t = -1;
 static int unexport = 0;
+static int daemonize = 0;
+static int set = 0;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -d ] [ -h ] [ -p PIN ] [ -r ] [ -t PIN ] [ -u ] [ -v ]\n", program);
-    fprintf(stderr, "       -d               Display debug output.\n");
-    fprintf(stderr, "       -h               Display help menu.\n");
-    fprintf(stderr, "       -p PIN           Define P1 output PIN (default %d).\n", pin_out_p1);
-    fprintf(stderr, "       -r               Reset device initially.\n");
-    fprintf(stderr, "       -t PIN           Define T input PIN (default %d).\n", pin_in_t);
-    fprintf(stderr, "       -u               Unexport pins initially.\n");
-    fprintf(stderr, "       -v               Display verbose output.\n");
+    fprintf(stderr, "usage: %s [ -D ] [ -S ] [ -d ] [ -h ] [ -p PIN ] [ -r ] [ -t PIN ] [ -u ] [ -v ]\n", program);
+    fprintf(stderr, "       -D              Daemonize into the background.\n");
+    fprintf(stderr, "       -S              Set time of day when possible.\n");
+    fprintf(stderr, "       -d              Display debug output.\n");
+    fprintf(stderr, "       -h              Display help menu.\n");
+    fprintf(stderr, "       -p PIN          Define P1 output PIN (default %d).\n", pin_out_p1);
+    fprintf(stderr, "       -r              Reset device initially.\n");
+    fprintf(stderr, "       -t PIN          Define T input PIN (default %d).\n", pin_in_t);
+    fprintf(stderr, "       -u              Unexport pins initially.\n");
+    fprintf(stderr, "       -v              Display verbose output.\n");
 }
 
 int main(int argc, char ** argv)
@@ -81,15 +99,15 @@ int main(int argc, char ** argv)
     diminuto_sticks_t ticks_slack = -1;
     diminuto_sticks_t ticks_then = -1;
     diminuto_sticks_t ticks_now = -1;
-    diminuto_ticks_t ticks_elapsed = -1;
+    diminuto_sticks_t ticks_elapsed = -1;
+    diminuto_sticks_t ticks_leading = -1;
+    diminuto_sticks_t ticks_rising = -1;
+    diminuto_sticks_t ticks_tone = -1;
     diminuto_cue_state_t cue = { 0 };
     diminuto_cue_edge_t edge = (diminuto_cue_edge_t)-1;
     int level_raw = -1;
     int level_cooked = -1;
     diminuto_sticks_t milliseconds_elapsed = -1;
-    diminuto_sticks_t milliseconds_leading = -1;
-    diminuto_sticks_t milliseconds_rising = -1;
-    diminuto_sticks_t milliseconds_epoch = -1;
     int milliseconds_cycle = -1;
     int milliseconds_pulse = -1;
     obelisk_token_t token = (obelisk_token_t)-1;
@@ -98,6 +116,8 @@ int main(int argc, char ** argv)
     obelisk_buffer_t buffer = (obelisk_buffer_t)-1;
     obelisk_frame_t frame = { 0 };
     struct tm time = { 0 };
+    struct timeval value = { 0 };
+    extern long timezone;
     int field = -1;
     int length = -1;
     int leap = -1;
@@ -112,9 +132,17 @@ int main(int argc, char ** argv)
     pin_out_p1 = PIN_OUT_P1;
     pin_in_t = PIN_IN_T;
 
-    while ((opt = getopt(argc, argv, "dhp:rt:uv")) >= 0) {
+    while ((opt = getopt(argc, argv, "DSdhp:rt:uv")) >= 0) {
 
         switch (opt) {
+
+        case 'D':
+            daemonize = !0;
+            break;
+
+        case 'S':
+            set = !0;
+            break;
 
         case 'd':
             debug = !0;
@@ -166,6 +194,18 @@ int main(int argc, char ** argv)
 
     }
 
+    if (daemonize) {
+        static const char ROOT[] = "/var/lock/";
+        static size_t LIMIT = 64;
+        char * path = (char *)0;
+        path = malloc(sizeof(ROOT) + strnlen(program, LIMIT));
+        strcpy(path, ROOT);
+        strncat(path, program, LIMIT);
+        if (debug) { LOG("0 PATH \"%s\"", path); }
+        rc = diminuto_daemon(program, path);
+        if (rc < 0) { return 2; }
+    }
+
     assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
     assert(sizeof(obelisk_frame_t) == sizeof(uint64_t));
 
@@ -181,9 +221,7 @@ int main(int argc, char ** argv)
 
     if (unexport) {
 
-        if (debug) {
-            LOG("0 UNEXPORTING.");
-        }
+        if (debug) { LOG("0 UNEXPORTING."); }
 
         (void)diminuto_pin_unexport(pin_out_p1);
 
@@ -191,9 +229,7 @@ int main(int argc, char ** argv)
 
     }
 
-    if (debug) {
-        LOG("0 EXPORTING.");
-    }
+    if (debug) { LOG("0 EXPORTING."); }
 
      pin_out_p1_fp = diminuto_pin_output(pin_out_p1);
      assert(pin_out_p1_fp != (FILE *)0);
@@ -207,9 +243,7 @@ int main(int argc, char ** argv)
 
     if (reset) {
 
-        if (debug) {
-            LOG("0 RESETTING.");
-        }
+        if (debug) { LOG("0 RESETTING."); }
 
         ticks_delay = ticks_frequency / HERTZ_DELAY;
 
@@ -231,8 +265,10 @@ int main(int argc, char ** argv)
     ** Initialize.
     */
 
-    if (debug) {
-        LOG("0 INITIALIZING.");
+    if (debug) { LOG("0 INITIALIZING."); }
+
+    if (set) {
+        tzset();
     }
 
     diminuto_cue_init(&cue, 0);
@@ -280,6 +316,7 @@ int main(int argc, char ** argv)
         ticks_now = diminuto_time_elapsed();
         assert(ticks_now >= 0);
         assert(ticks_now >= ticks_then);
+
         milliseconds_elapsed = diminuto_frequency_ticks2units(ticks_now - ticks_then, 1000);
         if (verbose) { LOG("1 TICK %lldms.", milliseconds_elapsed); }
 
@@ -293,7 +330,7 @@ int main(int argc, char ** argv)
         level_cooked = diminuto_cue_debounce(&cue, level_raw);
 
         if (diminuto_cue_is_rising(&cue)) {
-            milliseconds_leading = milliseconds_elapsed;
+            ticks_leading = ticks_now;
         }
 
         /*
@@ -311,7 +348,7 @@ int main(int argc, char ** argv)
         case DIMINUTO_CUE_EDGE_RISING:
             if (debug) { LOG("3 RISING %lldms.", milliseconds_elapsed); }
             milliseconds_pulse = milliseconds_cycle;
-            milliseconds_rising = milliseconds_leading;
+            ticks_rising = ticks_leading;
             break;
 
         case DIMINUTO_CUE_EDGE_HIGH:
@@ -373,41 +410,70 @@ int main(int argc, char ** argv)
         } else if (state_after != OBELISK_STATE_LEAP) {
             /* Do nothing. */
         } else {
-            milliseconds_epoch = milliseconds_rising;
-            if (debug) { LOG("6 EPOCH %lldms.", milliseconds_epoch); }
+            ticks_tone = ticks_rising;
+            if (debug) { LOG("6 TONE %lldms.", diminuto_frequency_ticks2units(ticks_tone - ticks_then, 1000)); }
         }
 
-        if (!debug) {
-            /* Do nothing. */
-        } else if (state_before != OBELISK_STATE_END) {
+        if (state_before != OBELISK_STATE_END) {
             /* Do nothing. */
         } else if (state_after != OBELISK_STATE_BEGIN) {
             /* Do nothing. */
         } else {
 
             obelisk_extract(&frame, buffer);
-            LOG("7 FRAME 0x%016lld %d %d / %d %d %d T %d %d : %d %d - %d %d %d %d %d.",
-                buffer,
-                frame.year10, frame.year1,
-                frame.day100, frame.day10, frame.day1,
-                frame.hours10, frame.hours1,
-                frame.minutes10, frame.minutes1,
-                frame.dutonesign,
-                frame.dutone1,
-                frame.lyi,
-                frame.lsw,
-                frame.dst
-            );
+
+            if (debug) {
+                LOG("7 FRAME 0x%016lld %d %d / %d %d %d T %d %d : %d %d - %d %d %d %d %d.",
+                    buffer,
+                    frame.year10, frame.year1,
+                    frame.day100, frame.day10, frame.day1,
+                    frame.hours10, frame.hours1,
+                    frame.minutes10, frame.minutes1,
+                    frame.dutonesign,
+                    frame.dutone1,
+                    frame.lyi,
+                    frame.lsw,
+                    frame.dst
+                );
+            }
 
             rc = obelisk_validate(&time, &frame);
-            LOG("7 TIME %d %04d-%02d-%02dT%02d:%02d:%02dZ %04d/%03d %d %d.",
-                rc,
-                time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
-                time.tm_hour, time.tm_min, time.tm_sec,
-                time.tm_year + 1900, time.tm_yday + 1,
-                time.tm_wday + 1,
-                time.tm_isdst
-            );
+            assert((0 <= time.tm_wday) && (time.tm_wday < countof(DAY)));
+
+            /*
+             * It took me a moment during testing to realize that this will
+             * always be 59 seconds if everything is working correctly.
+             */
+            time.tm_sec = diminuto_frequency_ticks2units(ticks_now - ticks_tone, 1);
+            assert(time.tm_sec == 59);
+
+            if (debug) {
+                LOG("7 TIME %d %04d-%02d-%02dT%02d:%02d:%02dZ %04d/%03d %s %s.",
+                    rc,
+                    time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
+                    time.tm_hour, time.tm_min, time.tm_sec,
+                    time.tm_year + 1900, time.tm_yday + 1,
+                    DAY[time.tm_wday],
+                    time.tm_isdst ? "DST" : "!DST"
+                );
+            }
+
+            value.tv_sec = mktime(&time);
+            value.tv_sec += timezone;
+            value.tv_usec = diminuto_frequency_ticks2units(ticks_now - ticks_tone, 1000000);
+            value.tv_usec %= 1000000;
+
+            if (debug) { LOG("7 EPOCH %ld %ld.", value.tv_sec, value.tv_usec); }
+
+            if (rc < 0) {
+                /* Do nothing. */
+            } else if (!set) {
+                /* Do nothing. */
+            } else if ((rc = settimeofday(&value, (struct timezone *)0)) >= 0) {
+                /* Do nothing. */
+            } else {
+                perror("settimeodday");
+            }
 
         }
 
@@ -419,9 +485,7 @@ int main(int argc, char ** argv)
     ** Release resources.
     */
 
-    if (debug) {
-        LOG("0 RELEASING.");
-    }
+    if (debug) { LOG("0 RELEASING."); }
 
     pin_in_t_fp = diminuto_pin_unused(pin_in_t_fp, pin_in_t);
     assert(pin_in_t_fp == (FILE *)0);
@@ -433,9 +497,7 @@ int main(int argc, char ** argv)
     ** Exit.
     */
 
-    if (debug) {
-        LOG("0 EXITING.");
-    }
+    if (debug) { LOG("0 EXITING."); }
 
     return 0;
 }
