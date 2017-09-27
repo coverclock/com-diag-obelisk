@@ -97,6 +97,7 @@ int main(int argc, char ** argv)
     obelisk_state_t state_after = (obelisk_state_t)-1;
     obelisk_buffer_t buffer = (obelisk_buffer_t)-1;
     obelisk_frame_t frame = { 0 };
+    struct tm time = { 0 };
     int field = -1;
     int length = -1;
     int leap = -1;
@@ -383,8 +384,10 @@ int main(int argc, char ** argv)
         } else if (state_after != OBELISK_STATE_BEGIN) {
             /* Do nothing. */
         } else {
+
             obelisk_extract(&frame, buffer);
-            LOG("7 FRAME %d %d / %d %d %d T %d %d : %d %d - %d %d %d %d %d.",
+            LOG("7 FRAME 0x%016lld %d %d / %d %d %d T %d %d : %d %d - %d %d %d %d %d.",
+                buffer,
                 frame.year10, frame.year1,
                 frame.day100, frame.day10, frame.day1,
                 frame.hours10, frame.hours1,
@@ -395,6 +398,17 @@ int main(int argc, char ** argv)
                 frame.lsw,
                 frame.dst
             );
+
+            rc = obelisk_validate(&time, &frame);
+            LOG("7 TIME %d %04d-%02d-%02dT%02d:%02d:%02dZ %04d/%03d %d %d.",
+                rc,
+                time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
+                time.tm_hour, time.tm_min, time.tm_sec,
+                time.tm_year + 1900, time.tm_yday + 1,
+                time.tm_wday + 1,
+                time.tm_isdst
+            );
+
         }
 
         state_before = state_after;

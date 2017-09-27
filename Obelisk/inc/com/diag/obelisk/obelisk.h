@@ -11,17 +11,16 @@
  */
 
 #include <stdint.h>
+#ifndef __USE_MISC
+#define __USE_MISC
+#endif
+#include <time.h>
 #include "com/diag/diminuto/diminuto_cue.h"
 
 typedef enum ObeliskLevel {
     OBELISK_LEVEL_ZERO  = 0,    /*   0 dBr */
     OBELISK_LEVEL_ONE   = 1,    /* -17 dBr */
 } obelisk_level_t;
-
-typedef struct ObeliskRange {
-    int minimum;
-    int maximum;
-} obelisk_range_t;
 
 typedef enum ObeliskToken {
     OBELISK_TOKEN_ZERO,     /* 200ms */
@@ -42,13 +41,13 @@ typedef enum ObeliskState {
 } obelisk_state_t;
 
 typedef enum ObeliskAction {
-    OBELISK_ACTION_NONE,
-    OBELISK_ACTION_CLEAR,
-    OBELISK_ACTION_ZERO,
-    OBELISK_ACTION_ONE,
-    OBELISK_ACTION_LEAP,
-    OBELISK_ACTION_MARK,
-    OBELISK_ACTION_FINAL,
+    OBELISK_ACTION_NONE,    /* Do nothing. */
+    OBELISK_ACTION_CLEAR,   /* Empty frame. */
+    OBELISK_ACTION_ZERO,    /* Insert 0. */
+    OBELISK_ACTION_ONE,     /* Insert 1. */
+    OBELISK_ACTION_LEAP,    /* Leap second indicated. */
+    OBELISK_ACTION_MARK,    /* Insert MARK. */
+    OBELISK_ACTION_FINAL,   /* Complete frame. */
 } obelisk_action_t;
 
 typedef uint64_t obelisk_buffer_t;
@@ -97,20 +96,20 @@ typedef struct ObeliskFrame {           /* TIME       */    /* SPACE    */
 #undef _MARKER
 
 typedef enum ObeliskOffset {
-     OBELISK_OFFSET_MINUTES10   = 58,
-     OBELISK_OFFSET_MINUTES1    = 54,
-     OBELISK_OFFSET_HOURS10     = 47,
-     OBELISK_OFFSET_HOURS1      = 44,
-     OBELISK_OFFSET_DAY100      = 37,
-     OBELISK_OFFSET_DAY10       = 34,
-     OBELISK_OFFSET_DAY1        = 29,
-     OBELISK_OFFSET_DUTONESIGN  = 23,
-     OBELISK_OFFSET_DUTONE1     = 19,
-     OBELISK_OFFSET_YEAR10      = 14,
-     OBELISK_OFFSET_YEAR1       = 5,
+     OBELISK_OFFSET_MINUTES10   = 56,
+     OBELISK_OFFSET_MINUTES1    = 51,
+     OBELISK_OFFSET_HOURS10     = 46,
+     OBELISK_OFFSET_HOURS1      = 41,
+     OBELISK_OFFSET_DAY100      = 36,
+     OBELISK_OFFSET_DAY10       = 31,
+     OBELISK_OFFSET_DAY1        = 26,
+     OBELISK_OFFSET_DUTONESIGN  = 21,
+     OBELISK_OFFSET_DUTONE1     = 16,
+     OBELISK_OFFSET_YEAR10      = 11,
+     OBELISK_OFFSET_YEAR1       = 6,
      OBELISK_OFFSET_LYI         = 4,
      OBELISK_OFFSET_LSW         = 3,
-     OBELISK_OFFSET_DST         = 2,
+     OBELISK_OFFSET_DST         = 1,
 } obelisk_offset_t;
 
 typedef enum ObeliskMask {
@@ -130,6 +129,8 @@ typedef enum ObeliskMask {
     OBELISK_MASK_DST          = 0x3,
 } obelisk_mask_t;
 
+#define OBELISK_EXTRACT(_BUFFER_, _FIELD_) ((_BUFFER_ >> OBELISK_OFFSET_ ## _FIELD_) & OBELISK_MASK_ ## _FIELD_)
+
 typedef enum ObeliskSign {
     OBELISK_SIGN_NEGATIVE   = 0x2,  /* 0b010 */
     OBELISK_SIGN_POSITIVE   = 0x3,  /* 0b101 */
@@ -142,8 +143,8 @@ typedef enum ObeliskDst {
     OBELISK_DST_ON      = 0x3,  /* 0b11 */
 } obelisk_dst_t;
 
-#define OBELISK_EXTRACT(_BUFFER_, _FIELD_) ((_BUFFER_ >> OBELISK_OFFSET_ ## _FIELD_) & OBELISK_MASK_ ## _FIELD_)
-
 extern void obelisk_extract(obelisk_frame_t * framep, obelisk_buffer_t buffer);
+
+extern int obelisk_validate(struct tm * timep, const obelisk_frame_t * framep);
 
 #endif /*  _COM_DIAG_OBELISK_OBELISK_H_ */

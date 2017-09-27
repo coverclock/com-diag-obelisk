@@ -16,7 +16,14 @@
 #include "com/diag/diminuto/diminuto_countof.h"
 #include "com/diag/obelisk/obelisk.h"
 
-static const obelisk_range_t MILLISECONDS[] = {
+/**
+ * Reference: MAS, "MAS6180C AM Receiver IC", DA6180C.001, Micro Analog Systems,
+ * 2014-09-17, p. 7, t. 5
+ */
+static const struct {
+    int16_t minimum;
+    int16_t maximum;
+} MILLISECONDS[] = {
     { 100, 300, },  /* 200ms OBELISK_TOKEN_ZERO */
     { 400, 600, },  /* 500ms OBELISK_TOKEN_ONE */
     { 700, 900, },  /* 800ms OBELISK_TOKEN_MARKER */
@@ -41,21 +48,17 @@ obelisk_token_t obelisk_tokenize(int milliseconds_pulse)
     return token;
 }
 
-static const int LENGTH[] = {
-    /* OBELISK_STATE_BEGIN */
-    /* (optional OBELISK_STATE_MARK for leap second) */
-    8,
-    /* OBELISK_STATE_MARK */
-    9,
-    /* OBELISK_STATE_MARK */
-    9,
-    /* OBELISK_STATE_MARK */
-    9,
-    /* OBELISK_STATE_MARK */
-    9,
-    /* OBELISK_STATE_MARK */
-    9,
-    /* OBELISK_STATE_END */
+/**
+ * Reference: Wikipedia, "WWVB", https://en.wikipedia.org/wiki/WWVB,
+ * 2017-05-02
+ */
+static const int8_t LENGTH[] = {
+    8,  /* minutes10, minutes1 */
+    9,  /* hours10, hours1 */
+    9,  /* day100, day10 */
+    9,  /* day1, dutonesign */
+    9,  /* dutone1, year10 */
+    9,  /* year1, lyi, lsw, dst */
 };
 
 obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int * fieldp, int * lengthp, int * leapp, obelisk_buffer_t * bufferp)
@@ -310,4 +313,93 @@ void obelisk_extract(obelisk_frame_t * framep, obelisk_buffer_t buffer)
     framep->lyi         = OBELISK_EXTRACT(buffer, LYI);
     framep->lsw         = OBELISK_EXTRACT(buffer, LSW);
     framep->dst         = OBELISK_EXTRACT(buffer, DST);
+}
+
+static const int8_t DAYS[2][12] = {
+/*    JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC */
+    {  31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 },    /* !LYI */
+    {  31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 },    /* LYI */
+};
+
+static int zeller(int year, int month, int day)
+{
+    int ye;
+    int a;
+    int y;
+    int m;
+    int d;
+
+    /*
+     * Reference: C. Overclock, Date::weekday, Date.cpp,
+     * https://github.com/coverclock/com-diag-grandote,
+     * 2017-09-27
+     */
+    ye = ((year - 1) % 400) + 1;
+    a = (14 - month) / 12;
+    y = ye - a;
+    m = month + (12 * a) - 2;
+    d = day + y + (y / 4) - (y / 100) + (y / 400) + ((31 * m) / 12);
+
+    return d;
+}
+
+int obelisk_validate(struct tm * timep, const obelisk_frame_t * framep)
+{
+    int rc = -1;
+
+    timep->tm_sec = 0;
+    timep->tm_min = (framep->minutes10 * 10) + framep->minutes1;
+    timep->tm_hour = (framep->hours10 * 10) + framep->hours1;
+    timep->tm_year = (framep->year10 * 10) + framep->year1;
+    timep->tm_year += (timep->tm_year < 17) ? 200 : 100;
+    timep->tm_isdst = !!framep->dst;
+    timep->tm_gmtoff = 0;
+    timep->tm_zone = "UTC";
+
+    timep->tm_mday  = (framep->day100 * 100) + (framep->day10 * 10) + framep->day1;
+    timep->tm_yday = timep->tm_mday - 1;
+
+    for (timep->tm_mon = 0; timep->tm_mon < countof(DAYS[0]); ++timep->tm_mon) {
+        if (timep->tm_mday <= DAYS[framep->lyi][timep->tm_mon]) { break; }
+        timep->tm_mday -= DAYS[framep->lyi][timep->tm_mon];
+    }
+
+    timep->tm_wday = zeller(timep->tm_year + 1900, timep->tm_mon + 1, timep->tm_mday);
+
+    /*
+     * Reference: /usr/include/time.h
+     */
+    if (timep->tm_min < 0) {
+        /* Do nothing. */
+    } else if (timep->tm_min > 59) {
+        /* Do nothing. */
+    } else if (timep->tm_hour < 0) {
+        /* Do nothing. */
+    } else if (timep->tm_hour > 23) {
+        /* Do nothing. */
+    } else if (timep->tm_mday < 1) {
+        /* Do nothing. */
+    } else if (timep->tm_mday > 31) {
+        /* Do nothing. */
+    } else if (timep->tm_mon < 0) {
+        /* Do nothing. */
+    } else if (timep->tm_mon > 11) {
+        /* Do nothing. */
+    } else if (timep->tm_year < 2017) {
+        /* Do nothing. */
+    } else if (timep->tm_year > 2116) {
+        /* Do nothing. */
+    } else if (timep->tm_wday < 0) {
+        /* Do nothing. */
+    } else if (timep->tm_wday > 6) {
+        /* Do nothing. */
+    } else if (timep->tm_yday < 0) {
+        /* Do nothing. */
+    } else if (timep->tm_yday > 365) {
+        /* Do nothing. */
+    } else {
+        rc = 0;
+    }
+
+    return rc;
 }
