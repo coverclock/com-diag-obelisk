@@ -28,6 +28,7 @@
 #include "com/diag/diminuto/diminuto_terminator.h"
 #include "com/diag/diminuto/diminuto_daemon.h"
 #include "com/diag/diminuto/diminuto_daemon.h"
+#include "com/diag/diminuto/diminuto_log.h"
 #include "com/diag/obelisk/obelisk.h"
 
 #define LOG(_FORMAT_, ...) fprintf(stderr, "%s: " _FORMAT_ "\n", program, ## __VA_ARGS__)
@@ -118,6 +119,7 @@ int main(int argc, char ** argv)
     struct tm time = { 0 };
     struct timeval value = { 0 };
     extern long timezone;
+    extern int daylight;
     int field = -1;
     int length = -1;
     int leap = -1;
@@ -458,21 +460,40 @@ int main(int argc, char ** argv)
                 );
             }
 
+            /*
+             * mktime(3) always assumes that the tm structure contains local
+             * time. So we have to adjust our value to account for the time
+             * zone of the host on which we are running. Similarly, we have
+             * to account for Daylight Saving Time.
+             */
             value.tv_sec = mktime(&time);
-            value.tv_sec += timezone;
+            value.tv_sec -= timezone;
+            if (!daylight) {
+                /* Do nothing. */
+            } else if (!time.tm_isdst) {
+                /* Do nothing. */
+            } else {
+                value.tv_sec += 3600;
+            }
+
             value.tv_usec = diminuto_frequency_ticks2units(ticks_now - ticks_tone, 1000000);
             value.tv_usec %= 1000000;
 
-            if (debug) { LOG("7 EPOCH %ld %ld.", value.tv_sec, value.tv_usec); }
+            if (debug) { LOG("7 EPOCH %ld.%06ld.", value.tv_sec, value.tv_usec); }
 
             if (rc < 0) {
                 /* Do nothing. */
             } else if (!set) {
                 /* Do nothing. */
-            } else if ((rc = settimeofday(&value, (struct timezone *)0)) >= 0) {
-                /* Do nothing. */
-            } else {
+            } else if ((rc = settimeofday(&value, (struct timezone *)0)) < 0) {
                 perror("settimeodday");
+            } else {
+                DIMINUTO_LOG_NOTICE("%s: settimeofday %04d-%02d-%02dT%02d:%02d:%02d.%06d+00:00\n",
+                    program,
+                    time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
+                    time.tm_hour, time.tm_min, time.tm_sec,
+                    value.tv_usec
+                );
             }
 
         }
