@@ -60,6 +60,8 @@ static const int LENGTH[] = {
 
 obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int * fieldp, int * lengthp, int * leapp, obelisk_buffer_t * bufferp)
 {
+    obelisk_action_t action = OBELISK_ACTION_NONE;
+
     switch (state) {
 
     case OBELISK_STATE_START:
@@ -94,10 +96,7 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
             break;
 
         case OBELISK_TOKEN_MARKER:
-            *bufferp = 0;
-            *fieldp = 0;
-            assert((0 <= *fieldp) && (*fieldp < countof(LENGTH)));
-            *lengthp = LENGTH[*fieldp];
+            action = OBELISK_ACTION_CLEAR;
             state = OBELISK_STATE_LEAP;
             break;
 
@@ -115,9 +114,8 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
         switch (token) {
 
         case OBELISK_TOKEN_ZERO:
-            *bufferp <<= 1;
-            *lengthp -= 1;
-            if (*lengthp > 0) {
+            action = OBELISK_ACTION_ZERO;
+            if (*lengthp > 1) {
                 state = OBELISK_STATE_DATA;
             } else if (*fieldp < (countof(LENGTH) - 1)) {
                 state = OBELISK_STATE_MARK;
@@ -127,10 +125,8 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
             break;
 
         case OBELISK_TOKEN_ONE:
-            *bufferp <<= 1;
-            *bufferp |= 1;
-            *lengthp -= 1;
-            if (*lengthp > 0) {
+            action = OBELISK_ACTION_ONE;
+            if (*lengthp > 1) {
                 state = OBELISK_STATE_DATA;
             } else if (*fieldp < (countof(LENGTH) - 1)) {
                 state = OBELISK_STATE_MARK;
@@ -140,7 +136,7 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
             break;
 
         case OBELISK_TOKEN_MARKER:
-            *leapp = !0;
+            action = OBELISK_ACTION_LEAP;
             state = OBELISK_STATE_DATA;
             break;
 
@@ -162,9 +158,8 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
         switch (token) {
 
         case OBELISK_TOKEN_ZERO:
-            *bufferp <<= 1;
-            *lengthp -= 1;
-            if (*lengthp > 0) {
+            action = OBELISK_ACTION_ZERO;
+            if (*lengthp > 1) {
                 state = OBELISK_STATE_DATA;
             } else if (*fieldp < (countof(LENGTH) - 1)) {
                 state = OBELISK_STATE_MARK;
@@ -174,10 +169,8 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
             break;
 
         case OBELISK_TOKEN_ONE:
-            *bufferp <<= 1;
-            *bufferp |= 1;
-            *lengthp -= 1;
-            if (*lengthp > 0) {
+            action = OBELISK_ACTION_ONE;
+            if (*lengthp > 1) {
                 state = OBELISK_STATE_DATA;
             } else if (*fieldp < (countof(LENGTH) - 1)) {
                 state = OBELISK_STATE_MARK;
@@ -205,8 +198,7 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
         switch (token) {
 
         case OBELISK_TOKEN_MARKER:
-            *bufferp <<= 1;
-            *fieldp += 1;
+            action = OBELISK_ACTION_MARK;
             state = OBELISK_STATE_DATA;
             break;
 
@@ -236,10 +228,7 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
             break;
 
         case OBELISK_TOKEN_MARKER:
-            *bufferp <<= 1;
-            *fieldp = 0;
-            assert((0 <= *fieldp) && (*fieldp < countof(LENGTH)));
-            *lengthp = LENGTH[*fieldp];
+            action = OBELISK_ACTION_MARK;
             state = OBELISK_STATE_BEGIN;
             break;
 
@@ -255,6 +244,45 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
     default:
         assert(state != state);
         state = OBELISK_STATE_START;
+        break;
+
+    }
+
+    switch (action) {
+
+    case OBELISK_ACTION_NONE:
+        break;
+
+    case OBELISK_ACTION_CLEAR:
+        *bufferp = 0;
+        *fieldp = 0;
+        *lengthp = LENGTH[0];
+        break;
+
+    case OBELISK_ACTION_ZERO:
+        *bufferp <<= 1;
+        *lengthp -= 1;
+        break;
+
+    case OBELISK_ACTION_ONE:
+        *bufferp <<= 1;
+        *bufferp |= 1;
+        *lengthp -= 1;
+        break;
+
+    case OBELISK_ACTION_LEAP:
+        *leapp = !0;
+        break;
+
+    case OBELISK_ACTION_MARK:
+        *bufferp <<= 1;
+        *fieldp += 1;
+        assert((0 <= *fieldp) && (*fieldp < countof(LENGTH)));
+        *lengthp = LENGTH[*fieldp];
+        break;
+
+    default:
+        assert(action != action);
         break;
 
     }

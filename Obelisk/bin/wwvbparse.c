@@ -79,7 +79,6 @@ int main(int argc, char ** argv)
     diminuto_ticks_t ticks_delay = -1;
     diminuto_ticks_t ticks_timer = -1;
     diminuto_sticks_t ticks_slack = -1;
-    diminuto_sticks_t ticks_epoch = -1;
     diminuto_sticks_t ticks_then = -1;
     diminuto_sticks_t ticks_now = -1;
     diminuto_ticks_t ticks_elapsed = -1;
@@ -88,6 +87,9 @@ int main(int argc, char ** argv)
     int level_raw = -1;
     int level_cooked = -1;
     diminuto_sticks_t milliseconds_elapsed = -1;
+    diminuto_sticks_t milliseconds_leading = -1;
+    diminuto_sticks_t milliseconds_rising = -1;
+    diminuto_sticks_t milliseconds_epoch = -1;
     int milliseconds_cycle = -1;
     int milliseconds_pulse = -1;
     obelisk_token_t token = (obelisk_token_t)-1;
@@ -290,8 +292,7 @@ int main(int argc, char ** argv)
         level_cooked = diminuto_cue_debounce(&cue, level_raw);
 
         if (diminuto_cue_is_rising(&cue)) {
-            ticks_epoch = diminuto_time_elapsed();;
-            if (debug) { LOG("2 EPOCH %lldms.", milliseconds_elapsed); }
+            milliseconds_leading = milliseconds_elapsed;
         }
 
         /*
@@ -309,6 +310,7 @@ int main(int argc, char ** argv)
         case DIMINUTO_CUE_EDGE_RISING:
             if (debug) { LOG("3 RISING %lldms.", milliseconds_elapsed); }
             milliseconds_pulse = milliseconds_cycle;
+            milliseconds_rising = milliseconds_leading;
             break;
 
         case DIMINUTO_CUE_EDGE_HIGH:
@@ -316,6 +318,7 @@ int main(int argc, char ** argv)
             break;
 
         case DIMINUTO_CUE_EDGE_FALLING:
+            milliseconds_pulse += milliseconds_cycle;
             if (debug) { LOG("3 FALLING %lldms.", milliseconds_elapsed); }
             break;
 
@@ -361,6 +364,16 @@ int main(int argc, char ** argv)
 
         if (debug) {
             LOG("6 STATE %s %s %d %d %d 0x%llx.", STATE[state_before], STATE[state_after], field, length, leap, buffer);
+        }
+
+
+        if (state_before != OBELISK_STATE_BEGIN) {
+            /* Do nothing. */
+        } else if (state_after != OBELISK_STATE_LEAP) {
+            /* Do nothing. */
+        } else {
+            milliseconds_epoch = milliseconds_rising;
+            if (debug) { LOG("6 EPOCH %lldms.", milliseconds_epoch); }
         }
 
         if (!debug) {

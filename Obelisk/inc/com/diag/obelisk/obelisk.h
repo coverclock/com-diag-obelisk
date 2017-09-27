@@ -24,22 +24,31 @@ typedef struct ObeliskRange {
 } obelisk_range_t;
 
 typedef enum ObeliskToken {
-    OBELISK_TOKEN_ZERO      = 0,    /* 200ms */
-    OBELISK_TOKEN_ONE       = 1,    /* 500ms */
-    OBELISK_TOKEN_MARKER    = 2,    /* 800ms */
-    OBELISK_TOKEN_INVALID   = 3,
+    OBELISK_TOKEN_ZERO,     /* 200ms */
+    OBELISK_TOKEN_ONE,      /* 500ms */
+    OBELISK_TOKEN_MARKER,   /* 800ms */
+    OBELISK_TOKEN_INVALID,
 } obelisk_token_t;
 
 extern obelisk_token_t obelisk_tokenize(int milliseconds_pulse);
 
 typedef enum ObeliskState {
-    OBELISK_STATE_START = 0,    /* Expecting END MARKER. */
-    OBELISK_STATE_BEGIN = 1,    /* Expecting BEGIN MARKER. */
-    OBELISK_STATE_LEAP  = 2,    /* Expecting LEAP MARKER, ZERO, or ONE. */
-    OBELISK_STATE_DATA  = 3,    /* Expecting ZERO or ONE. */
-    OBELISK_STATE_MARK  = 4,    /* Expecting intermediate MARKER. */
-    OBELISK_STATE_END   = 5,    /* Expecting END MARKER. */
+    OBELISK_STATE_START,    /* Expecting END MARKER. */
+    OBELISK_STATE_BEGIN,    /* Expecting BEGIN MARKER. */
+    OBELISK_STATE_LEAP,     /* Expecting LEAP MARKER, ZERO, or ONE. */
+    OBELISK_STATE_DATA,     /* Expecting ZERO or ONE. */
+    OBELISK_STATE_MARK,     /* Expecting intermediate MARKER. */
+    OBELISK_STATE_END,      /* Expecting END MARKER. */
 } obelisk_state_t;
+
+typedef enum ObeliskAction {
+    OBELISK_ACTION_NONE,
+    OBELISK_ACTION_CLEAR,
+    OBELISK_ACTION_ZERO,
+    OBELISK_ACTION_ONE,
+    OBELISK_ACTION_LEAP,
+    OBELISK_ACTION_MARK,
+} obelisk_action_t;
 
 typedef uint64_t obelisk_buffer_t;
 
