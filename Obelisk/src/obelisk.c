@@ -228,7 +228,7 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
             break;
 
         case OBELISK_TOKEN_MARKER:
-            action = OBELISK_ACTION_MARK;
+            action = OBELISK_ACTION_FINAL;
             state = OBELISK_STATE_BEGIN;
             break;
 
@@ -279,6 +279,10 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
         *fieldp += 1;
         assert((0 <= *fieldp) && (*fieldp < countof(LENGTH)));
         *lengthp = LENGTH[*fieldp];
+        break;
+
+    case OBELISK_ACTION_FINAL:
+        *bufferp <<= 1;
         break;
 
     default:

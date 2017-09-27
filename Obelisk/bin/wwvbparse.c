@@ -384,7 +384,7 @@ int main(int argc, char ** argv)
             /* Do nothing. */
         } else {
             obelisk_extract(&frame, buffer);
-            LOG("7 TIME %d %d / %d %d %d T %d %d : %d %d - %d %d %d %d %d.",
+            LOG("7 FRAME %d %d / %d %d %d T %d %d : %d %d - %d %d %d %d %d.",
                 frame.year10, frame.year1,
                 frame.day100, frame.day10, frame.day1,
                 frame.hours10, frame.hours1,

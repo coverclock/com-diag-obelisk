@@ -48,6 +48,7 @@ typedef enum ObeliskAction {
     OBELISK_ACTION_ONE,
     OBELISK_ACTION_LEAP,
     OBELISK_ACTION_MARK,
+    OBELISK_ACTION_FINAL,
 } obelisk_action_t;
 
 typedef uint64_t obelisk_buffer_t;
