@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include "com/diag/diminuto/diminuto_pin.h"
 #include "com/diag/diminuto/diminuto_frequency.h"
 #include "com/diag/diminuto/diminuto_delay.h"
@@ -99,16 +100,11 @@ int main(int argc, char ** argv)
     diminuto_ticks_t ticks_timer = -1;
     diminuto_sticks_t ticks_slack = -1;
     diminuto_sticks_t ticks_then = -1;
-    diminuto_sticks_t ticks_now = -1;
     diminuto_sticks_t ticks_elapsed = -1;
-    diminuto_sticks_t ticks_leading = -1;
-    diminuto_sticks_t ticks_rising = -1;
-    diminuto_sticks_t ticks_tone = -1;
     diminuto_cue_state_t cue = { 0 };
     diminuto_cue_edge_t edge = (diminuto_cue_edge_t)-1;
     int level_raw = -1;
     int level_cooked = -1;
-    diminuto_sticks_t milliseconds_elapsed = -1;
     int milliseconds_cycle = -1;
     int milliseconds_pulse = -1;
     obelisk_token_t token = (obelisk_token_t)-1;
@@ -127,6 +123,10 @@ int main(int argc, char ** argv)
     extern char * optarg;
     char optstr[2] = { '\0', '\0' };
     char * endptr = (char *)0;
+    int armed = -1;
+    int synchronized = -1;
+
+    diminuto_log_setmask();
 
     program = strrchr(argv[0], '/');
     program = (program == (const char *)0) ? argv[0] : program + 1;
@@ -206,6 +206,7 @@ int main(int argc, char ** argv)
         if (debug) { LOG("0 PATH \"%s\"", path); }
         rc = diminuto_daemon(program, path);
         if (rc < 0) { return 2; }
+        DIMINUTO_LOG_INFORMATION("%s: pid %d\n", program, getpid());
     }
 
     assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
@@ -273,6 +274,9 @@ int main(int argc, char ** argv)
         tzset();
     }
 
+    armed = 0;
+    synchronized = 0;
+
     diminuto_cue_init(&cue, 0);
 
     milliseconds_pulse = 0;
@@ -283,7 +287,7 @@ int main(int argc, char ** argv)
 
     token = OBELISK_TOKEN_INVALID;
 
-    state_before = OBELISK_STATE_START;
+    state_after = OBELISK_STATE_START;
 
     rc = diminuto_alarm_install(!0);
     assert(rc >= 0);
@@ -315,12 +319,7 @@ int main(int argc, char ** argv)
             continue;
         }
 
-        ticks_now = diminuto_time_elapsed();
-        assert(ticks_now >= 0);
-        assert(ticks_now >= ticks_then);
-
-        milliseconds_elapsed = diminuto_frequency_ticks2units(ticks_now - ticks_then, 1000);
-        if (verbose) { LOG("1 TICK %lldms.", milliseconds_elapsed); }
+        if (verbose) { LOG("1 TICK."); }
 
         /*
         ** Determine T input pin state.
@@ -330,10 +329,6 @@ int main(int argc, char ** argv)
         assert(level_raw >= 0);
 
         level_cooked = diminuto_cue_debounce(&cue, level_raw);
-
-        if (diminuto_cue_is_rising(&cue)) {
-            ticks_leading = ticks_now;
-        }
 
         /*
         ** Look for edge transitions and measure pulse duration.
@@ -348,9 +343,8 @@ int main(int argc, char ** argv)
             break;
 
         case DIMINUTO_CUE_EDGE_RISING:
-            if (debug) { LOG("3 RISING %lldms.", milliseconds_elapsed); }
             milliseconds_pulse = milliseconds_cycle;
-            ticks_rising = ticks_leading;
+            if (debug) { LOG("3 RISING %dms.", milliseconds_pulse); }
             break;
 
         case DIMINUTO_CUE_EDGE_HIGH:
@@ -359,7 +353,7 @@ int main(int argc, char ** argv)
 
         case DIMINUTO_CUE_EDGE_FALLING:
             milliseconds_pulse += milliseconds_cycle;
-            if (debug) { LOG("3 FALLING %lldms.", milliseconds_elapsed); }
+            if (debug) { LOG("3 FALLING %dms.", milliseconds_pulse); }
             break;
 
         default:
@@ -373,8 +367,6 @@ int main(int argc, char ** argv)
             continue;
         }
 
-       if (debug) { LOG("4 PULSE %dms.", milliseconds_pulse); }
-
         /*
         ** Classify pulse.
         */
@@ -382,46 +374,71 @@ int main(int argc, char ** argv)
         token = obelisk_tokenize(milliseconds_pulse);
         assert((0 <= token) && (token < countof(TOKEN)));
 
-        if (debug) { LOG("5 TOKEN %s.", TOKEN[token]); }
-
         /*
         ** Parse grammar by transitioning state based on token.
         */
 
+        state_before = state_after;
         state_after = obelisk_parse(state_before, token, &field, &length, &leap, &buffer);
         assert((0 <= state_before) && (state_before < countof(STATE)));
         assert((0 <= state_after) && (state_after < countof(STATE)));
 
+        if (debug) { LOG("6 PARSE %s %s %s %d %d %d 0x%llx.", STATE[state_before], TOKEN[token], STATE[state_after], field, length, leap, buffer); }
+
+        /*
+         * Detect an error that causes the state machine to return
+         * to its start state.
+         */
+
         if (!debug) {
             /* Do nothing. */
-        } else if (state_before != OBELISK_STATE_START) {
+        } else if (state_before == OBELISK_STATE_START) {
             /* Do nothing. */
-        } else if (state_after == OBELISK_STATE_START) {
+        } else if (state_after != OBELISK_STATE_START) {
             /* Do nothing. */
         } else {
-            LOG("6 RESYNC!");
+            LOG("6 RETRY.");
         }
 
-        if (debug) {
-            LOG("6 STATE %s %s %d %d %d 0x%llx.", STATE[state_before], STATE[state_after], field, length, leap, buffer);
-        }
+        /*
+         * Detect the beginning of the next minute so that we can
+         * set the time if we so desire.
+         */
 
-
-        if (state_before != OBELISK_STATE_BEGIN) {
+        if (!set) {
+            /* Do nothing. */
+        } else if (!armed) {
+            /* Do nothing. */
+        } else if (synchronized) {
+            /* Do nothing. */
+        } else if (state_before != OBELISK_STATE_BEGIN) {
             /* Do nothing. */
         } else if (state_after != OBELISK_STATE_LEAP) {
             /* Do nothing. */
         } else {
-            ticks_tone = ticks_rising;
-            if (debug) { LOG("6 TONE %lldms.", diminuto_frequency_ticks2units(ticks_tone - ticks_then, 1000)); }
+
+            if ((rc = settimeofday(&value, (struct timezone *)0)) < 0) {
+                perror("settimeodday");
+            } else {
+                synchronized = !0;
+                DIMINUTO_LOG_NOTICE("%s: settimeofday %04d-%02d-%02dT%02d:%02d:%02d.%06d+00:00\n",
+                    program,
+                    time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
+                    time.tm_hour, time.tm_min, time.tm_sec,
+                    value.tv_usec
+                );
+            }
+
         }
+
+        armed = 0;
 
         if (state_before != OBELISK_STATE_END) {
             /* Do nothing. */
         } else if (state_after != OBELISK_STATE_BEGIN) {
             /* Do nothing. */
         } else {
-
+            
             obelisk_extract(&frame, buffer);
 
             if (debug) {
@@ -441,13 +458,12 @@ int main(int argc, char ** argv)
 
             rc = obelisk_validate(&time, &frame);
             assert((0 <= time.tm_wday) && (time.tm_wday < countof(DAY)));
-
             /*
-             * It took me a moment during testing to realize that this will
-             * always be 59 seconds if everything is working correctly.
+             * It took me a moment during testing to realize that this
+             * value will always be 59 seconds; at this point in the frame,
+             * we are always in the last second of the current minute.
              */
-            time.tm_sec = diminuto_frequency_ticks2units(ticks_now - ticks_tone, 1);
-            assert(time.tm_sec == 59);
+            time.tm_sec = 59;
 
             if (debug) {
                 LOG("7 TIME %d %04d-%02d-%02dT%02d:%02d:%02dZ %04d/%03d %s %s.",
@@ -460,45 +476,45 @@ int main(int argc, char ** argv)
                 );
             }
 
-            /*
-             * mktime(3) always assumes that the tm structure contains local
-             * time. So we have to adjust our value to account for the time
-             * zone of the host on which we are running. Similarly, we have
-             * to account for Daylight Saving Time.
-             */
-            value.tv_sec = mktime(&time);
-            value.tv_sec -= timezone;
-            if (!daylight) {
-                /* Do nothing. */
-            } else if (!time.tm_isdst) {
-                /* Do nothing. */
-            } else {
-                value.tv_sec += 3600;
-            }
+            if (rc >= 0) {
 
-            value.tv_usec = diminuto_frequency_ticks2units(ticks_now - ticks_tone, 1000000);
-            value.tv_usec %= 1000000;
+                value.tv_sec = mktime(&time);
 
-            if (debug) { LOG("7 EPOCH %ld.%06ld.", value.tv_sec, value.tv_usec); }
+                /*
+                 * mktime(3) always assumes that the tm structure contains local
+                 * time. So we have to adjust our value to account for the time
+                 * zone of the host on which we are running. Similarly, we have
+                 * to account for Daylight Saving Time in the local time zone.
+                 */
+                value.tv_sec -= timezone;
+                if (!daylight) {
+                    /* Do nothing. */
+                } else if (!time.tm_isdst) {
+                    /* Do nothing. */
+                } else {
+                    value.tv_sec += 3600;
+                }
+    
+                /*
+                 * Adjust the epoch seconds forward to the beginning of the
+                 * next minute. That is when we'll set the system time (if
+                 * we do so at all).
+                 */
+                value.tv_sec += 60;
+    
+                /*
+                 * The microsecond offset accounts for the latency in the
+                 * cue debouncer: two cycles of 10ms (10000usec) each.
+                 */
+                value.tv_usec = (2 * milliseconds_cycle) * 1000;
 
-            if (rc < 0) {
-                /* Do nothing. */
-            } else if (!set) {
-                /* Do nothing. */
-            } else if ((rc = settimeofday(&value, (struct timezone *)0)) < 0) {
-                perror("settimeodday");
-            } else {
-                DIMINUTO_LOG_NOTICE("%s: settimeofday %04d-%02d-%02dT%02d:%02d:%02d.%06d+00:00\n",
-                    program,
-                    time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
-                    time.tm_hour, time.tm_min, time.tm_sec,
-                    value.tv_usec
-                );
+                if (debug) { LOG("7 EPOCH %ld.%06ld.", value.tv_sec, value.tv_usec); }
+
+                armed = !0;
+
             }
 
         }
-
-        state_before = state_after;
 
     }
 
