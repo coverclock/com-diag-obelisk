@@ -133,8 +133,13 @@ int main(int argc, char ** argv)
     char * endptr = (char *)0;
     int armed = -1;
     int synchronized = -1;
+    int year = -1;
+    int month = -1;
+    int day = -1;
     int hour = -1;
     int minute = -1;
+    int second = -1;
+    int fraction = -1;
 
     diminuto_log_setmask();
 
@@ -463,13 +468,22 @@ int main(int argc, char ** argv)
             if ((rc = settimeofday(&value, (struct timezone *)0)) < 0) {
                 perror("settimeodday");
             } else {
+
                 synchronized = !0;
+
+                ticks_now = diminuto_time_clock();
+                assert(ticks_now >= 0);
+
+                rc = diminuto_time_zulu(ticks_now, &year, &month, &day, &hour, &minute, &second, &fraction);
+                assert(rc >= 0);
+
                 DIMINUTO_LOG_NOTICE("%s: settimeofday %04d-%02d-%02dT%02d:%02d:%02d.%06d+00:00\n",
                     program,
-                    time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
-                    time.tm_hour, time.tm_min, time.tm_sec,
-                    value.tv_usec
+                    year, month, day,
+                    hour, minute, second,
+                    fraction / 1000
                 );
+
             }
 
         }
