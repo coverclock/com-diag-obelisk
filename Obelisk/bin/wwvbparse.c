@@ -77,23 +77,23 @@ static int verbose = 0;
 static int pin_out_p1 = -1;
 static int pin_in_t = -1;
 static int unexport = 0;
-static int daemonize = 0;
+static int background = 0;
 static int set = 0;
 static int hour_juliet = -1;
 static int minute_juliet = -1;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -D ] [ -H HOUR ] [ -M MINUTE ] [ -S ] [ -d ] [ -h ] [ -p PIN ] [ -r ] [ -t PIN ] [ -u ] [ -v ]\n", program);
-    fprintf(stderr, "       -D              Daemonize into the background.\n");
+    fprintf(stderr, "usage: %s [ -H HOUR ] [ -M MINUTE ] [ -P PIN ] [ -T PIN ] [ -b ] [ -d ] [ -h ] [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
     fprintf(stderr, "       -H HOUR         Set clock at HOUR local (%d)\n", hour_juliet);
     fprintf(stderr, "       -M MINUTE       Set clock at MINUTE local (%d).\n", minute_juliet);
-    fprintf(stderr, "       -S              Set time of day when possible.\n");
+    fprintf(stderr, "       -P PIN          Define P1 output PIN (%d).\n", pin_out_p1);
+    fprintf(stderr, "       -T PIN          Define T input PIN (%d).\n", pin_in_t);
+    fprintf(stderr, "       -b              Daemonize into the background.\n");
     fprintf(stderr, "       -d              Display debug output.\n");
     fprintf(stderr, "       -h              Display help menu.\n");
-    fprintf(stderr, "       -p PIN          Define P1 output PIN (%d).\n", pin_out_p1);
     fprintf(stderr, "       -r              Reset device initially.\n");
-    fprintf(stderr, "       -t PIN          Define T input PIN (%d).\n", pin_in_t);
+    fprintf(stderr, "       -s              Set time of day when possible.\n");
     fprintf(stderr, "       -u              Unexport pins initially.\n");
     fprintf(stderr, "       -v              Display verbose output.\n");
 }
@@ -129,7 +129,6 @@ int main(int argc, char ** argv)
     int leap = -1;
     int opt = -1;
     extern char * optarg;
-    char optstr[2] = { '\0', '\0' };
     char * endptr = (char *)0;
     int armed = -1;
     int synchronized = -1;
@@ -140,6 +139,7 @@ int main(int argc, char ** argv)
     int minute = -1;
     int second = -1;
     int fraction = -1;
+    int acquired = -1;
 
     diminuto_log_setmask();
 
@@ -151,13 +151,9 @@ int main(int argc, char ** argv)
     hour_juliet = HOUR_JULIET;
     minute_juliet = MINUTE_JULIET;
 
-    while ((opt = getopt(argc, argv, "DH:M:Sdhp:rt:uv")) >= 0) {
+    while ((opt = getopt(argc, argv, "H:M:P:T:bdhrsuv")) >= 0) {
 
         switch (opt) {
-
-        case 'D':
-            daemonize = !0;
-            break;
 
         case 'H':
             hour_juliet = strtol(optarg, &endptr, 0);
@@ -177,15 +173,7 @@ int main(int argc, char ** argv)
             }
             break;
 
-        case 'S':
-            set = !0;
-            break;
-
-        case 'd':
-            debug = !0;
-            break;
-
-        case 'p':
+        case 'P':
             pin_out_p1 = strtol(optarg, &endptr, 0);
             if ((*endptr != '\0') || (pin_out_p1 < 0)) {
                 errno = EINVAL;
@@ -194,17 +182,33 @@ int main(int argc, char ** argv)
             }
             break;
 
-        case 'r':
-            reset = !0;
-            break;
-
-        case 't':
+        case 'T':
             pin_in_t = strtol(optarg, &endptr, 0);
             if ((*endptr != '\0') || (pin_in_t < 0)) {
                 errno = EINVAL;
                 perror(optarg);
                 return 1;
             }
+            break;
+
+        case 'b':
+            background = !0;
+            break;
+
+        case 'd':
+            debug = !0;
+            break;
+
+        case 'h':
+            usage();
+            break;
+
+        case 'r':
+            reset = !0;
+            break;
+
+        case 's':
+            set = !0;
             break;
 
         case 'u':
@@ -215,15 +219,7 @@ int main(int argc, char ** argv)
             verbose = !0;
             break;
 
-        case 'h':
-            usage();
-            break;
-
-        case '?':
         default:
-            optstr[0] = opt;
-            errno = EINVAL;
-            perror(optstr);
             return 1;
             break;
 
@@ -236,7 +232,7 @@ int main(int argc, char ** argv)
      * process identifier will be left in /var/lock.
      */
 
-    if (daemonize) {
+    if (background) {
         char * path = (char *)0;
         path = malloc(sizeof(ROOT) + strnlen(program, LIMIT));
         strcpy(path, ROOT);
@@ -316,6 +312,7 @@ int main(int argc, char ** argv)
 
     armed = 0;
     synchronized = 0;
+    acquired = 0;
 
     diminuto_cue_init(&cue, 0);
 
@@ -438,14 +435,15 @@ int main(int argc, char ** argv)
          * to its start state.
          */
 
-        if (!debug) {
+        if (!acquired) {
             /* Do nothing. */
         } else if (state_before == OBELISK_STATE_START) {
             /* Do nothing. */
         } else if (state_after != OBELISK_STATE_START) {
             /* Do nothing. */
         } else {
-            LOG("6 RETRY.");
+            acquired = 0;
+            DIMINUTO_LOG_NOTICE("%s: lost\n", program);
         }
 
         /*
@@ -517,30 +515,46 @@ int main(int argc, char ** argv)
                 );
             }
 
-            rc = obelisk_validate(&time, &frame);
-            assert((0 <= time.tm_wday) && (time.tm_wday < countof(DAY)));
-
             /*
-             * It took me a moment during testing to realize that this
-             * value will always be 59 seconds; at this point in the frame,
-             * we are always in the last second of the current minute. This
-             * is just for display purposes; we'll reset this to zero if we
-             * actually use it.
+             * Extract the binary coded digits from the frame and compute
+             * a date and time. Validate the result.
              */
-            time.tm_sec = 59;
 
-            if (debug) {
-                LOG("7 TIME %d %04d-%02d-%02dT%02d:%02d:%02dZ %04d/%03d %s %s.",
-                    rc,
-                    time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
-                    time.tm_hour, time.tm_min, time.tm_sec,
-                    time.tm_year + 1900, time.tm_yday + 1,
-                    DAY[time.tm_wday],
-                    time.tm_isdst ? "DST" : "!DST"
-                );
-            }
+            rc = obelisk_validate(&time, &frame);
+            if (rc < 0) {
 
-            if (rc >= 0) {
+                if (acquired) {
+                    acquired = 0;
+                    DIMINUTO_LOG_NOTICE("%s: lost\n", program);
+                }
+
+            } else {
+
+                if (!acquired) {
+                    acquired = !0;
+                    DIMINUTO_LOG_NOTICE("%s: acquired\n", program);
+                }
+
+                /*
+                 * It took me a moment during testing to realize that this
+                 * value will always be 59 seconds; at this point in the frame,
+                 * we are always in the last second of the current minute. This
+                 * is just for display purposes; we'll reset this to zero if we
+                 * actually use it.
+                 */
+                time.tm_sec = 59;
+
+                if (debug) {
+                    assert((0 <= time.tm_wday) && (time.tm_wday < countof(DAY)));
+                    LOG("7 TIME %d %04d-%02d-%02dT%02d:%02d:%02dZ %04d/%03d %s %s.",
+                        rc,
+                        time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
+                        time.tm_hour, time.tm_min, time.tm_sec,
+                        time.tm_year + 1900, time.tm_yday + 1,
+                        DAY[time.tm_wday],
+                        time.tm_isdst ? "DST" : "!DST"
+                    );
+                }
 
                 /*
                  * Derive the seconds since the POSIX Epoch that our time
