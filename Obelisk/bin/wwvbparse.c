@@ -27,17 +27,21 @@
 #include "com/diag/diminuto/diminuto_cue.h"
 #include "com/diag/diminuto/diminuto_countof.h"
 #include "com/diag/diminuto/diminuto_terminator.h"
-#include "com/diag/diminuto/diminuto_daemon.h"
+#include "com/diag/diminuto/diminuto_hangup.h"
 #include "com/diag/diminuto/diminuto_daemon.h"
 #include "com/diag/diminuto/diminuto_log.h"
 #include "com/diag/obelisk/obelisk.h"
 
 #define LOG(_FORMAT_, ...) fprintf(stderr, "%s: " _FORMAT_ "\n", program, ## __VA_ARGS__)
 
+static const char ROOT[] = "/var/lock/";
+static const size_t LIMIT = 64;
 static const int PIN_OUT_P1 = 23; /* output, radio enable, active low. */
 static const int PIN_IN_T = 24; /* input, modulated pulse, active high */
 static const int HERTZ_DELAY = 2;
 static const int HERTZ_TIMER = 100;
+static const int HOUR_JULIET = 1;
+static const int MINUTE_JULIET = 30;
 
 static const const char * TOKEN[] = {
     "ZERO",     /* OBELISK_TOKEN_ZERO */
@@ -75,17 +79,21 @@ static int pin_in_t = -1;
 static int unexport = 0;
 static int daemonize = 0;
 static int set = 0;
+static int hour_juliet = -1;
+static int minute_juliet = -1;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -D ] [ -S ] [ -d ] [ -h ] [ -p PIN ] [ -r ] [ -t PIN ] [ -u ] [ -v ]\n", program);
+    fprintf(stderr, "usage: %s [ -D ] [ -H HOUR ] [ -M MINUTE ] [ -S ] [ -d ] [ -h ] [ -p PIN ] [ -r ] [ -t PIN ] [ -u ] [ -v ]\n", program);
     fprintf(stderr, "       -D              Daemonize into the background.\n");
+    fprintf(stderr, "       -H HOUR         Set clock at HOUR local (%d)\n", hour_juliet);
+    fprintf(stderr, "       -M MINUTE       Set clock at MINUTE local (%d).\n", minute_juliet);
     fprintf(stderr, "       -S              Set time of day when possible.\n");
     fprintf(stderr, "       -d              Display debug output.\n");
     fprintf(stderr, "       -h              Display help menu.\n");
-    fprintf(stderr, "       -p PIN          Define P1 output PIN (default %d).\n", pin_out_p1);
+    fprintf(stderr, "       -p PIN          Define P1 output PIN (%d).\n", pin_out_p1);
     fprintf(stderr, "       -r              Reset device initially.\n");
-    fprintf(stderr, "       -t PIN          Define T input PIN (default %d).\n", pin_in_t);
+    fprintf(stderr, "       -t PIN          Define T input PIN (%d).\n", pin_in_t);
     fprintf(stderr, "       -u              Unexport pins initially.\n");
     fprintf(stderr, "       -v              Display verbose output.\n");
 }
@@ -93,14 +101,14 @@ static void usage(void)
 int main(int argc, char ** argv)
 {
     int rc = -1;
+    pid_t pid = -1;
     FILE * pin_out_p1_fp = (FILE *)0;
     FILE * pin_in_t_fp = (FILE *)0;
     diminuto_sticks_t ticks_frequency = -1;
     diminuto_ticks_t ticks_delay = -1;
     diminuto_ticks_t ticks_timer = -1;
     diminuto_sticks_t ticks_slack = -1;
-    diminuto_sticks_t ticks_then = -1;
-    diminuto_sticks_t ticks_elapsed = -1;
+    diminuto_sticks_t ticks_now = -1;
     diminuto_cue_state_t cue = { 0 };
     diminuto_cue_edge_t edge = (diminuto_cue_edge_t)-1;
     int level_raw = -1;
@@ -125,6 +133,8 @@ int main(int argc, char ** argv)
     char * endptr = (char *)0;
     int armed = -1;
     int synchronized = -1;
+    int hour = -1;
+    int minute = -1;
 
     diminuto_log_setmask();
 
@@ -133,13 +143,33 @@ int main(int argc, char ** argv)
 
     pin_out_p1 = PIN_OUT_P1;
     pin_in_t = PIN_IN_T;
+    hour_juliet = HOUR_JULIET;
+    minute_juliet = MINUTE_JULIET;
 
-    while ((opt = getopt(argc, argv, "DSdhp:rt:uv")) >= 0) {
+    while ((opt = getopt(argc, argv, "DH:M:Sdhp:rt:uv")) >= 0) {
 
         switch (opt) {
 
         case 'D':
             daemonize = !0;
+            break;
+
+        case 'H':
+            hour_juliet = strtol(optarg, &endptr, 0);
+            if ((*endptr != '\0') || (hour_juliet < 0) || (hour_juliet > 23)) {
+                errno = EINVAL;
+                perror(optarg);
+                return 1;
+            }
+            break;
+
+        case 'M':
+            minute_juliet = strtol(optarg, &endptr, 0);
+            if ((*endptr != '\0') || (minute_juliet < 0) || (minute_juliet > 59)) {
+                errno = EINVAL;
+                perror(optarg);
+                return 1;
+            }
             break;
 
         case 'S':
@@ -196,9 +226,12 @@ int main(int argc, char ** argv)
 
     }
 
+    /*
+     * Daemonize if so instructed. A lock file containing the daemon's
+     * process identifier will be left in /var/lock.
+     */
+
     if (daemonize) {
-        static const char ROOT[] = "/var/lock/";
-        static size_t LIMIT = 64;
         char * path = (char *)0;
         path = malloc(sizeof(ROOT) + strnlen(program, LIMIT));
         strcpy(path, ROOT);
@@ -206,17 +239,16 @@ int main(int argc, char ** argv)
         if (debug) { LOG("0 PATH \"%s\"", path); }
         rc = diminuto_daemon(program, path);
         if (rc < 0) { return 2; }
+        pid = getpid();
         DIMINUTO_LOG_INFORMATION("%s: pid %d\n", program, getpid());
+    } else {
+        pid = getpid();
     }
+
+    if (debug) { LOG("0 RUNNING %d.", pid); }
 
     assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
     assert(sizeof(obelisk_frame_t) == sizeof(uint64_t));
-
-    ticks_then = diminuto_time_elapsed();
-    assert(ticks_then >= 0);
-
-    ticks_frequency = diminuto_frequency();
-    assert(ticks_frequency > 0);
 
     /*
     ** Configure P1 output and T input pins.
@@ -244,6 +276,9 @@ int main(int argc, char ** argv)
     ** Toggle P1 output pin (active low) if requested.
     */
 
+    ticks_frequency = diminuto_frequency();
+    assert(ticks_frequency > 0);
+
     if (reset) {
 
         if (debug) { LOG("0 RESETTING."); }
@@ -265,7 +300,7 @@ int main(int argc, char ** argv)
     }
 
     /*
-    ** Initialize.
+    ** Initialize state.
     */
 
     if (debug) { LOG("0 INITIALIZING."); }
@@ -292,6 +327,9 @@ int main(int argc, char ** argv)
     rc = diminuto_alarm_install(!0);
     assert(rc >= 0);
 
+    rc = diminuto_hangup_install(!0);
+    assert(rc >= 0);
+
     rc = diminuto_terminator_install(0);
     assert(rc >= 0);
 
@@ -312,14 +350,19 @@ int main(int argc, char ** argv)
         assert(rc == -1);
 
         if (diminuto_terminator_check()) {
+            if (debug) { LOG("1 SIGTERM."); }
             break;
+        }
+
+        if (diminuto_hangup_check()) {
+            synchronized = 0;
+            if (debug) { LOG("1 SIGHUP."); }
         }
 
         if (!diminuto_alarm_check()) {
             continue;
         }
-
-        if (verbose) { LOG("1 TICK."); }
+        if (verbose) { LOG("1 SIGALRM."); }
 
         /*
         ** Determine T input pin state.
@@ -431,6 +474,10 @@ int main(int argc, char ** argv)
 
         }
 
+        /*
+         * Once we have a complete frame, decode it.
+         */
+
         armed = 0;
 
         if (state_before != OBELISK_STATE_END) {
@@ -458,10 +505,13 @@ int main(int argc, char ** argv)
 
             rc = obelisk_validate(&time, &frame);
             assert((0 <= time.tm_wday) && (time.tm_wday < countof(DAY)));
+
             /*
              * It took me a moment during testing to realize that this
              * value will always be 59 seconds; at this point in the frame,
-             * we are always in the last second of the current minute.
+             * we are always in the last second of the current minute. This
+             * is just for display purposes; we'll reset this to zero if we
+             * actually use it.
              */
             time.tm_sec = 59;
 
@@ -478,6 +528,13 @@ int main(int argc, char ** argv)
 
             if (rc >= 0) {
 
+                /*
+                 * Derive the seconds since the POSIX Epoch that our time
+                 * code represents. This will be time at the beginning of
+                 * the next time frame, which will be at zero seconds past
+                 * that minute (which we'll fix below).
+                 */
+                time.tm_sec = 0;
                 value.tv_sec = mktime(&time);
 
                 /*
@@ -512,6 +569,32 @@ int main(int argc, char ** argv)
 
                 armed = !0;
 
+                /*
+                 * If we think the system clock has been synchronized, then
+                 * use it to determine the local time. If the local time is
+                 * at the appropriate time, let the work loop set the time
+                 * again.
+                 */
+
+                if (synchronized) {
+
+                    ticks_now = diminuto_time_clock();
+                    assert(ticks_now >= 0);
+
+                    rc = diminuto_time_juliet(ticks_now, (int *)0, (int *)0, (int *)0, &hour, &minute, (int *)0, (int *)0);
+                    assert(rc >= 0);
+
+                    if (hour != hour_juliet) {
+                        /* Do nothing. */
+                    } else if (minute != minute_juliet) {
+                        /* Do nothing. */
+                    } else {
+                        synchronized = 0;
+                        if (debug) { LOG("8 READY %02d:%02d:00J", hour, minute); }
+                    }
+
+                }
+
             }
 
         }
@@ -522,7 +605,7 @@ int main(int argc, char ** argv)
     ** Release resources.
     */
 
-    if (debug) { LOG("0 RELEASING."); }
+    if (debug) { LOG("9 RELEASING."); }
 
     pin_in_t_fp = diminuto_pin_unused(pin_in_t_fp, pin_in_t);
     assert(pin_in_t_fp == (FILE *)0);
@@ -534,7 +617,7 @@ int main(int argc, char ** argv)
     ** Exit.
     */
 
-    if (debug) { LOG("0 EXITING."); }
+    if (debug) { LOG("9 EXITING."); }
 
     return 0;
 }
