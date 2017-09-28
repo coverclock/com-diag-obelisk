@@ -29,6 +29,7 @@
 #include "com/diag/diminuto/diminuto_terminator.h"
 #include "com/diag/diminuto/diminuto_hangup.h"
 #include "com/diag/diminuto/diminuto_daemon.h"
+#include "com/diag/diminuto/diminuto_lock.h"
 #include "com/diag/diminuto/diminuto_log.h"
 #include "com/diag/obelisk/obelisk.h"
 
@@ -102,6 +103,7 @@ int main(int argc, char ** argv)
 {
     int rc = -1;
     pid_t pid = -1;
+    char * path = (char *)0;
     FILE * pin_out_p1_fp = (FILE *)0;
     FILE * pin_in_t_fp = (FILE *)0;
     diminuto_sticks_t ticks_frequency = -1;
@@ -233,7 +235,6 @@ int main(int argc, char ** argv)
      */
 
     if (background) {
-        char * path = (char *)0;
         path = malloc(sizeof(ROOT) + strnlen(program, LIMIT));
         strcpy(path, ROOT);
         strncat(path, program, LIMIT);
@@ -241,7 +242,7 @@ int main(int argc, char ** argv)
         rc = diminuto_daemon(program, path);
         if (rc < 0) { return 2; }
         pid = getpid();
-        DIMINUTO_LOG_INFORMATION("%s: pid %d\n", program, getpid());
+        DIMINUTO_LOG_INFORMATION("%s: running pid=%d\n", program, getpid());
     } else {
         pid = getpid();
     }
@@ -357,6 +358,7 @@ int main(int argc, char ** argv)
         }
 
         if (diminuto_hangup_check()) {
+            DIMINUTO_LOG_INFORMATION("%s: hungup acquired=%d synchronized=%d armed=%d\n", program, acquired, synchronized, armed);
             synchronized = 0;
             if (debug) { LOG("1 SIGHUP."); }
         }
@@ -640,6 +642,10 @@ int main(int argc, char ** argv)
 
     pin_out_p1_fp = diminuto_pin_unused(pin_out_p1_fp, pin_out_p1);
     assert(pin_out_p1_fp == (FILE *)0);
+
+    if (path != (char *)0) {
+        (void)diminuto_lock_unlock(path);
+    }
 
     /*
     ** Exit.
