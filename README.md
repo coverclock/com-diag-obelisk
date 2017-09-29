@@ -36,7 +36,27 @@ and the Diminuto library. Both Obelisk and Diminuto are written in C.
 <http://www.popsci.com/diy/article/2010-03/build-clock-uses-atomic-timekeeping>    
 <https://github.com/spuder/WWVB-Clock>    
 <https://www.rs-online.com/designspark/atomic-time-for-the-raspberry-pi>    
+## Usage
+    $ wwvbparse -h
+    usage: wwvbparse [ -H HOUR ] [ -M MINUTE ] [ -P PIN ] [ -T PIN ] [ -b ] [ -d ] [ -h ] [ -r ] [ -s ] [ -u ] [ -v ]
+           -H HOUR         Set time of day at HOUR local (1)
+           -M MINUTE       Set time of day at MINUTE local (30).
+           -P PIN          Use P1 output GPIO PIN (23).
+           -T PIN          Use T input GPIO PIN (24).
+           -b              Daemonize into the background.
+           -d              Display debug output.
+           -h              Display help menu and exit.
+           -r              Reset device initially.
+           -s              Set time of day when possible.
+           -u              Unexport pins initially ignoring errors.
+           -v              Display verbose output.
 ## Notes
 
     systemctl enable timeservice
+
+    sudo wwvbparse -r -s -b -u
+
+    sudo kill -HUP `cat /var/lock/wwvbparse`
+
+    sudo kill -TERM `cat /var/lock/wwvbparse`
 

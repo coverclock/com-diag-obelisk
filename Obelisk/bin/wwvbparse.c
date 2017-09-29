@@ -86,16 +86,16 @@ static int minute_juliet = -1;
 static void usage(void)
 {
     fprintf(stderr, "usage: %s [ -H HOUR ] [ -M MINUTE ] [ -P PIN ] [ -T PIN ] [ -b ] [ -d ] [ -h ] [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
-    fprintf(stderr, "       -H HOUR         Set clock at HOUR local (%d)\n", hour_juliet);
-    fprintf(stderr, "       -M MINUTE       Set clock at MINUTE local (%d).\n", minute_juliet);
-    fprintf(stderr, "       -P PIN          Define P1 output PIN (%d).\n", pin_out_p1);
-    fprintf(stderr, "       -T PIN          Define T input PIN (%d).\n", pin_in_t);
+    fprintf(stderr, "       -H HOUR         Set time of day at HOUR local (%d)\n", hour_juliet);
+    fprintf(stderr, "       -M MINUTE       Set time of day at MINUTE local (%d).\n", minute_juliet);
+    fprintf(stderr, "       -P PIN          Use P1 output GPIO PIN (%d).\n", pin_out_p1);
+    fprintf(stderr, "       -T PIN          Use T input GPIO PIN (%d).\n", pin_in_t);
     fprintf(stderr, "       -b              Daemonize into the background.\n");
     fprintf(stderr, "       -d              Display debug output.\n");
-    fprintf(stderr, "       -h              Display help menu.\n");
+    fprintf(stderr, "       -h              Display help menu and exit.\n");
     fprintf(stderr, "       -r              Reset device initially.\n");
     fprintf(stderr, "       -s              Set time of day when possible.\n");
-    fprintf(stderr, "       -u              Unexport pins initially.\n");
+    fprintf(stderr, "       -u              Unexport pins initially ignoring errors.\n");
     fprintf(stderr, "       -v              Display verbose output.\n");
 }
 
@@ -203,6 +203,7 @@ int main(int argc, char ** argv)
 
         case 'h':
             usage();
+            return 0;
             break;
 
         case 'r':
