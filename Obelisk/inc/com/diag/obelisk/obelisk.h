@@ -16,11 +16,18 @@
 #endif
 #include <time.h>
 
+/**
+ * These are the values that the GPIO pin may assume.
+ */
 typedef enum ObeliskLevel {
     OBELISK_LEVEL_ZERO  = 0,    /*   0 dBr */
     OBELISK_LEVEL_ONE   = 1,    /* -17 dBr */
 } obelisk_level_t;
 
+/**
+ * When we classify a pulse according to its duration, these are the
+ * classifications it can assume.
+ */
 typedef enum ObeliskToken {
     OBELISK_TOKEN_ZERO,     /* 200ms */
     OBELISK_TOKEN_ONE,      /* 500ms */
@@ -28,8 +35,17 @@ typedef enum ObeliskToken {
     OBELISK_TOKEN_INVALID,
 } obelisk_token_t;
 
+/**
+ * Classify a pulse according to its duration and return a token.
+ * @param milliseconds_pulse is the length of the pulse in milliseconds.
+ * @return a token classifying the pulse according to its duration.
+ */
 extern obelisk_token_t obelisk_tokenize(int milliseconds_pulse);
 
+/**
+ * When we parse the IRIQ timecode frame using a finite state machine,
+ * these are the states the FSM may assume.
+ */
 typedef enum ObeliskState {
     OBELISK_STATE_START,    /* Expecting END MARKER. */
     OBELISK_STATE_BEGIN,    /* Expecting BEGIN MARKER. */
@@ -39,6 +55,10 @@ typedef enum ObeliskState {
     OBELISK_STATE_END,      /* Expecting END MARKER. */
 } obelisk_state_t;
 
+/**
+ * When we parse the IRIQ timecode frame using a finite state machine,
+ * these are the actions that the FSM may perform.
+ */
 typedef enum ObeliskAction {
     OBELISK_ACTION_NONE,    /* Do nothing. */
     OBELISK_ACTION_CLEAR,   /* Empty frame. */
@@ -49,14 +69,34 @@ typedef enum ObeliskAction {
     OBELISK_ACTION_FINAL,   /* Complete frame. */
 } obelisk_action_t;
 
+/**
+ * This type describes the buffer into which the IRIQ timecode frame is
+ * stored, one bit at a time, at one bit per second.
+ */
 typedef uint64_t obelisk_buffer_t;
 
+/**
+ * Parse the IRIQ timecode frame one token at a time, change states as we
+ * consume tokens. Points to variables int which the finite state machine
+ * saves intermediate state are provided by the caller, who does not need
+ * to initialize them.
+ * @param state is the prior state (initially the START state).
+ * @param token is the latest token.
+ * @param fieldp points to the number of the field being processed.
+ * @param lengthp points to the unconnsumed number of bits in the field.
+ * @param leapp points to a variable that stores !0 if a leap second was seen.
+ * @param bufferp points to a buffer into which bits are stored.
+ * @return the next state.
+ */
 extern obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int * fieldp, int * lengthp, int * leapp, obelisk_buffer_t * bufferp);
 
 #define _MARKER
 #define _UNUSED
 #define _FILLER
 
+/**
+ * This structure describes an IRIQ timecode frame as used by WWVB.
+ */
 typedef struct ObeliskFrame {           /* TIME       */    /* SPACE    */
     obelisk_buffer_t _FILLER    :  4;                       /* 63 .. 60 */
     obelisk_buffer_t _MARKER    :  1;   /* :00 .. :00 */    /* 59 .. 59 */
@@ -94,6 +134,9 @@ typedef struct ObeliskFrame {           /* TIME       */    /* SPACE    */
 #undef _UNUSED
 #undef _MARKER
 
+/**
+ * These are the bit offsets of the fields in the IRIQ timecode buffer.
+ */
 typedef enum ObeliskOffset {
      OBELISK_OFFSET_MINUTES10   = 56,
      OBELISK_OFFSET_MINUTES1    = 51,
@@ -111,6 +154,9 @@ typedef enum ObeliskOffset {
      OBELISK_OFFSET_DST         = 1,
 } obelisk_offset_t;
 
+/**
+ * These are the bit masks of the fields in the IRIQ timecode buffer.
+ */
 typedef enum ObeliskMask {
     OBELISK_MASK_MINUTES10    = 0x7,
     OBELISK_MASK_MINUTES1     = 0xf,
@@ -130,11 +176,19 @@ typedef enum ObeliskMask {
 
 #define OBELISK_EXTRACT(_BUFFER_, _FIELD_) ((_BUFFER_ >> OBELISK_OFFSET_ ## _FIELD_) & OBELISK_MASK_ ## _FIELD_)
 
+/**
+ * These are the values that the dUT1 sign field in the IRIQ timecode frame
+ * may assume.
+ */
 typedef enum ObeliskSign {
     OBELISK_SIGN_NEGATIVE   = 0x2,  /* 0b010 */
     OBELISK_SIGN_POSITIVE   = 0x3,  /* 0b101 */
 } obelisk_sign_t;
 
+/**
+ * These are the values that the DST field in the IRIQ timecode frame may
+ * assume.
+ */
 typedef enum ObeliskDst {
     OBELISK_DST_OFF     = 0x0,  /* 0b00 */
     OBELISK_DST_ENDS    = 0x1,  /* 0b01 */
@@ -142,8 +196,21 @@ typedef enum ObeliskDst {
     OBELISK_DST_ON      = 0x3,  /* 0b11 */
 } obelisk_dst_t;
 
+/**
+ * Extract the individual IRIQ timecode fields from the buffer and store
+ * them in a frame.
+ * @param framep points to the output frame.
+ * @param buffer points to the input buffer.
+ */
 extern void obelisk_extract(obelisk_frame_t * framep, obelisk_buffer_t buffer);
 
+/**
+ * Interpret and validity check the individual IRIQ timecode fields from a
+ * frame and store the results in a tm structure.
+ * @param timep points to the output tm structure.
+ * @param framep points to the input frame.
+ * @return 0 if the data is valid, <0 otherwise indicating the incorrect value.
+ */
 extern int obelisk_validate(struct tm * timep, const obelisk_frame_t * framep);
 
 #endif /*  _COM_DIAG_OBELISK_OBELISK_H_ */

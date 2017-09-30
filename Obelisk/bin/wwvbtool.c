@@ -117,6 +117,7 @@ int main(int argc, char ** argv)
     int level_cooked = -1;
     int milliseconds_cycle = -1;
     int milliseconds_pulse = -1;
+    int cycles_limit = -1;
     obelisk_token_t token = (obelisk_token_t)-1;
     obelisk_state_t state_before = (obelisk_state_t)-1;
     obelisk_state_t state_after = (obelisk_state_t)-1;
@@ -147,6 +148,10 @@ int main(int argc, char ** argv)
     int fallings = -1;
 
     diminuto_log_setmask();
+
+    /*
+     * Process command line options.
+     */
 
     program = strrchr(argv[0], '/');
     program = (program == (const char *)0) ? argv[0] : program + 1;
@@ -315,18 +320,13 @@ int main(int argc, char ** argv)
         tzset();
     }
 
-    armed = 0;
-    synchronized = 0;
-    acquired = 0;
-    risings = 0;
-    fallings = 0;
-    cycles = 0;
-
     diminuto_cue_init(&cue, 0);
 
     milliseconds_pulse = 0;
 
     milliseconds_cycle  = 1000 / HERTZ_TIMER;
+
+    cycles_limit = HERTZ_TIMER * 2;
 
     level_raw = OBELISK_LEVEL_ZERO;
 
@@ -347,6 +347,14 @@ int main(int argc, char ** argv)
 
     ticks_slack = diminuto_timer_periodic(ticks_timer);
     assert(ticks_slack == 0);
+
+    risings = 0;
+    fallings = 0;
+    cycles = 0;
+
+    armed = 0;
+    synchronized = 0;
+    acquired = 0;
 
     buffer = 0;
 
@@ -420,22 +428,27 @@ int main(int argc, char ** argv)
         }
 
         /*
-         * Check for a timeout on the signal. We should get
-         * one pulse per second.
+         * Try to detect a "stuck" GPIO pin, which could be a result of
+         * a radio failure. What we really want is a timeout, but that's
+         * harder than it sounds: our sense of time isn't nearly as good
+         * as the radio transmitter that is synced to atomic clocks. Our
+         * clock is sure to be running fast or slow. Mostly we resuire
+         * that in a duration that we think is two seconds we see between
+         * one and three pulses inclusive.
          */
 
-        if ((++cycles) >= HERTZ_TIMER) {
+        if ((++cycles) >= cycles_limit) {
             if (!acquired) {
                 /* Do nothing. */
-            } else if ((risings == 1) && (fallings == 1)) {
+            } else if ((1 <= risings) && (risings <= 3)  && (1 <= fallings) && (fallings <= 3)) {
                 /* Do nothing. */
             } else {
                 acquired = 0;
-                DIMINUTO_LOG_NOTICE("%s: lost\n", program);
+                DIMINUTO_LOG_NOTICE("%s: lost %d %d\n", program, risings, fallings);
             }
-            cycles = 0;
             risings = 0;
             fallings = 0;
+            cycles = 0;
         }
 
         /*
@@ -477,7 +490,7 @@ int main(int argc, char ** argv)
             /* Do nothing. */
         } else {
             acquired = 0;
-            DIMINUTO_LOG_NOTICE("%s: lost\n", program);
+            DIMINUTO_LOG_NOTICE("%s: lost %s %s\n", program, STATE[state_before], STATE[state_after]);
         }
 
         /*
@@ -559,7 +572,7 @@ int main(int argc, char ** argv)
 
                 if (acquired) {
                     acquired = 0;
-                    DIMINUTO_LOG_NOTICE("%s: lost\n", program);
+                    DIMINUTO_LOG_NOTICE("%s: lost %d\n", program, rc);
                 }
 
             } else {
@@ -576,6 +589,7 @@ int main(int argc, char ** argv)
                  * is just for display purposes; we'll reset this to zero if we
                  * actually use it.
                  */
+
                 time.tm_sec = 59;
 
                 if (debug) {
@@ -596,6 +610,7 @@ int main(int argc, char ** argv)
                  * the next time frame, which will be at zero seconds past
                  * that minute (which we'll fix below).
                  */
+
                 time.tm_sec = 0;
                 value.tv_sec = mktime(&time);
 
@@ -605,6 +620,7 @@ int main(int argc, char ** argv)
                  * zone of the host on which we are running. Similarly, we have
                  * to account for Daylight Saving Time in the local time zone.
                  */
+
                 value.tv_sec -= timezone;
                 if (!daylight) {
                     /* Do nothing. */
@@ -619,12 +635,14 @@ int main(int argc, char ** argv)
                  * next minute. That is when we'll set the system time (if
                  * we do so at all).
                  */
+
                 value.tv_sec += 60;
     
                 /*
                  * The microsecond offset accounts for the latency in the
                  * cue debouncer: two cycles of 10ms (10000usec) each.
                  */
+
                 value.tv_usec = (2 * milliseconds_cycle) * 1000;
 
                 if (debug) { LOG("7 EPOCH %ld.%06ld.", value.tv_sec, value.tv_usec); }
