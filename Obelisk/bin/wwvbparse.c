@@ -140,8 +140,11 @@ int main(int argc, char ** argv)
     int hour = -1;
     int minute = -1;
     int second = -1;
-    int fraction = -1;
+    diminuto_ticks_t fraction = (diminuto_ticks_t)-1;
     int acquired = -1;
+    int cycles = -1;
+    int risings = -1;
+    int fallings = -1;
 
     diminuto_log_setmask();
 
@@ -315,6 +318,9 @@ int main(int argc, char ** argv)
     armed = 0;
     synchronized = 0;
     acquired = 0;
+    risings = 0;
+    fallings = 0;
+    cycles = 0;
 
     diminuto_cue_init(&cue, 0);
 
@@ -391,6 +397,7 @@ int main(int argc, char ** argv)
             break;
 
         case DIMINUTO_CUE_EDGE_RISING:
+            risings += 1;
             milliseconds_pulse = milliseconds_cycle;
             if (debug) { LOG("3 RISING %dms.", milliseconds_pulse); }
             break;
@@ -400,6 +407,7 @@ int main(int argc, char ** argv)
             break;
 
         case DIMINUTO_CUE_EDGE_FALLING:
+            fallings += 1;
             milliseconds_pulse += milliseconds_cycle;
             if (debug) { LOG("3 FALLING %dms.", milliseconds_pulse); }
             break;
@@ -410,6 +418,29 @@ int main(int argc, char ** argv)
             break;
 
         }
+
+        /*
+         * Check for a timeout on the signal. We should get
+         * one pulse per second.
+         */
+
+        if ((++cycles) >= HERTZ_TIMER) {
+            if (!acquired) {
+                /* Do nothing. */
+            } else if ((risings == 1) && (fallings == 1)) {
+                /* Do nothing. */
+            } else {
+                acquired = 0;
+                DIMINUTO_LOG_NOTICE("%s: lost\n", program);
+            }
+            cycles = 0;
+            risings = 0;
+            fallings = 0;
+        }
+
+        /*
+         * Wait for a complete pulse.
+         */
 
         if (edge != DIMINUTO_CUE_EDGE_FALLING) {
             continue;
@@ -478,7 +509,7 @@ int main(int argc, char ** argv)
                 rc = diminuto_time_zulu(ticks_now, &year, &month, &day, &hour, &minute, &second, &fraction);
                 assert(rc >= 0);
 
-                DIMINUTO_LOG_NOTICE("%s: settimeofday %04d-%02d-%02dT%02d:%02d:%02d.%06d+00:00\n",
+                DIMINUTO_LOG_NOTICE("%s: settimeofday %04d-%02d-%02dT%02d:%02d:%02d.%09llu+00:00\n",
                     program,
                     year, month, day,
                     hour, minute, second,
@@ -612,7 +643,7 @@ int main(int argc, char ** argv)
                     ticks_now = diminuto_time_clock();
                     assert(ticks_now >= 0);
 
-                    rc = diminuto_time_juliet(ticks_now, (int *)0, (int *)0, (int *)0, &hour, &minute, (int *)0, (int *)0);
+                    rc = diminuto_time_juliet(ticks_now, (int *)0, (int *)0, (int *)0, &hour, &minute, (int *)0, (diminuto_ticks_t *)0);
                     assert(rc >= 0);
 
                     if (hour != hour_juliet) {

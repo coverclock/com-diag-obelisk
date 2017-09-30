@@ -46,7 +46,7 @@ TARGET				:=	host# Build for the x86_64 running Ubuntu 14.04 LTS.
 
 # This stuff all gets embedded in the vintage application.
 COPYRIGHT			:=	2017 Digital Aggregates Corporation
-LICENSE				:=	GNU Lesser General Public License 2.1
+LICENSE				:=	GNU General Public License 2
 CONTACT				:=	coverclock@diag.com
 HOMEPAGE			:=	http://www.diag.com/navigation/downloads/$(TITLE).html
 HOST				:=	$(shell hostname -s)
