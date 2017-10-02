@@ -80,6 +80,7 @@ static int verbose = 0;
 static int terminate = 0;
 static int unlock = 0;
 static int pps = 0;
+static int hangup = 0;
 static int pin_out_p1 = -1;
 static int pin_in_t = -1;
 static int pin_out_pps = -1;
@@ -92,7 +93,7 @@ static const char * path_prefix = (char *)0;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -h ] [ -k ] [ -l ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
+    fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
     fprintf(stderr, "       -H HOUR         Set time of day at HOUR local (%d).\n", hour_juliet);
     fprintf(stderr, "       -L PATH         Use PATH for lock directory (\"%s\").\n", path_prefix);
     fprintf(stderr, "       -M MINUTE       Set time of day at MINUTE local (%d).\n", minute_juliet);
@@ -101,6 +102,7 @@ static void usage(void)
     fprintf(stderr, "       -T PIN          Use T input GPIO PIN (%d).\n", pin_in_t);
     fprintf(stderr, "       -b              Daemonize into the background.\n");
     fprintf(stderr, "       -d              Display debug output.\n");
+    fprintf(stderr, "       -g              Sent SIGHUP to the PID in the lock file and exit.\n");
     fprintf(stderr, "       -h              Display help menu and exit.\n");
     fprintf(stderr, "       -k              Sent SIGTERM to the PID in the lock file and exit.\n");
     fprintf(stderr, "       -l              Remove the lock file and exit.\n");
@@ -180,7 +182,7 @@ int main(int argc, char ** argv)
 
     error = 0;
 
-    while ((opt = getopt(argc, argv, "H:L:M:P:S:T:bdhklprsuv")) >= 0) {
+    while ((opt = getopt(argc, argv, "H:L:M:P:S:T:bdghklprsuv")) >= 0) {
 
         switch (opt) {
 
@@ -239,6 +241,10 @@ int main(int argc, char ** argv)
 
         case 'd':
             debug = !0;
+            break;
+
+        case 'g':
+            hangup = !0;
             break;
 
         case 'h':
@@ -305,6 +311,23 @@ int main(int argc, char ** argv)
         if (pid < 0) { return 2; }
         LOG("0 KILL %d", pid);
         rc = kill(pid, SIGTERM);
+        if (rc < 0) {
+            perror("kill");
+            return 2;
+        }
+        return 0;
+
+    } else if (hangup) {
+
+        /*
+         * Send a SIGHUP to the process whose PID is in the lock file
+         * and then exit.
+         */
+
+        pid = diminuto_lock_check(path);
+        if (pid < 0) { return 2; }
+        LOG("0 HANGUP %d", pid);
+        rc = kill(pid, SIGHUP);
         if (rc < 0) {
             perror("kill");
             return 2;
