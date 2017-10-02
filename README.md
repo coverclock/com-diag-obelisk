@@ -1,5 +1,5 @@
 # com-diag-obelisk
-Musings with WWVB and Inter-Range Instrumentation Group (IRIG) time codes.
+A home brew NIST WWVB radio clock.
 ## Copyright
 Copyright 2017 by the Digital Aggregates Corporation, Arvada Colorado U.S.A.
 ## License
