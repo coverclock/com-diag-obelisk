@@ -18,7 +18,7 @@ PIDFILE1=/var/run/wwvbtool.pid
 DAEMON2=/home/pi/bin/hourglass.py
 PIDFILE2=/var/run/hourglass.pid
 
-WWVBTOOL_OPTS="-u -r -s -b"
+WWVBTOOL_OPTS="-u -r -s -p -b"
 
 test -x $DAEMON1 || exit 5
 test -x $DAEMON2 || exit 5
@@ -40,7 +40,7 @@ case $1 in
 		;;
 	stop)
 		log_daemon_msg "Stopping wwvbtool" "timeservice"
-		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE1 --remove-pidfile
+		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE1
 		log_end_msg $?
 		log_daemon_msg "Stopping hourglass" "timeservice"
 		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE2 --remove-pidfile

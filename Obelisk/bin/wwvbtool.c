@@ -79,6 +79,7 @@ static int reset = 0;
 static int verbose = 0;
 static int terminate = 0;
 static int unlock = 0;
+static int pps = 0;
 static int pin_out_p1 = -1;
 static int pin_in_t = -1;
 static int pin_out_pps = -1;
@@ -91,7 +92,7 @@ static const char * path_prefix = (char *)0;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -h ] [ -k ] [ -l ] [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
+    fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -h ] [ -k ] [ -l ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
     fprintf(stderr, "       -H HOUR         Set time of day at HOUR local (%d).\n", hour_juliet);
     fprintf(stderr, "       -L PATH         Use PATH for lock directory (\"%s\").\n", path_prefix);
     fprintf(stderr, "       -M MINUTE       Set time of day at MINUTE local (%d).\n", minute_juliet);
@@ -103,6 +104,7 @@ static void usage(void)
     fprintf(stderr, "       -h              Display help menu and exit.\n");
     fprintf(stderr, "       -k              Sent SIGTERM to the PID in the lock file and exit.\n");
     fprintf(stderr, "       -l              Remove the lock file and exit.\n");
+    fprintf(stderr, "       -p              Generate PPS output.\n");
     fprintf(stderr, "       -r              Reset device initially.\n");
     fprintf(stderr, "       -s              Set time of day when possible.\n");
     fprintf(stderr, "       -u              Unexport pins initially ignoring errors.\n");
@@ -178,7 +180,7 @@ int main(int argc, char ** argv)
 
     error = 0;
 
-    while ((opt = getopt(argc, argv, "H:L:M:P:S:T:bdhklrsuv")) >= 0) {
+    while ((opt = getopt(argc, argv, "H:L:M:P:S:T:bdhklprsuv")) >= 0) {
 
         switch (opt) {
 
@@ -246,6 +248,10 @@ int main(int argc, char ** argv)
 
         case 'k':
             terminate = !0;
+            break;
+
+        case 'p':
+            pps = !0;
             break;
 
         case 'l':
@@ -350,31 +356,41 @@ int main(int argc, char ** argv)
 
         LOG("0 UNEXPORTING.");
 
-        (void)diminuto_pin_unexport(pin_out_p1);
-
-        (void)diminuto_pin_unexport(pin_out_pps);
+        if (reset) {
+            (void)diminuto_pin_unexport(pin_out_p1);
+        }
 
         (void)diminuto_pin_unexport(pin_in_t);
+
+        if (pps) {
+            (void)diminuto_pin_unexport(pin_out_pps);
+        }
 
     }
 
     LOG("0 EXPORTING.");
 
-     pin_out_p1_fp = diminuto_pin_output(pin_out_p1);
-     assert(pin_out_p1_fp != (FILE *)0);
+    if (reset) {
+        pin_out_p1_fp = diminuto_pin_output(pin_out_p1);
+        assert(pin_out_p1_fp != (FILE *)0);
+    }
 
-     pin_out_pps_fp = diminuto_pin_output(pin_out_pps);
-     assert(pin_out_p1_fp != (FILE *)0);
+    if (pps) {
+        pin_out_pps_fp = diminuto_pin_output(pin_out_pps);
+        assert(pin_out_p1_fp != (FILE *)0);
+    }
 
-     pin_in_t_fp = diminuto_pin_input(pin_in_t);
-     assert(pin_in_t_fp != (FILE *)0);
+    pin_in_t_fp = diminuto_pin_input(pin_in_t);
+    assert(pin_in_t_fp != (FILE *)0);
 
     /*
     ** Toggle P1 output pin (active low) if requested.
     */
 
-    rc = diminuto_pin_clear(pin_out_pps_fp);
-    assert(rc == 0);
+    if (pps) {
+        rc = diminuto_pin_clear(pin_out_pps_fp);
+        assert(rc == 0);
+    }
 
     ticks_frequency = diminuto_frequency();
     assert(ticks_frequency > 0);
@@ -494,7 +510,11 @@ int main(int argc, char ** argv)
             break;
 
         case DIMINUTO_CUE_EDGE_RISING:
-            if (acquired) {
+            if (!pps) {
+                /* Do nothing. */
+            } else if (!acquired) {
+                /* Do nothing. */
+            } else {
                 rc = diminuto_pin_set(pin_out_pps_fp);
                 assert(rc >= 0);
             }
@@ -508,8 +528,10 @@ int main(int argc, char ** argv)
             break;
 
         case DIMINUTO_CUE_EDGE_FALLING:
-            rc = diminuto_pin_clear(pin_out_pps_fp);
-            assert(rc >= 0);
+            if (pps) {
+                rc = diminuto_pin_clear(pin_out_pps_fp);
+                assert(rc >= 0);
+            }
             fallings += 1;
             milliseconds_pulse += milliseconds_cycle;
             LOG("3 FALLING %dms.", milliseconds_pulse);
@@ -781,8 +803,15 @@ int main(int argc, char ** argv)
     pin_in_t_fp = diminuto_pin_unused(pin_in_t_fp, pin_in_t);
     assert(pin_in_t_fp == (FILE *)0);
 
-    pin_out_p1_fp = diminuto_pin_unused(pin_out_p1_fp, pin_out_p1);
-    assert(pin_out_p1_fp == (FILE *)0);
+    if (reset) {
+        pin_out_p1_fp = diminuto_pin_unused(pin_out_p1_fp, pin_out_p1);
+        assert(pin_out_p1_fp == (FILE *)0);
+    }
+
+    if (pps) {
+        pin_out_pps_fp = diminuto_pin_unused(pin_out_pps_fp, pin_out_pps);
+        assert(pin_out_pps_fp == (FILE *)0);
+    }
 
     (void)diminuto_lock_unlock(path);
 
