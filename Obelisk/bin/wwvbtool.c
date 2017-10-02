@@ -662,7 +662,7 @@ int main(int argc, char ** argv)
                 rc = diminuto_time_zulu(ticks_now, &year, &month, &day, &hour, &minute, &second, &fraction);
                 assert(rc >= 0);
 
-                DIMINUTO_LOG_NOTICE("%s: set time=%04d-%02d-%02dT%02d:%02d:%02d.%09llu+00:00.\n",
+                DIMINUTO_LOG_NOTICE("%s: now time=%04d-%02d-%02dT%02d:%02d:%02d.%09llu+00:00.\n",
                     program,
                     year, month, day,
                     hour, minute, second,
