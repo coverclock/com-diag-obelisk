@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <signal.h>
 #include "com/diag/diminuto/diminuto_pin.h"
 #include "com/diag/diminuto/diminuto_frequency.h"
 #include "com/diag/diminuto/diminuto_delay.h"
@@ -75,6 +76,7 @@ static const char * program = (const char *)0;
 static int debug = 0;
 static int reset = 0;
 static int verbose = 0;
+static int terminate = 0;
 static int pin_out_p1 = -1;
 static int pin_in_t = -1;
 static int pin_out_pps = -1;
@@ -87,7 +89,7 @@ static const char * root = (char *)0;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -h ] [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
+    fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -h ] [ -k ] [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
     fprintf(stderr, "       -H HOUR         Set time of day at HOUR local (%d).\n", hour_juliet);
     fprintf(stderr, "       -L PATH         Use PATH for lock directory (\"%s\").\n", root);
     fprintf(stderr, "       -M MINUTE       Set time of day at MINUTE local (%d).\n", minute_juliet);
@@ -97,6 +99,7 @@ static void usage(void)
     fprintf(stderr, "       -b              Daemonize into the background.\n");
     fprintf(stderr, "       -d              Display debug output.\n");
     fprintf(stderr, "       -h              Display help menu and exit.\n");
+    fprintf(stderr, "       -k              Sent SIGTERM to the PID in the lock file.\n");
     fprintf(stderr, "       -r              Reset device initially.\n");
     fprintf(stderr, "       -s              Set time of day when possible.\n");
     fprintf(stderr, "       -u              Unexport pins initially ignoring errors.\n");
@@ -172,7 +175,7 @@ int main(int argc, char ** argv)
 
     error = 0;
 
-    while ((opt = getopt(argc, argv, "H:L:M:P:S:T:bdhrsuv")) >= 0) {
+    while ((opt = getopt(argc, argv, "H:L:M:P:S:T:bdhkrsuv")) >= 0) {
 
         switch (opt) {
 
@@ -238,6 +241,10 @@ int main(int argc, char ** argv)
             return 0;
             break;
 
+        case 'k':
+            terminate = !0;
+            break;
+
         case 'r':
             reset = !0;
             break;
@@ -266,23 +273,50 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    /*
-     * Daemonize if so instructed. A lock file containing the daemon's
-     * process identifier will be left in /var/lock.
-     */
+    if (terminate || background) {
 
-    if (background) {
         limit = strlen(root) + strlen(program) + 1;
         path = malloc(limit);
         strcpy(path, root);
         strcat(path, program);
         LOG("0 PATH \"%s\"", path);
-        rc = diminuto_daemon(program, path);
-        if (rc < 0) { return 2; }
+        assert(strlen(path) == (limit - 1));
+
+        if (terminate) {
+
+            /*
+             * Terminate if so instructed. A SIGTERM is sent to the process
+             * whose PID is in the lock file.
+             */
+
+            pid = diminuto_lock_check(path);
+            if (pid < 0) { return 2; }
+            LOG("0 KILL %d", pid);
+            rc = kill(pid, SIGTERM);
+            if (rc < 0) {
+                perror("kill");
+                return 2;
+            } else {
+                return 0;
+            }
+
+        } else if (background) {
+
+            /*
+             * Daemonize if so instructed. A lock file containing the daemon's
+             * process identifier will be left in /var/lock.
+             */
+
+            rc = diminuto_daemon(program, path);
+            if (rc < 0) { return 2; }
+
+        } else {
+            /* Not possible. */
+        }
     }
 
     pid = getpid();
-    DIMINUTO_LOG_INFORMATION("%s: running pid=%d\n", program, getpid());
+    DIMINUTO_LOG_INFORMATION("%s: running pid=%d.\n", program, getpid());
 
     assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
     assert(sizeof(obelisk_frame_t) == sizeof(uint64_t));
@@ -407,7 +441,7 @@ int main(int argc, char ** argv)
         }
 
         if (diminuto_hangup_check()) {
-            DIMINUTO_LOG_INFORMATION("%s: hungup acquired=%d synchronized=%d armed=%d risings=%d fallings=%d cycles=%d\n", program, acquired, synchronized, armed, risings, fallings, cycles);
+            DIMINUTO_LOG_INFORMATION("%s: hungup acquired=%d synchronized=%d armed=%d risings=%d fallings=%d cycles=%d.\n", program, acquired, synchronized, armed, risings, fallings, cycles);
             synchronized = 0;
         }
 
@@ -439,6 +473,9 @@ int main(int argc, char ** argv)
             break;
 
         case DIMINUTO_CUE_EDGE_RISING:
+            if (acquired) {
+                diminuto_pin_set(pin_out_pps_fp);
+            }
             risings += 1;
             milliseconds_pulse = milliseconds_cycle;
             LOG("3 RISING %dms.", milliseconds_pulse);
@@ -449,6 +486,7 @@ int main(int argc, char ** argv)
             break;
 
         case DIMINUTO_CUE_EDGE_FALLING:
+            diminuto_pin_clear(pin_out_pps_fp);
             fallings += 1;
             milliseconds_pulse += milliseconds_cycle;
             LOG("3 FALLING %dms.", milliseconds_pulse);
@@ -478,7 +516,7 @@ int main(int argc, char ** argv)
                 /* Do nothing. */
             } else {
                 acquired = 0;
-                DIMINUTO_LOG_NOTICE("%s: lost %d %d\n", program, risings, fallings);
+                DIMINUTO_LOG_NOTICE("%s: lost risings=%d fallings=%d.\n", program, risings, fallings);
             }
             risings = 0;
             fallings = 0;
@@ -524,7 +562,7 @@ int main(int argc, char ** argv)
             /* Do nothing. */
         } else {
             acquired = 0;
-            DIMINUTO_LOG_NOTICE("%s: lost %s %s\n", program, STATE[state_before], STATE[state_after]);
+            DIMINUTO_LOG_NOTICE("%s: lost state_before=%s state_after=%s.\n", program, STATE[state_before], STATE[state_after]);
         }
 
         /*
@@ -556,7 +594,7 @@ int main(int argc, char ** argv)
                 rc = diminuto_time_zulu(ticks_now, &year, &month, &day, &hour, &minute, &second, &fraction);
                 assert(rc >= 0);
 
-                DIMINUTO_LOG_NOTICE("%s: settimeofday %04d-%02d-%02dT%02d:%02d:%02d.%09llu+00:00\n",
+                DIMINUTO_LOG_NOTICE("%s: set time=%04d-%02d-%02dT%02d:%02d:%02d.%09llu+00:00.\n",
                     program,
                     year, month, day,
                     hour, minute, second,
@@ -604,14 +642,14 @@ int main(int argc, char ** argv)
 
                 if (acquired) {
                     acquired = 0;
-                    DIMINUTO_LOG_NOTICE("%s: lost %d\n", program, rc);
+                    DIMINUTO_LOG_NOTICE("%s: lost rc=%d.\n", program, rc);
                 }
 
             } else {
 
                 if (!acquired) {
                     acquired = !0;
-                    DIMINUTO_LOG_NOTICE("%s: acquired\n", program);
+                    DIMINUTO_LOG_NOTICE("%s: acquired.\n", program);
                 }
 
                 /*
@@ -731,7 +769,7 @@ int main(int argc, char ** argv)
     ** Exit.
     */
 
-    DIMINUTO_LOG_INFORMATION("%s: exiting\n", program);
+    DIMINUTO_LOG_INFORMATION("%s: exiting.\n", program);
 
     return 0;
 }
