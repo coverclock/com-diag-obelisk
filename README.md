@@ -38,14 +38,20 @@ and the Diminuto library. Both Obelisk and Diminuto are written in C.
 <https://www.rs-online.com/designspark/atomic-time-for-the-raspberry-pi>    
 ## Usage
     $ wwvbtool -h
-    usage: wwvbtool [ -H HOUR ] [ -M MINUTE ] [ -P PIN ] [ -T PIN ] [ -b ] [ -d ] [ -h ] [ -r ] [ -s ] [ -u ] [ -v ]
-           -H HOUR         Set time of day at HOUR local (1)
+    usage: wwvbtool [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]
+           -H HOUR         Set time of day at HOUR local (1).
+           -L PATH         Use PATH for lock directory ("/var/run/").
            -M MINUTE       Set time of day at MINUTE local (30).
            -P PIN          Use P1 output GPIO PIN (23).
+           -S PIN          Use PPS output GPIO PIN (25).
            -T PIN          Use T input GPIO PIN (24).
            -b              Daemonize into the background.
            -d              Display debug output.
+           -g              Send SIGHUP to the PID in the lock file and exit.
            -h              Display help menu and exit.
+           -k              Send SIGTERM to the PID in the lock file and exit.
+           -l              Remove the lock file and exit.
+           -p              Generate PPS output.
            -r              Reset device initially.
            -s              Set time of day when possible.
            -u              Unexport pins initially ignoring errors.

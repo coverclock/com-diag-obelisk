@@ -102,9 +102,9 @@ static void usage(void)
     fprintf(stderr, "       -T PIN          Use T input GPIO PIN (%d).\n", pin_in_t);
     fprintf(stderr, "       -b              Daemonize into the background.\n");
     fprintf(stderr, "       -d              Display debug output.\n");
-    fprintf(stderr, "       -g              Sent SIGHUP to the PID in the lock file and exit.\n");
+    fprintf(stderr, "       -g              Send SIGHUP to the PID in the lock file and exit.\n");
     fprintf(stderr, "       -h              Display help menu and exit.\n");
-    fprintf(stderr, "       -k              Sent SIGTERM to the PID in the lock file and exit.\n");
+    fprintf(stderr, "       -k              Send SIGTERM to the PID in the lock file and exit.\n");
     fprintf(stderr, "       -l              Remove the lock file and exit.\n");
     fprintf(stderr, "       -p              Generate PPS output.\n");
     fprintf(stderr, "       -r              Reset device initially.\n");
