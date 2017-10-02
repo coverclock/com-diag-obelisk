@@ -36,7 +36,8 @@
 
 #define LOG(_FORMAT_, ...) do { if (debug) { fprintf(stderr, "%s: " _FORMAT_ "\n", program, ## __VA_ARGS__); } } while (0)
 
-static const char PATH_ROOT[] = "/var/run/";
+static const char PATH_PREFIX[] = "/var/run/";
+static const char PATH_SUFFIX[] = ".pid";
 static const int PIN_OUT_P1 = 23; /* output, radio enable, active low. */
 static const int PIN_IN_T = 24; /* input, modulated pulse, active high */
 static const int PIN_OUT_PPS = 25; /* output, pulse per second , active high */
@@ -86,13 +87,13 @@ static int background = 0;
 static int set = 0;
 static int hour_juliet = -1;
 static int minute_juliet = -1;
-static const char * root = (char *)0;
+static const char * path_prefix = (char *)0;
 
 static void usage(void)
 {
     fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -h ] [ -k ] [ -l ] [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
     fprintf(stderr, "       -H HOUR         Set time of day at HOUR local (%d).\n", hour_juliet);
-    fprintf(stderr, "       -L PATH         Use PATH for lock directory (\"%s\").\n", root);
+    fprintf(stderr, "       -L PATH         Use PATH for lock directory (\"%s\").\n", path_prefix);
     fprintf(stderr, "       -M MINUTE       Set time of day at MINUTE local (%d).\n", minute_juliet);
     fprintf(stderr, "       -P PIN          Use P1 output GPIO PIN (%d).\n", pin_out_p1);
     fprintf(stderr, "       -S PIN          Use PPS output GPIO PIN (%d).\n", pin_out_pps);
@@ -168,7 +169,7 @@ int main(int argc, char ** argv)
     program = strrchr(argv[0], '/');
     program = (program == (const char *)0) ? argv[0] : program + 1;
 
-    root = PATH_ROOT;
+    path_prefix = PATH_PREFIX;
     pin_out_p1 = PIN_OUT_P1;
     pin_out_pps = PIN_OUT_PPS;
     pin_in_t = PIN_IN_T;
@@ -191,7 +192,7 @@ int main(int argc, char ** argv)
             break;
 
         case 'L':
-            root = optarg;
+            path_prefix = optarg;
             break;
 
         case 'M':
@@ -279,10 +280,11 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    limit = strlen(root) + strlen(program) + 1;
+    limit = strlen(path_prefix) + strlen(program) + strlen(PATH_SUFFIX) + 1;
     path = malloc(limit);
-    strcpy(path, root);
+    strcpy(path, path_prefix);
     strcat(path, program);
+    strcat(path, PATH_SUFFIX);
     LOG("0 PATH \"%s\"", path);
     assert(strlen(path) == (limit - 1));
 
@@ -493,7 +495,8 @@ int main(int argc, char ** argv)
 
         case DIMINUTO_CUE_EDGE_RISING:
             if (acquired) {
-                diminuto_pin_set(pin_out_pps_fp);
+                rc = diminuto_pin_set(pin_out_pps_fp);
+                assert(rc >= 0);
             }
             risings += 1;
             milliseconds_pulse = milliseconds_cycle;
@@ -505,7 +508,8 @@ int main(int argc, char ** argv)
             break;
 
         case DIMINUTO_CUE_EDGE_FALLING:
-            diminuto_pin_clear(pin_out_pps_fp);
+            rc = diminuto_pin_clear(pin_out_pps_fp);
+            assert(rc >= 0);
             fallings += 1;
             milliseconds_pulse += milliseconds_cycle;
             LOG("3 FALLING %dms.", milliseconds_pulse);
