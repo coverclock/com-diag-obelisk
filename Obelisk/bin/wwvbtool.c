@@ -36,7 +36,7 @@
 
 #define LOG(_FORMAT_, ...) do { if (debug) { fprintf(stderr, "%s: " _FORMAT_ "\n", program, ## __VA_ARGS__); } } while (0)
 
-static const char PATH_ROOT[] = "/var/lock/";
+static const char PATH_ROOT[] = "/var/run/";
 static const int PIN_OUT_P1 = 23; /* output, radio enable, active low. */
 static const int PIN_IN_T = 24; /* input, modulated pulse, active high */
 static const int PIN_OUT_PPS = 25; /* output, pulse per second , active high */
@@ -77,6 +77,7 @@ static int debug = 0;
 static int reset = 0;
 static int verbose = 0;
 static int terminate = 0;
+static int unlock = 0;
 static int pin_out_p1 = -1;
 static int pin_in_t = -1;
 static int pin_out_pps = -1;
@@ -89,7 +90,7 @@ static const char * root = (char *)0;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -h ] [ -k ] [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
+    fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -h ] [ -k ] [ -l ] [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
     fprintf(stderr, "       -H HOUR         Set time of day at HOUR local (%d).\n", hour_juliet);
     fprintf(stderr, "       -L PATH         Use PATH for lock directory (\"%s\").\n", root);
     fprintf(stderr, "       -M MINUTE       Set time of day at MINUTE local (%d).\n", minute_juliet);
@@ -99,7 +100,8 @@ static void usage(void)
     fprintf(stderr, "       -b              Daemonize into the background.\n");
     fprintf(stderr, "       -d              Display debug output.\n");
     fprintf(stderr, "       -h              Display help menu and exit.\n");
-    fprintf(stderr, "       -k              Sent SIGTERM to the PID in the lock file.\n");
+    fprintf(stderr, "       -k              Sent SIGTERM to the PID in the lock file and exit.\n");
+    fprintf(stderr, "       -l              Remove the lock file and exit.\n");
     fprintf(stderr, "       -r              Reset device initially.\n");
     fprintf(stderr, "       -s              Set time of day when possible.\n");
     fprintf(stderr, "       -u              Unexport pins initially ignoring errors.\n");
@@ -175,7 +177,7 @@ int main(int argc, char ** argv)
 
     error = 0;
 
-    while ((opt = getopt(argc, argv, "H:L:M:P:S:T:bdhkrsuv")) >= 0) {
+    while ((opt = getopt(argc, argv, "H:L:M:P:S:T:bdhklrsuv")) >= 0) {
 
         switch (opt) {
 
@@ -245,6 +247,10 @@ int main(int argc, char ** argv)
             terminate = !0;
             break;
 
+        case 'l':
+            unlock = !0;
+            break;
+
         case 'r':
             reset = !0;
             break;
@@ -273,46 +279,59 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    if (terminate || background) {
+    limit = strlen(root) + strlen(program) + 1;
+    path = malloc(limit);
+    strcpy(path, root);
+    strcat(path, program);
+    LOG("0 PATH \"%s\"", path);
+    assert(strlen(path) == (limit - 1));
 
-        limit = strlen(root) + strlen(program) + 1;
-        path = malloc(limit);
-        strcpy(path, root);
-        strcat(path, program);
-        LOG("0 PATH \"%s\"", path);
-        assert(strlen(path) == (limit - 1));
+    if (terminate) {
 
-        if (terminate) {
+        /*
+         * Send a SIGTERM to the process whose PID is in the lock file
+         * and then exit.
+         */
 
-            /*
-             * Terminate if so instructed. A SIGTERM is sent to the process
-             * whose PID is in the lock file.
-             */
-
-            pid = diminuto_lock_check(path);
-            if (pid < 0) { return 2; }
-            LOG("0 KILL %d", pid);
-            rc = kill(pid, SIGTERM);
-            if (rc < 0) {
-                perror("kill");
-                return 2;
-            } else {
-                return 0;
-            }
-
-        } else if (background) {
-
-            /*
-             * Daemonize if so instructed. A lock file containing the daemon's
-             * process identifier will be left in /var/lock.
-             */
-
-            rc = diminuto_daemon(program, path);
-            if (rc < 0) { return 2; }
-
-        } else {
-            /* Not possible. */
+        pid = diminuto_lock_check(path);
+        if (pid < 0) { return 2; }
+        LOG("0 KILL %d", pid);
+        rc = kill(pid, SIGTERM);
+        if (rc < 0) {
+            perror("kill");
+            return 2;
         }
+        return 0;
+
+    } else if (unlock) {
+
+        /*
+         * Remove the lock file and then exit.
+         */
+
+        rc = diminuto_lock_unlock(path);
+        if (rc < 0) { return 2; }
+        return 0;
+
+    } else if (background) {
+
+        /*
+         * Daemonize if so instructed. A lock file containing the daemon's
+         * process identifier will be left in /var/lock.
+         */
+
+        rc = diminuto_daemon(program, path);
+        if (rc < 0) { return 2; }
+
+    } else {
+
+        /*
+         * Create a lock file containing our PID.
+         */
+
+        rc = diminuto_lock_lock(path);
+        if (rc < 0) { return 2; }
+
     }
 
     pid = getpid();
@@ -761,9 +780,7 @@ int main(int argc, char ** argv)
     pin_out_p1_fp = diminuto_pin_unused(pin_out_p1_fp, pin_out_p1);
     assert(pin_out_p1_fp == (FILE *)0);
 
-    if (path != (char *)0) {
-        (void)diminuto_lock_unlock(path);
-    }
+    (void)diminuto_lock_unlock(path);
 
     /*
     ** Exit.

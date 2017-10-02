@@ -14,11 +14,11 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin/:/usr/local/bin
 . /lib/lsb/init-functions
 
 DAEMON1=/usr/local/bin/wwvbtool
-PIDFILE1=/var/run/wwvbparse.pid
+PIDFILE1=/var/run/wwvbtool.pid
 DAEMON2=/home/pi/bin/hourglass.py
 PIDFILE2=/var/run/hourglass.pid
 
-WWVBTOOL_OPTS="-r -s -u"
+WWVBTOOL_OPTS="-u -r -s -b"
 
 test -x $DAEMON1 || exit 5
 test -x $DAEMON2 || exit 5
@@ -29,8 +29,8 @@ case $1 in
 		hwclock -u -s
 		status=$?
 		log_end_msg $status
-		log_daemon_msg "Starting wwvbparse daemon" "timeservice"
-		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE1 --startas $DAEMON1 --make-pidfile -- $WWVB_OPTS
+		log_daemon_msg "Starting wwvbtool daemon" "timeservice"
+		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE1 --startas $DAEMON1 -- $WWVBTOOL_OPTS
 		status=$?
 		log_end_msg $status
 		log_daemon_msg "Starting hourglass daemon" "timeservice"
@@ -39,7 +39,7 @@ case $1 in
 		log_end_msg $status
 		;;
 	stop)
-		log_daemon_msg "Stopping wwvbparse" "timeservice"
+		log_daemon_msg "Stopping wwvbtool" "timeservice"
 		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE1 --remove-pidfile
 		log_end_msg $?
 		log_daemon_msg "Stopping hourglass" "timeservice"
