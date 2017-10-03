@@ -34,17 +34,19 @@ obelisk_token_t obelisk_tokenize(int milliseconds_pulse)
 {
     obelisk_token_t token = OBELISK_TOKEN_INVALID;
 
-     for (obelisk_token_t tt = OBELISK_TOKEN_ZERO; tt <= OBELISK_TOKEN_MARKER; ++tt) {
-         assert((0 <= tt) && (tt < countof(MILLISECONDS)));
-         if (milliseconds_pulse < MILLISECONDS[tt].minimum) {
-             /* Do nothing. */
-         } else if (milliseconds_pulse > MILLISECONDS[tt].maximum) {
-             /* Do nothing. */
-         } else {
-             token = tt;
-             break;
-         }
-     }
+    for (obelisk_token_t tt = OBELISK_TOKEN_ZERO; tt <= OBELISK_TOKEN_MARKER; ++tt) {
+        assert((0 <= tt) && (tt < countof(MILLISECONDS)));
+        if (milliseconds_pulse < MILLISECONDS[tt].minimum) {
+            /* Do nothing. */
+        } else if (milliseconds_pulse > MILLISECONDS[tt].maximum) {
+            /* Do nothing. */
+        } else {
+            token = tt;
+            break;
+        }
+    }
+
+    assert((OBELISK_TOKEN_ZERO <= token) && (token <= OBELISK_TOKEN_INVALID));
 
     return token;
 }
@@ -347,13 +349,14 @@ int obelisk_julian2gregorian(int julian, int lyi, int * monthp, int * dayp) {
 /*
  * Exposed for unit testing.
  */
-int obelisk_zeller(int year, int month, int day)
+obelisk_zeller_t obelisk_zeller(int year, int month, int day)
 {
-    int ye;
-    int a;
-    int y;
-    int m;
-    int d;
+    int result = -1;
+    int ye = -1;
+    int a = -1;
+    int y = -1;
+    int m = -1;
+    int d = -1;
 
     /*
      * Reference: C. Overclock, Date::weekday, Date.cpp,
@@ -370,7 +373,11 @@ int obelisk_zeller(int year, int month, int day)
     m = month + (12 * a) - 2;
     d = day + y + (y / 4) - (y / 100) + (y / 400) + ((31 * m) / 12);
 
-    return (((((d % 7) + 6) % 7) + 1) % 7);
+    result = (((((d % 7) + 6) % 7) + 1) % 7);
+
+    assert((OBELISK_ZELLER_SUNDAY <= result) && (result <= OBELISK_ZELLER_SATURDAY));
+
+    return (obelisk_zeller_t)result;
 }
 
 int obelisk_validate(struct tm * timep, const obelisk_frame_t * framep)
