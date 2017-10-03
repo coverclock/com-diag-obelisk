@@ -105,7 +105,7 @@ static void usage(void)
     fprintf(stderr, "       -g              Send SIGHUP to the PID in the lock file and exit.\n");
     fprintf(stderr, "       -h              Display help menu and exit.\n");
     fprintf(stderr, "       -k              Send SIGTERM to the PID in the lock file and exit.\n");
-    fprintf(stderr, "       -l              Remove the lock file and exit.\n");
+    fprintf(stderr, "       -l              Remove the lock file initially ignoring errors.\n");
     fprintf(stderr, "       -p              Generate PPS output.\n");
     fprintf(stderr, "       -r              Reset device initially.\n");
     fprintf(stderr, "       -s              Set time of day when possible.\n");
@@ -297,8 +297,18 @@ int main(int argc, char ** argv)
     strcpy(path, path_prefix);
     strcat(path, program);
     strcat(path, PATH_SUFFIX);
-    LOG("0 PATH \"%s\"", path);
+    LOG("PATH \"%s\".", path);
     assert(strlen(path) == (limit - 1));
+
+    if (unlock) {
+
+        /*
+         * Remove the lock file.
+         */
+
+        LOG("UNLOCK.");
+        (void)diminuto_lock_unlock(path);
+    }
 
     if (terminate) {
 
@@ -309,7 +319,7 @@ int main(int argc, char ** argv)
 
         pid = diminuto_lock_check(path);
         if (pid < 0) { return 2; }
-        LOG("0 KILL %d", pid);
+        LOG("TERMINATE %d.", pid);
         rc = kill(pid, SIGTERM);
         if (rc < 0) {
             perror("kill");
@@ -326,22 +336,12 @@ int main(int argc, char ** argv)
 
         pid = diminuto_lock_check(path);
         if (pid < 0) { return 2; }
-        LOG("0 HANGUP %d", pid);
+        LOG("HANGUP %d.", pid);
         rc = kill(pid, SIGHUP);
         if (rc < 0) {
             perror("kill");
             return 2;
         }
-        return 0;
-
-    } else if (unlock) {
-
-        /*
-         * Remove the lock file and then exit.
-         */
-
-        rc = diminuto_lock_unlock(path);
-        if (rc < 0) { return 2; }
         return 0;
 
     } else if (background) {
@@ -351,6 +351,7 @@ int main(int argc, char ** argv)
          * process identifier will be left in /var/lock.
          */
 
+        LOG("DAEMONIZE.");
         rc = diminuto_daemon(program, path);
         if (rc < 0) { return 2; }
 
@@ -360,6 +361,7 @@ int main(int argc, char ** argv)
          * Create a lock file containing our PID.
          */
 
+        LOG("LOCK.");
         rc = diminuto_lock_lock(path);
         if (rc < 0) { return 2; }
 
@@ -377,7 +379,7 @@ int main(int argc, char ** argv)
 
     if (unexport) {
 
-        LOG("0 UNEXPORTING.");
+        LOG("UNEXPORT.");
 
         if (reset) {
             (void)diminuto_pin_unexport(pin_out_p1);
@@ -391,7 +393,7 @@ int main(int argc, char ** argv)
 
     }
 
-    LOG("0 EXPORTING.");
+    LOG("EXPORT.");
 
     if (reset) {
         pin_out_p1_fp = diminuto_pin_output(pin_out_p1);
@@ -420,7 +422,7 @@ int main(int argc, char ** argv)
 
     if (reset) {
 
-        LOG("0 RESETTING.");
+        LOG("RESET.");
 
         ticks_delay = ticks_frequency / HERTZ_DELAY;
 
@@ -442,7 +444,7 @@ int main(int argc, char ** argv)
     ** Initialize state.
     */
 
-    LOG("0 INITIALIZING.");
+    LOG("INITIALIZE.");
 
     if (set) {
         tzset();
@@ -509,7 +511,7 @@ int main(int argc, char ** argv)
             continue;
         }
 
-        if (verbose) { LOG("1 SIGALRM."); }
+        if (verbose) { LOG("SIGALRM."); }
 
         /*
         ** Determine T input pin state.
@@ -543,7 +545,7 @@ int main(int argc, char ** argv)
             }
             risings += 1;
             milliseconds_pulse = milliseconds_cycle;
-            LOG("3 RISING %dms.", milliseconds_pulse);
+            LOG("RISING %dms.", milliseconds_pulse);
             break;
 
         case DIMINUTO_CUE_EDGE_HIGH:
@@ -557,7 +559,7 @@ int main(int argc, char ** argv)
             }
             fallings += 1;
             milliseconds_pulse += milliseconds_cycle;
-            LOG("3 FALLING %dms.", milliseconds_pulse);
+            LOG("FALLING %dms.", milliseconds_pulse);
             break;
 
         default:
@@ -615,7 +617,7 @@ int main(int argc, char ** argv)
         assert((0 <= state_before) && (state_before < countof(STATE)));
         assert((0 <= state_after) && (state_after < countof(STATE)));
 
-        LOG("6 PARSE %s %s %s %d %d %d 0x%llx.", STATE[state_before], TOKEN[token], STATE[state_after], field, length, leap, buffer);
+        LOG("PARSE %s %s %s %d %d %d 0x%llx.", STATE[state_before], TOKEN[token], STATE[state_after], field, length, leap, buffer);
 
         /*
          * Detect an error that causes the state machine to return
@@ -662,7 +664,7 @@ int main(int argc, char ** argv)
                 rc = diminuto_time_zulu(ticks_now, &year, &month, &day, &hour, &minute, &second, &fraction);
                 assert(rc >= 0);
 
-                DIMINUTO_LOG_NOTICE("%s: now time=%04d-%02d-%02dT%02d:%02d:%02d.%09llu+00:00.\n",
+                DIMINUTO_LOG_NOTICE("%s: now zulu=%04d-%02d-%02dT%02d:%02d:%02d.%09llu.\n",
                     program,
                     year, month, day,
                     hour, minute, second,
@@ -687,7 +689,7 @@ int main(int argc, char ** argv)
             
             obelisk_extract(&frame, buffer);
 
-            LOG("7 FRAME 0x%016lld %d %d / %d %d %d T %d %d : %d %d - %d %d %d %d %d.",
+            LOG("FRAME 0x%016lld %d %d / %d %d %d T %d %d : %d %d - %d %d %d %d %d.",
                  buffer,
                  frame.year10, frame.year1,
                  frame.day100, frame.day10, frame.day1,
@@ -711,6 +713,10 @@ int main(int argc, char ** argv)
                 if (acquired) {
                     acquired = 0;
                     DIMINUTO_LOG_NOTICE("%s: lost rc=%d.\n", program, rc);
+                } else if (!synchronized) {
+                    DIMINUTO_LOG_NOTICE("%s: error rc=%d.\n", program, rc);
+                } else {
+                    /* Dothing. */
                 }
 
             } else {
@@ -721,30 +727,48 @@ int main(int argc, char ** argv)
                 }
 
                 /*
-                 * It took me a moment during testing to realize that this
-                 * value will always be 59 seconds; at this point in the frame,
-                 * we are always in the last second of the current minute. This
-                 * is just for display purposes; we'll reset this to zero if we
-                 * actually use it.
+                 * Seconds will always be 59 at this point in the frame
+                 * unless a leap second has been inserted.
                  */
 
-                time.tm_sec = 59;
+                time.tm_sec = leap ? 60 : 59;
 
                 assert((0 <= time.tm_wday) && (time.tm_wday < countof(DAY)));
-                LOG("7 TIME %d %04d-%02d-%02dT%02d:%02d:%02dZ %04d/%03d %s %s.",
-                     rc,
-                     time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
-                     time.tm_hour, time.tm_min, time.tm_sec,
-                     time.tm_year + 1900, time.tm_yday + 1,
-                     DAY[time.tm_wday],
-                     time.tm_isdst ? "DST" : "!DST"
+                LOG("TIME %d %04d-%02d-%02dT%02d:%02d:%02dZ %04d/%03d %s %s.",
+                    rc,
+                    time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
+                    time.tm_hour, time.tm_min, time.tm_sec,
+                    time.tm_year + 1900, time.tm_yday + 1,
+                    DAY[time.tm_wday],
+                    time.tm_isdst ? "DST" : "!DST"
                 );
+
+                if (!synchronized || (time.tm_min == 59)) {
+                    DIMINUTO_LOG_INFORMATION("%s: time zulu=%04d-%02d-%02dT%02d:%02d:%02d julian=%04d/%03d day=%s dst=%c dUT1=%c%d lyi=%d lsw=%d.",
+                        program,
+                        time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
+                        time.tm_hour, time.tm_min, time.tm_sec,
+                        time.tm_year + 1900, time.tm_yday + 1,
+                        DAY[time.tm_wday],
+                        (frame.dst == OBELISK_DST_OFF) ? '-'
+                            : (frame.dst == OBELISK_DST_ENDS) ? '<'
+                            : (frame.dst == OBELISK_DST_BEGINS) ? '>'
+                            : (frame.dst == OBELISK_DST_ON) ? '+'
+                            : '?',
+                        (frame.dutonesign == OBELISK_SIGN_NEGATIVE) ? '-'
+                            : (frame.dutonesign == OBELISK_SIGN_POSITIVE) ? '+'
+                            : '?',
+                        frame.dutone1,
+                        frame.lyi,
+                        frame.lsw
+                    );
+                }
 
                 /*
                  * Derive the seconds since the POSIX Epoch that our time
                  * code represents. This will be time at the beginning of
                  * the next time frame, which will be at zero seconds past
-                 * that minute (which we'll fix below).
+                 * that subsequent minute (which we'll fix below).
                  */
 
                 time.tm_sec = 0;
@@ -781,7 +805,7 @@ int main(int argc, char ** argv)
 
                 value.tv_usec = (2 * milliseconds_cycle) * 1000;
 
-                LOG("7 EPOCH %ld.%06ld.", value.tv_sec, value.tv_usec);
+                LOG("EPOCH %ld.%06ld.", value.tv_sec, value.tv_usec);
 
                 armed = !0;
 
@@ -806,7 +830,7 @@ int main(int argc, char ** argv)
                         /* Do nothing. */
                     } else {
                         synchronized = 0;
-                        LOG("8 READY %02d:%02d:00J", hour, minute);
+                        LOG("READY %02d:%02d:00J", hour, minute);
                     }
 
                 }
@@ -821,7 +845,7 @@ int main(int argc, char ** argv)
     ** Release resources.
     */
 
-    LOG("9 RELEASING.");
+    LOG("RELEASE.");
 
     pin_in_t_fp = diminuto_pin_unused(pin_in_t_fp, pin_in_t);
     assert(pin_in_t_fp == (FILE *)0);

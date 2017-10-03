@@ -18,7 +18,7 @@ PIDFILE1=/var/run/wwvbtool.pid
 DAEMON2=/home/pi/bin/hourglass.py
 PIDFILE2=/var/run/hourglass.pid
 
-WWVBTOOL_OPTS="-u -r -s -p -b"
+WWVBTOOL_OPTS="-l -u -r -s -p -b"
 
 test -x $DAEMON1 || exit 5
 test -x $DAEMON2 || exit 5

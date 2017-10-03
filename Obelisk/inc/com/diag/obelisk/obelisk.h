@@ -182,7 +182,7 @@ typedef enum ObeliskMask {
  */
 typedef enum ObeliskSign {
     OBELISK_SIGN_NEGATIVE   = 0x2,  /* 0b010 */
-    OBELISK_SIGN_POSITIVE   = 0x3,  /* 0b101 */
+    OBELISK_SIGN_POSITIVE   = 0x5,  /* 0b101 */
 } obelisk_sign_t;
 
 /**

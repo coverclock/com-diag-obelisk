@@ -50,7 +50,7 @@ and the Diminuto library. Both Obelisk and Diminuto are written in C.
            -g              Send SIGHUP to the PID in the lock file and exit.
            -h              Display help menu and exit.
            -k              Send SIGTERM to the PID in the lock file and exit.
-           -l              Remove the lock file and exit.
+           -l              Remove the lock file initially ignoring errors.
            -p              Generate PPS output.
            -r              Reset device initially.
            -s              Set time of day when possible.
@@ -58,11 +58,21 @@ and the Diminuto library. Both Obelisk and Diminuto are written in C.
            -v              Display verbose output.
 ## Notes
 
+    sudo wwvbtool -d -r -s -u -l
+
+    sudo kill -HUP `cat /var/run/wwvbtool`
+
+    sudo kill -TERM `cat /var/run/wwvbtool`
+
+    sudo wwvbtool -b -r -s -u -l
+
+    sudo wwvbtool -g
+
+    sudo wwvbtool -k
+
     systemctl enable timeservice
 
-    sudo wwvbtool -r -s -b -u
+    service timeservice start
 
-    sudo kill -HUP `cat /var/lock/wwvbtool`
-
-    sudo kill -TERM `cat /var/lock/wwvbtool`
+    service timeservice stop
 

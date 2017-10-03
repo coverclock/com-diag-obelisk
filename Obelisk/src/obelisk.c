@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "com/diag/obelisk/obelisk.h"
+#include "obelisk.h"
 
 #define countof(_ARRAY_) (sizeof(_ARRAY_) / sizeof(_ARRAY_[0]))
 
@@ -257,6 +258,7 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
         break;
 
     case OBELISK_ACTION_CLEAR:
+        *leapp = 0;
         *bufferp = 0;
         *fieldp = 0;
         *lengthp = LENGTH[0];
@@ -321,7 +323,29 @@ static const int8_t DAYS[2][12] = {
     {  31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 },    /* LYI */
 };
 
-static int zeller(int year, int month, int day)
+/*
+ * Exposed for unit testing.
+ */
+int obelisk_julian2gregorian(int julian, int lyi, int * monthp, int * dayp) {
+    int rc = -1;
+
+    for (int month = 0; month < countof(DAYS[0]); ++month) {
+        if (julian <= DAYS[lyi][month]) {
+            *monthp = month + 1;
+            *dayp = julian;
+            rc = 0;
+            break;
+        }
+        julian -= DAYS[lyi][month];
+    }
+
+    return rc;
+}
+
+/*
+ * Exposed for unit testing.
+ */
+int obelisk_zeller(int year, int month, int day)
 {
     int ye;
     int a;
@@ -333,6 +357,10 @@ static int zeller(int year, int month, int day)
      * Reference: C. Overclock, Date::weekday, Date.cpp,
      * https://github.com/coverclock/com-diag-grandote,
      * 2017-09-27
+     *
+     * Reference: Wikipedia, "Zeller's congruence",
+     * https://en.wikipedia.org/wiki/Zeller%27s_congruence,
+     * 2017-08-31
      */
     ye = ((year - 1) % 400) + 1;
     a = (14 - month) / 12;
@@ -346,6 +374,7 @@ static int zeller(int year, int month, int day)
 int obelisk_validate(struct tm * timep, const obelisk_frame_t * framep)
 {
     int rc = -1;
+    int days = -1;
 
     timep->tm_sec = 0;
     timep->tm_min = (framep->minutes10 * 10) + framep->minutes1;
@@ -356,47 +385,38 @@ int obelisk_validate(struct tm * timep, const obelisk_frame_t * framep)
     timep->tm_gmtoff = 0;
     timep->tm_zone = "UTC";
 
-    timep->tm_mday  = (framep->day100 * 100) + (framep->day10 * 10) + framep->day1;
-    timep->tm_yday = timep->tm_mday - 1;
+    days  = (framep->day100 * 100) + (framep->day10 * 10) + framep->day1;
+    timep->tm_yday = days - 1;
+    
+    rc = obelisk_julian2gregorian(days, framep->lyi, &(timep->tm_mon), &(timep->tm_mday));
 
-    for (timep->tm_mon = 0; timep->tm_mon < countof(DAYS[0]); ++timep->tm_mon) {
-        if (timep->tm_mday <= DAYS[framep->lyi][timep->tm_mon]) { break; }
-        timep->tm_mday -= DAYS[framep->lyi][timep->tm_mon];
-    }
+    timep->tm_wday = obelisk_zeller(timep->tm_year + 1900, timep->tm_mon, timep->tm_mday);
 
-    timep->tm_wday = zeller(timep->tm_year + 1900, timep->tm_mon + 1, timep->tm_mday);
+    timep->tm_mon -= 1;
+
+    days = framep->lyi ? 365 : 364;
 
     /*
+     * Reference: ctime(3)
+     *
      * Reference: /usr/include/time.h
      */
-    if (timep->tm_min < 0) {
+    if (rc < 0) {
+        /* Do nothing. */
+    } else if (!((0 <= timep->tm_min) && (timep->tm_min <= 59))) {
         rc = -2;
-    } else if (timep->tm_min > 59) {
+    } else if (!((0 <= timep->tm_hour) && (timep->tm_hour <= 23))) {
         rc = -3;
-    } else if (timep->tm_hour < 0) {
+    } else if (!((0 <= timep->tm_mon) && (timep->tm_mon <= 11))) {
         rc = -4;
-    } else if (timep->tm_hour > 23) {
+    } else if (!((1 <= timep->tm_mday) && (timep->tm_mday <= DAYS[framep->lyi][timep->tm_mon]))) {
         rc = -5;
-    } else if (timep->tm_mday < 1) {
+    } else if (!((117 <= timep->tm_year) && (timep->tm_year <= 216))) {
         rc = -6;
-    } else if (timep->tm_mday > 31) {
+    } else if (!((0 <= timep->tm_wday) && (timep->tm_wday <= 6))) {
         rc = -7;
-    } else if (timep->tm_mon < 0) {
+    } else if (!((0<= timep->tm_yday) && (timep->tm_yday <= days))) {
         rc = -8;
-    } else if (timep->tm_mon > 11) {
-        rc = -9;
-    } else if (timep->tm_year < 117) {
-        rc = -10;
-    } else if (timep->tm_year > 216) {
-        rc = -11;
-    } else if (timep->tm_wday < 0) {
-        rc = -12;
-    } else if (timep->tm_wday > 6) {
-        rc = -13;
-    } else if (timep->tm_yday < 0) {
-        rc = -14;
-    } else if (timep->tm_yday > 365) {
-        rc = -15;
     } else {
         rc = 0;
     }
