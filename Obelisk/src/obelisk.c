@@ -329,14 +329,16 @@ static const int8_t DAYS[2][12] = {
 int obelisk_julian2gregorian(int julian, int lyi, int * monthp, int * dayp) {
     int rc = -1;
 
-    for (int month = 0; month < countof(DAYS[0]); ++month) {
-        if (julian <= DAYS[lyi][month]) {
-            *monthp = month + 1;
-            *dayp = julian;
-            rc = 0;
-            break;
+    if (julian > 0) {
+        for (int month = 0; month < countof(DAYS[0]); ++month) {
+            if (julian <= DAYS[lyi][month]) {
+                *monthp = month + 1;
+                *dayp = julian;
+                rc = 0;
+                break;
+            }
+            julian -= DAYS[lyi][month];
         }
-        julian -= DAYS[lyi][month];
     }
 
     return rc;
