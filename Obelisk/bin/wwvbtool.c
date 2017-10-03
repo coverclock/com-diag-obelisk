@@ -743,6 +743,12 @@ int main(int argc, char ** argv)
                     time.tm_isdst ? "DST" : "!DST"
                 );
 
+                /*
+                 * Logging the received one per hour doesn't overrun
+                 * the logging system. And doing so at the 59th minute
+                 * captures the leap second at :59:60 if it occurs.
+                 */
+
                 if (!synchronized || (time.tm_min == 59)) {
                     DIMINUTO_LOG_INFORMATION("%s: time zulu=%04d-%02d-%02dT%02d:%02d:%02d julian=%04d/%03d day=%s dst=%c dUT1=%c%d lyi=%d lsw=%d.",
                         program,
