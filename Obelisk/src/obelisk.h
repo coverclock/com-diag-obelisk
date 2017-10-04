@@ -11,6 +11,48 @@
  */
 
 /**
+ * These are the bit offsets of the fields in the IRIQ timecode buffer.
+ */
+typedef enum ObeliskOffset {
+     OBELISK_OFFSET_MINUTES10   = 56,
+     OBELISK_OFFSET_MINUTES1    = 51,
+     OBELISK_OFFSET_HOURS10     = 46,
+     OBELISK_OFFSET_HOURS1      = 41,
+     OBELISK_OFFSET_DAY100      = 36,
+     OBELISK_OFFSET_DAY10       = 31,
+     OBELISK_OFFSET_DAY1        = 26,
+     OBELISK_OFFSET_DUTONESIGN  = 21,
+     OBELISK_OFFSET_DUTONE1     = 16,
+     OBELISK_OFFSET_YEAR10      = 11,
+     OBELISK_OFFSET_YEAR1       = 6,
+     OBELISK_OFFSET_LYI         = 4,
+     OBELISK_OFFSET_LSW         = 3,
+     OBELISK_OFFSET_DST         = 1,
+} obelisk_offset_t;
+
+/**
+ * These are the bit masks of the fields in the IRIQ timecode buffer.
+ */
+typedef enum ObeliskMask {
+    OBELISK_MASK_MINUTES10    = 0x7,
+    OBELISK_MASK_MINUTES1     = 0xf,
+    OBELISK_MASK_HOURS10      = 0x3,
+    OBELISK_MASK_HOURS1       = 0xf,
+    OBELISK_MASK_DAY100       = 0x3,
+    OBELISK_MASK_DAY10        = 0xf,
+    OBELISK_MASK_DAY1         = 0xf,
+    OBELISK_MASK_DUTONESIGN   = 0x7,
+    OBELISK_MASK_DUTONE1      = 0xf,
+    OBELISK_MASK_YEAR10       = 0xf,
+    OBELISK_MASK_YEAR1        = 0xf,
+    OBELISK_MASK_LYI          = 0x1,
+    OBELISK_MASK_LSW          = 0x1,
+    OBELISK_MASK_DST          = 0x3,
+} obelisk_mask_t;
+
+#define OBELISK_EXTRACT(_BUFFER_, _FIELD_) ((_BUFFER_ >> OBELISK_OFFSET_ ## _FIELD_) & OBELISK_MASK_ ## _FIELD_)
+
+/**
  * Convert Julian day of the year [1..365 or 366] to a Gregorian month
  * [1..12] and a day of the month [1..28, 29, 30, or 31]. If the function
  * fails (because the Julian day is out of range), the variables passed by

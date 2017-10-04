@@ -693,7 +693,7 @@ int main(int argc, char ** argv)
             
             obelisk_extract(&frame, buffer);
 
-            LOG("FRAME 0x%016lld %d %d / %d %d %d T %d %d : %d %d - %d %d %d %d %d.",
+            LOG("FRAME 0x%016lld %d %d %d %d %d %d %d %d %d %d %d %d %d %d.",
                  buffer,
                  frame.year10, frame.year1,
                  frame.day100, frame.day10, frame.day1,
@@ -761,7 +761,7 @@ int main(int argc, char ** argv)
                  */
 
                 if (!synchronized || (time.tm_min == 59)) {
-                    DIMINUTO_LOG_INFORMATION("%s: time zulu=%04d-%02d-%02dT%02d:%02d:%02d julian=%04d/%03d day=%s dst=%c dUT1=%c%d lyi=%d lsw=%d.",
+                    DIMINUTO_LOG_INFORMATION("%s: time zulu=%04d-%02d-%02dT%02d:%02d:%02d julian=%04d/%03d day=%s dst=%c dUT1=%c0.%d lyi=%d lsw=%d.",
                         program,
                         time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
                         time.tm_hour, time.tm_min, time.tm_sec,

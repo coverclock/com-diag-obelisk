@@ -18,8 +18,8 @@
 #define countof(_ARRAY_) (sizeof(_ARRAY_) / sizeof(_ARRAY_[0]))
 
 /**
- * Reference: MAS, "MAS6180C AM Receiver IC", DA6180C.001, Micro Analog Systems,
- * 2014-09-17, p. 7, t. 5
+ * Reference:   MAS, "MAS6180C AM Receiver IC", DA6180C.001, Micro Analog Systems,
+ *              2014-09-17, p. 7, t. 5
  */
 static const struct {
     int16_t minimum;
@@ -50,8 +50,8 @@ obelisk_token_t obelisk_tokenize(int milliseconds_pulse)
 }
 
 /**
- * Reference: Wikipedia, "WWVB", https://en.wikipedia.org/wiki/WWVB,
- * 2017-05-02
+ * Reference:   Wikipedia, "WWVB", https://en.wikipedia.org/wiki/WWVB,
+ *              2017-05-02
  */
 static const int8_t LENGTH[] = {
     8,  /* minutes10, minutes1 */
@@ -370,13 +370,13 @@ obelisk_zeller_t obelisk_zeller(int year, int month, int day)
     int d = -1;
 
     /*
-     * Reference: C. Overclock, Date::weekday, Date.cpp,
-     * https://github.com/coverclock/com-diag-grandote,
-     * 2017-09-27
+     * Reference:   C. Overclock, Date::weekday, Date.cpp,
+     *              https://github.com/coverclock/com-diag-grandote,
+     *              2017-09-27
      *
-     * Reference: Wikipedia, "Zeller's congruence",
-     * https://en.wikipedia.org/wiki/Zeller%27s_congruence,
-     * 2017-08-31
+     * Reference:   Wikipedia, "Zeller's congruence",
+     *              https://en.wikipedia.org/wiki/Zeller%27s_congruence,
+     *              2017-08-31
      */
     ye = ((year - 1) % 400) + 1;
     a = (14 - month) / 12;
@@ -464,9 +464,9 @@ int obelisk_revalidate(const struct tm * timep)
     days = leap ? 366 : 365;
 
     /*
-     * Reference: ctime(3)
+     * Reference:   ctime(3)
      *
-     * Reference: /usr/include/time.h
+     * Reference:   /usr/include/time.h
      */
     if (!((0 <= timep->tm_sec) && (timep->tm_sec <= 60))) {
         rc = -14;

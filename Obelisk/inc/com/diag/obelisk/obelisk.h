@@ -96,6 +96,11 @@ extern obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t toke
 
 /**
  * This structure describes an IRIQ timecode frame as used by WWVB.
+ * N.B. bit fields in C are not portable! The order of the bit fields
+ * are not guaranteed by the standard. Hence, we use this struct just
+ * to insure the bit fields are the right length, but we cannot make
+ * any assumptions about order. This means you cannot, for example, use
+ * a union of an obelisk_frame_t and an obelisk_buffer_t.
  */
 typedef struct ObeliskFrame {           /* TIME       */    /* SPACE    */
     obelisk_buffer_t _FILLER    :  4;                       /* 63 .. 60 */
@@ -133,48 +138,6 @@ typedef struct ObeliskFrame {           /* TIME       */    /* SPACE    */
 #undef _FILLER
 #undef _UNUSED
 #undef _MARKER
-
-/**
- * These are the bit offsets of the fields in the IRIQ timecode buffer.
- */
-typedef enum ObeliskOffset {
-     OBELISK_OFFSET_MINUTES10   = 56,
-     OBELISK_OFFSET_MINUTES1    = 51,
-     OBELISK_OFFSET_HOURS10     = 46,
-     OBELISK_OFFSET_HOURS1      = 41,
-     OBELISK_OFFSET_DAY100      = 36,
-     OBELISK_OFFSET_DAY10       = 31,
-     OBELISK_OFFSET_DAY1        = 26,
-     OBELISK_OFFSET_DUTONESIGN  = 21,
-     OBELISK_OFFSET_DUTONE1     = 16,
-     OBELISK_OFFSET_YEAR10      = 11,
-     OBELISK_OFFSET_YEAR1       = 6,
-     OBELISK_OFFSET_LYI         = 4,
-     OBELISK_OFFSET_LSW         = 3,
-     OBELISK_OFFSET_DST         = 1,
-} obelisk_offset_t;
-
-/**
- * These are the bit masks of the fields in the IRIQ timecode buffer.
- */
-typedef enum ObeliskMask {
-    OBELISK_MASK_MINUTES10    = 0x7,
-    OBELISK_MASK_MINUTES1     = 0xf,
-    OBELISK_MASK_HOURS10      = 0x3,
-    OBELISK_MASK_HOURS1       = 0xf,
-    OBELISK_MASK_DAY100       = 0x3,
-    OBELISK_MASK_DAY10        = 0xf,
-    OBELISK_MASK_DAY1         = 0xf,
-    OBELISK_MASK_DUTONESIGN   = 0x7,
-    OBELISK_MASK_DUTONE1      = 0xf,
-    OBELISK_MASK_YEAR10       = 0xf,
-    OBELISK_MASK_YEAR1        = 0xf,
-    OBELISK_MASK_LYI          = 0x1,
-    OBELISK_MASK_LSW          = 0x1,
-    OBELISK_MASK_DST          = 0x3,
-} obelisk_mask_t;
-
-#define OBELISK_EXTRACT(_BUFFER_, _FIELD_) ((_BUFFER_ >> OBELISK_OFFSET_ ## _FIELD_) & OBELISK_MASK_ ## _FIELD_)
 
 /**
  * These are the values that the dUT1 sign field in the IRIQ timecode frame
