@@ -46,8 +46,6 @@ obelisk_token_t obelisk_tokenize(int milliseconds_pulse)
         }
     }
 
-    assert((OBELISK_TOKEN_ZERO <= token) && (token <= OBELISK_TOKEN_INVALID));
-
     return token;
 }
 
@@ -347,11 +345,24 @@ int obelisk_julian2gregorian(int julian, int lyi, int * monthp, int * dayp) {
 }
 
 /*
+ * This exists just to avoid an enum cast.
+ */
+static const obelisk_zeller_t ZELLER[] = {
+    OBELISK_ZELLER_SUNDAY,
+    OBELISK_ZELLER_MONDAY,
+    OBELISK_ZELLER_TUESDAY,
+    OBELISK_ZELLER_WEDNESDAY,
+    OBELISK_ZELLER_THURSDAY,
+    OBELISK_ZELLER_FRIDAY,
+    OBELISK_ZELLER_SATURDAY,
+};
+
+/*
  * Exposed for unit testing.
  */
 obelisk_zeller_t obelisk_zeller(int year, int month, int day)
 {
-    int result = -1;
+    int index = -1;
     int ye = -1;
     int a = -1;
     int y = -1;
@@ -373,14 +384,48 @@ obelisk_zeller_t obelisk_zeller(int year, int month, int day)
     m = month + (12 * a) - 2;
     d = day + y + (y / 4) - (y / 100) + (y / 400) + ((31 * m) / 12);
 
-    result = (((((d % 7) + 6) % 7) + 1) % 7);
+    index = (((((d % 7) + 6) % 7) + 1) % 7);
+    assert((0 <= index) && (index < countof(ZELLER)));
 
-    assert((OBELISK_ZELLER_SUNDAY <= result) && (result <= OBELISK_ZELLER_SATURDAY));
-
-    return (obelisk_zeller_t)result;
+    return ZELLER[index];
 }
 
-int obelisk_validate(struct tm * timep, const obelisk_frame_t * framep)
+int obelisk_validate(const obelisk_frame_t * framep)
+{
+    int rc = 0;
+
+    if (!((0 <= framep->minutes10) && (framep->minutes10 <= 5))) {
+        rc = -2;
+    } else if (!((0 <= framep->minutes1) && (framep->minutes1 <= 9))) {
+        rc = -3;
+    } else if (!((0 <= framep->hours10) && (framep->hours10 <= 2))) {
+        rc = -3;
+    } else if (!((0 <= framep->hours1) && (framep->hours1 <= 9))) {
+        rc = -5;
+    } else if (!((0 <= framep->day100) && (framep->day100 <= 3))) {
+        rc = -6;
+    } else if (!((0 <= framep->day10) && (framep->day10 <= 9))) {
+        rc = -7;
+    } else if (!((0 <= framep->day1) && (framep->day1 <= 9))) {
+        rc = -8;
+    } else if (!((framep->dutonesign == OBELISK_SIGN_NEGATIVE) || (framep->dutonesign == OBELISK_SIGN_POSITIVE))) {
+        rc = -9;
+    } else if (!((0 <= framep->dutone1) && (framep->dutone1 <= 9))) {
+        rc = -10;
+    } else if (!((0 <= framep->year10) && (framep->year10 <= 9))) {
+        rc = -11;
+    } else if (!((0 <= framep->year1) && (framep->year1 <= 9))) {
+        rc = -12;
+    } else if (!((framep->dst == OBELISK_DST_OFF) || (framep->dst == OBELISK_DST_ENDS) || (framep->dst == OBELISK_DST_BEGINS) || (framep->dst == OBELISK_DST_ON))) {
+        rc = -13;
+    } else {
+        /* Do nothing. */
+    }
+
+    return rc;
+}
+
+int obelisk_decode(struct tm * timep, const obelisk_frame_t * framep)
 {
     int rc = -1;
     int days = -1;
@@ -395,40 +440,55 @@ int obelisk_validate(struct tm * timep, const obelisk_frame_t * framep)
     timep->tm_zone = "UTC";
 
     days  = (framep->day100 * 100) + (framep->day10 * 10) + framep->day1;
-    timep->tm_yday = days - 1;
     
     rc = obelisk_julian2gregorian(days, framep->lyi, &(timep->tm_mon), &(timep->tm_mday));
 
-    timep->tm_wday = obelisk_zeller(timep->tm_year + 1900, timep->tm_mon, timep->tm_mday);
+    timep->tm_yday = days - 1; /* tm_yday is zero based. */
 
-    timep->tm_mon -= 1;
+    timep->tm_wday = obelisk_zeller(timep->tm_year + 1900, timep->tm_mon, timep->tm_mday); /* tm_wday is zero based but so is zeller(). */
 
-    days = framep->lyi ? 365 : 364;
+    timep->tm_mon -= 1; /* tm_mon is zero based. */
+
+    return rc;
+}
+
+int obelisk_revalidate(const struct tm * timep)
+{
+    int rc = 0;
+    int year = -1;
+    int leap = -1;
+    int days = -1;
+
+    year = timep->tm_year + 1900;
+    leap = ((year % 4) == 0) && ((year % 400) != 0);
+    days = leap ? 366 : 365;
 
     /*
      * Reference: ctime(3)
      *
      * Reference: /usr/include/time.h
      */
-    if (rc < 0) {
-        /* Do nothing. */
+    if (!((0 <= timep->tm_sec) && (timep->tm_sec <= 60))) {
+        rc = -14;
     } else if (!((0 <= timep->tm_min) && (timep->tm_min <= 59))) {
-        rc = -2;
+        rc = -15;
     } else if (!((0 <= timep->tm_hour) && (timep->tm_hour <= 23))) {
-        rc = -3;
+        rc = -16;
     } else if (!((0 <= timep->tm_mon) && (timep->tm_mon <= 11))) {
-        rc = -4;
-    } else if (!((1 <= timep->tm_mday) && (timep->tm_mday <= DAYS[framep->lyi][timep->tm_mon]))) {
-        rc = -5;
+        rc = -17;
+    } else if (!((1 <= timep->tm_mday) && (timep->tm_mday <= DAYS[leap][timep->tm_mon]))) {
+        rc = -18;
     } else if (!((117 <= timep->tm_year) && (timep->tm_year <= 216))) {
-        rc = -6;
+        rc = -19;
     } else if (!((0 <= timep->tm_wday) && (timep->tm_wday <= 6))) {
-        rc = -7;
-    } else if (!((0<= timep->tm_yday) && (timep->tm_yday <= days))) {
-        rc = -8;
+        rc = -20;
+    } else if (!((0 <= timep->tm_yday) && (timep->tm_yday <= days))) {
+        rc = -21;
+    } else if (!((-1 <= timep->tm_isdst) && (timep->tm_isdst <= 1))) {
+        rc = -22;
     } else {
         rc = 0;
     }
 
-    return rc;
+    return 0;
 }

@@ -606,6 +606,7 @@ int main(int argc, char ** argv)
         */
 
         token = obelisk_tokenize(milliseconds_pulse);
+        assert((OBELISK_TOKEN_ZERO <= token) && (token <= OBELISK_TOKEN_INVALID));
         assert((0 <= token) && (token < countof(TOKEN)));
 
         /*
@@ -613,8 +614,11 @@ int main(int argc, char ** argv)
         */
 
         state_before = state_after;
-        state_after = obelisk_parse(state_before, token, &field, &length, &leap, &buffer);
+        assert((OBELISK_STATE_START <= state_before) && (state_before <= OBELISK_STATE_END));
         assert((0 <= state_before) && (state_before < countof(STATE)));
+
+        state_after = obelisk_parse(state_before, token, &field, &length, &leap, &buffer);
+        assert((OBELISK_STATE_START <= state_after) && (state_after <= OBELISK_STATE_END));
         assert((0 <= state_after) && (state_after < countof(STATE)));
 
         LOG("PARSE %s %s %s %d %d %d 0x%llx.", STATE[state_before], TOKEN[token], STATE[state_after], field, length, leap, buffer);
@@ -676,7 +680,7 @@ int main(int argc, char ** argv)
         }
 
         /*
-         * Once we have a complete frame, decode it.
+         * Once we have a complete frame, extract it from the buffer.
          */
 
         armed = 0;
@@ -703,18 +707,25 @@ int main(int argc, char ** argv)
             );
 
             /*
-             * Extract the binary coded digits from the frame and compute
-             * a date and time. Validate the result.
+             * Decode the binary coded digits from the frame and compute
+             * a POSIX-compatible date and time. Validate the result.
              */
 
-            rc = obelisk_validate(&time, &frame);
+            rc = obelisk_validate(&frame);
+            if (rc >= 0) {
+                rc = obelisk_decode(&time, &frame);
+                if (rc >= 0) {
+                    rc = obelisk_revalidate(&time);
+                }
+            }
+
             if (rc < 0) {
 
                 if (acquired) {
                     acquired = 0;
                     DIMINUTO_LOG_NOTICE("%s: lost rc=%d.\n", program, rc);
                 } else if (!synchronized) {
-                    DIMINUTO_LOG_NOTICE("%s: error rc=%d.\n", program, rc);
+                    DIMINUTO_LOG_NOTICE("%s: corrupt rc=%d.\n", program, rc);
                 } else {
                     /* Dothing. */
                 }
@@ -853,15 +864,17 @@ int main(int argc, char ** argv)
 
     LOG("RELEASE.");
 
-    pin_in_t_fp = diminuto_pin_unused(pin_in_t_fp, pin_in_t);
-    assert(pin_in_t_fp == (FILE *)0);
+    if (pin_in_t_fp != (FILE *)0) {
+        pin_in_t_fp = diminuto_pin_unused(pin_in_t_fp, pin_in_t);
+        assert(pin_in_t_fp == (FILE *)0);
+    }
 
-    if (reset) {
+    if (pin_out_p1_fp != (FILE *)0) {
         pin_out_p1_fp = diminuto_pin_unused(pin_out_p1_fp, pin_out_p1);
         assert(pin_out_p1_fp == (FILE *)0);
     }
 
-    if (pps) {
+    if (pin_out_pps_fp != (FILE *)0) {
         pin_out_pps_fp = diminuto_pin_unused(pin_out_pps_fp, pin_out_pps);
         assert(pin_out_pps_fp == (FILE *)0);
     }

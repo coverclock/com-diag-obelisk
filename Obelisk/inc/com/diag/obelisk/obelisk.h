@@ -199,18 +199,33 @@ typedef enum ObeliskDst {
 /**
  * Extract the individual IRIQ timecode fields from the buffer and store
  * them in a frame.
- * @param framep points to the output frame.
- * @param buffer points to the input buffer.
+ * @param framep points to the output frame structure.
+ * @param buffer is the input buffer.
  */
 extern void obelisk_extract(obelisk_frame_t * framep, obelisk_buffer_t buffer);
 
 /**
- * Interpret and validity check the individual IRIQ timecode fields from a
- * frame and store the results in a tm structure.
- * @param timep points to the output tm structure.
- * @param framep points to the input frame.
- * @return 0 if the data is valid, <0 otherwise indicating the incorrect value.
+ * Validity check the individual fields in the frame structure. This only
+ * checks for basic sanity of the binary coded digits.
+ * @param framep points to the frame structure.
+ * @return >= 0 if the data is valid, <0 otherwise.
  */
-extern int obelisk_validate(struct tm * timep, const obelisk_frame_t * framep);
+extern int obelisk_validate(const obelisk_frame_t * framep);
+
+/**
+ * Convert the frame binary coded decimal fields into binary data in POSIX
+ * struct tm form.
+ * @param timep points to the output tm structure.
+ * @param framep points to the input frame structure.
+ * @return >= 0 if the conversion was successful, <0 otherwise.
+ */
+extern int obelisk_decode(struct tm * timep, const obelisk_frame_t * framep);
+
+/**
+ * Validity check the individual fields in the POSIX tm structure.
+ * @param timep points to the tm structure.
+ * @return >= 0 if the data is valid, <0 otherwise.
+ */
+extern int obelisk_revalidate(const struct tm * timep);
 
 #endif /*  _COM_DIAG_OBELISK_OBELISK_H_ */
