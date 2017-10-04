@@ -101,7 +101,7 @@ int main(int argc, char ** argv)
 
         CHECKPOINT("count %d\n", count);
         fflush(stdout);
-        ASSERT(count == (366 + 367) * 24 * 60 * 60 * 3);
+        ASSERT(count == (366 + 365) * 24 * 60 * 61 * 3);
 
         STATUS();
     }
