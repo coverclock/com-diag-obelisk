@@ -26,7 +26,7 @@ int main(int argc, char ** argv)
         int rc = -1;
         obelisk_frame_t frame = { 0 };
         struct tm time = { 0 };
-        int count = -1;
+        long long count = -1;
         int days = -1;
 
         TEST();
@@ -39,7 +39,7 @@ int main(int argc, char ** argv)
             for (int hours = 0; hours <= 23; ++hours) {
                 frame.hours10 = hours / 10;
                 frame.hours1 = hours % 10;
-                for (int lyi = 0; lyi <= 1; ++lyi) {
+                for (int lyi = 1; lyi >= 0; --lyi) {
                     frame.lyi = lyi;
                     days = lyi ? 366 : 365;
                     for (int day = 1; day <= days; ++day) {
@@ -93,6 +93,11 @@ int main(int argc, char ** argv)
                                                     frame.lyi, frame.lsw, frame.dst);
                                             }
                                             ASSERT(rc >= 0);
+#if !0
+                                            if ((count % 10000000) == 0) {
+                                                CHECKPOINT("%lld %02d/%03dT%02d:%02d\n", count, year, day, hours, minutes);
+                                            }
+#endif
                                             ++count;
                                         }
                                     }
@@ -104,17 +109,14 @@ int main(int argc, char ** argv)
             }
         }
 
-        CHECKPOINT("count %d\n", count);
+        CHECKPOINT("count %lld\n", count); // 16,842,240,000
 
         STATUS();
     }
 
     /*
-     * TODO: add som failing test cases.
+     * TODO: add some failing test cases.
      */
 
     EXIT();
 }
-
-
-

@@ -107,7 +107,7 @@ int main(int argc, char ** argv)
     }
 
     /*
-     * TODO: add som failing test cases.
+     * TODO: add some failing test cases.
      */
 
     EXIT();
