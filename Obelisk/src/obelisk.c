@@ -163,24 +163,12 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
 
         case OBELISK_TOKEN_ZERO:
             action = OBELISK_ACTION_ZERO;
-            if (*lengthp > 1) {
-                state = OBELISK_STATE_DATA;
-            } else if (*fieldp < (countof(LENGTH) - 1)) {
-                state = OBELISK_STATE_MARK;
-            } else {
-                state = OBELISK_STATE_END;
-            }
+            state = OBELISK_STATE_DATA;
             break;
 
         case OBELISK_TOKEN_ONE:
             action = OBELISK_ACTION_ONE;
-            if (*lengthp > 1) {
-                state = OBELISK_STATE_DATA;
-            } else if (*fieldp < (countof(LENGTH) - 1)) {
-                state = OBELISK_STATE_MARK;
-            } else {
-                state = OBELISK_STATE_END;
-            }
+            state = OBELISK_STATE_DATA;
             break;
 
         case OBELISK_TOKEN_MARKER:

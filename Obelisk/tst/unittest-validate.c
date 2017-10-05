@@ -16,6 +16,10 @@
 #include <stdio.h>
 #include <errno.h>
 
+/*
+ * Runs about 4 hours 10 minutes on the Pi 3.
+ */
+
 int main(int argc, char ** argv)
 {
     SETLOGMASK();
@@ -93,11 +97,9 @@ int main(int argc, char ** argv)
                                                     frame.lyi, frame.lsw, frame.dst);
                                             }
                                             ASSERT(rc >= 0);
-#if !0
                                             if ((count % 10000000) == 0) {
                                                 CHECKPOINT("%lld %02d/%03dT%02d:%02d\n", count, year, day, hours, minutes);
                                             }
-#endif
                                             ++count;
                                         }
                                     }
@@ -109,7 +111,10 @@ int main(int argc, char ** argv)
             }
         }
 
-        CHECKPOINT("count %lld\n", count); // 16,842,240,000
+        CHECKPOINT("count %lld\n", count);
+        ASSERT(count == (60LL * 24LL * (365LL + 366LL) * 2LL * 100LL * 2LL * 4LL));
+        // computed  16,842,240,000
+        // measured  16,842,240,000
 
         STATUS();
     }
