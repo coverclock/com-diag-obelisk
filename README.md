@@ -44,8 +44,7 @@ gcc 6.3.0
 Linux 4.9.41    
 SYM-RFT-60    
 ## Usage
-    $ wwvbtool -h
-    usage: wwvbtool [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]
+    usage: wwvbtool [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]
            -H HOUR         Set time of day at HOUR local (1).
            -L PATH         Use PATH for lock directory ("/var/run/").
            -M MINUTE       Set time of day at MINUTE local (30).
@@ -58,6 +57,7 @@ SYM-RFT-60
            -h              Display help menu and exit.
            -k              Send SIGTERM to the PID in the lock file and exit.
            -l              Remove the lock file initially ignoring errors.
+           -n              Generate NMEA output.
            -p              Generate PPS output.
            -r              Reset device initially.
            -s              Set time of day when possible.
