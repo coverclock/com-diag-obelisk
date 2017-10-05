@@ -58,21 +58,35 @@ and the Diminuto library. Both Obelisk and Diminuto are written in C.
            -v              Display verbose output.
 ## Notes
 
+Run interactively for debugging.
+
     sudo wwvbtool -d -r -s -u -l
 
-    sudo kill -HUP `cat /var/run/wwvbtool`
-
-    sudo kill -TERM `cat /var/run/wwvbtool`
+Run as a daemon in the background.
 
     sudo wwvbtool -b -r -s -u -l
 
+Send SIGHUP to resynchronize (equivalent commands).
+
+    sudo kill -HUP `cat /var/run/wwvbtool`
+
     sudo wwvbtool -g
+
+Send SIGTERM to terminate (equivalent commands).
+
+    sudo kill -TERM `cat /var/run/wwvbtool`
 
     sudo wwvbtool -k
 
+Enable time service (only needed once ever).
+
     systemctl enable timeservice
 
+Start time service.
+
     service timeservice start
+
+Stop time service.
 
     service timeservice stop
 
