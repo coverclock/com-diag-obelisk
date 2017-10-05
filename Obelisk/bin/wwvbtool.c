@@ -32,6 +32,7 @@
 #include "com/diag/diminuto/diminuto_daemon.h"
 #include "com/diag/diminuto/diminuto_lock.h"
 #include "com/diag/diminuto/diminuto_log.h"
+#include "com/diag/obelisk/hazer.h"
 #include "com/diag/obelisk/obelisk.h"
 
 #define LOG(_FORMAT_, ...) do { if (debug) { fprintf(stderr, "%s: " _FORMAT_ "\n", program, ## __VA_ARGS__); } } while (0)
@@ -81,6 +82,7 @@ static int verbose = 0;
 static int terminate = 0;
 static int unlock = 0;
 static int pps = 0;
+static int nmea = 0;
 static int hangup = 0;
 static int pin_out_p1 = -1;
 static int pin_in_t = -1;
@@ -94,7 +96,7 @@ static const char * path_prefix = (char *)0;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
+    fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
     fprintf(stderr, "       -H HOUR         Set time of day at HOUR local (%d).\n", hour_juliet);
     fprintf(stderr, "       -L PATH         Use PATH for lock directory (\"%s\").\n", path_prefix);
     fprintf(stderr, "       -M MINUTE       Set time of day at MINUTE local (%d).\n", minute_juliet);
@@ -107,6 +109,7 @@ static void usage(void)
     fprintf(stderr, "       -h              Display help menu and exit.\n");
     fprintf(stderr, "       -k              Send SIGTERM to the PID in the lock file and exit.\n");
     fprintf(stderr, "       -l              Remove the lock file initially ignoring errors.\n");
+    fprintf(stderr, "       -n              Generate NMEA output.\n");
     fprintf(stderr, "       -p              Generate PPS output.\n");
     fprintf(stderr, "       -r              Reset device initially.\n");
     fprintf(stderr, "       -s              Set time of day when possible.\n");
@@ -137,9 +140,11 @@ int main(int argc, char ** argv)
     obelisk_token_t token = (obelisk_token_t)-1;
     obelisk_state_t state_before = (obelisk_state_t)-1;
     obelisk_state_t state_after = (obelisk_state_t)-1;
-    obelisk_buffer_t buffer = (obelisk_buffer_t)-1;
+    obelisk_buffer_t buffer = -1;
     obelisk_frame_t frame = { 0 };
+    hazer_buffer_t sentence = { 0 };
     struct tm time = { 0 };
+    struct tm * timep = (struct tm *)0;
     struct timeval value = { 0 };
     extern long timezone;
     extern int daylight;
@@ -164,6 +169,9 @@ int main(int argc, char ** argv)
     int risings = -1;
     int fallings = -1;
     ssize_t limit = -1;
+    uint8_t checksum = -1;
+    char msb = -1;
+    char lsb = -1;
 
     diminuto_log_setmask();
 
@@ -183,7 +191,7 @@ int main(int argc, char ** argv)
 
     error = 0;
 
-    while ((opt = getopt(argc, argv, "H:L:M:P:S:T:bdghklprsuv")) >= 0) {
+    while ((opt = getopt(argc, argv, "H:L:M:P:S:T:bdghklnprsuv")) >= 0) {
 
         switch (opt) {
 
@@ -257,12 +265,16 @@ int main(int argc, char ** argv)
             terminate = !0;
             break;
 
-        case 'p':
-            pps = !0;
-            break;
-
         case 'l':
             unlock = !0;
+            break;
+
+        case 'n':
+            nmea = !0;
+            break;
+
+        case 'p':
+            pps = !0;
             break;
 
         case 'r':
@@ -826,6 +838,49 @@ int main(int argc, char ** argv)
                 LOG("EPOCH %ld.%06ld.", value.tv_sec, value.tv_usec);
 
                 armed = !0;
+
+                /*
+                 * Generate NMEA output if so requested.
+                 */
+
+                if (nmea) {
+ 
+                    timep = gmtime_r(&value.tv_sec, &time);
+                    if (timep != &time) {
+                        perror("gmtime_r");
+                    } else {
+
+/*
+ * $GPRMC,144706.200,A,3947.6533,N,10509.2013,W,0.25,305.51,090217,,,D
+ * $GPRMC,144745.200,A,3947.6542,N,10509.2020,W,0.21,305.51,090217,,,D
+ */
+
+                        snprintf(
+                            sentence, sizeof(sentence) - 1,
+                            "%c%2.2s%3.3s,%02d%02d%02d.%02d,A,,,,,,,%02d%02d%02d,,,D%c",
+                            HAZER_STIMULUS_START,
+                            HAZER_NMEA_GPS_TALKER,
+                            HAZER_NMEA_GPS_MESSAGE_RMC,
+                            time.tm_hour,
+                            time.tm_min,
+                            time.tm_sec,
+                            value.tv_usec / (1000000000 / 100),
+                            time.tm_mday,
+                            time.tm_mon + 1,
+                            (time.tm_year + 1900) % 100,
+                            HAZER_STIMULUS_CHECKSUM
+                        );
+                        sentence[sizeof(sentence) - 1] = '\0';
+
+                        checksum = hazer_checksum(sentence, sizeof(sentence));
+                        rc = hazer_checksum2characters(checksum, &msb, &lsb);
+                        assert(rc >= 0);
+
+                        printf("%s%c%c\r\n", sentence, msb, lsb);
+
+                    }
+
+                }
 
                 /*
                  * If we think the system clock has been synchronized, then

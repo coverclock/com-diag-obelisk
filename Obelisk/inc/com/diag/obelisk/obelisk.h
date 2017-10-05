@@ -77,8 +77,8 @@ typedef enum ObeliskAction {
 typedef uint64_t obelisk_buffer_t;
 
 /**
- * Parse the IRIQ timecode frame one token at a time, change states as we
- * consume tokens. Points to variables int which the finite state machine
+ * Parse the IRIQ timecode frame one token at a time. Change states as we
+ * consume tokens. Pointers to variables into which the finite state machine
  * saves intermediate state are provided by the caller, who does not need
  * to initialize them.
  * @param state is the prior state (initially the START state).
