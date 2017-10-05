@@ -855,7 +855,7 @@ int main(int argc, char ** argv)
  * $GPRMC,144745.200,A,3947.6542,N,10509.2020,W,0.21,305.51,090217,,,D
  */
 
-                        snprintf(
+                        rc = snprintf(
                             sentence, sizeof(sentence) - 1,
                             "%c%2.2s%3.3s,%02d%02d%02d.%02d,A,,,,,,,%02d%02d%02d,,,D%c",
                             HAZER_STIMULUS_START,
@@ -870,11 +870,14 @@ int main(int argc, char ** argv)
                             (time.tm_year + 1900) % 100,
                             HAZER_STIMULUS_CHECKSUM
                         );
+                        assert(rc < (sizeof(sentence) - 1));
                         sentence[sizeof(sentence) - 1] = '\0';
 
                         checksum = hazer_checksum(sentence, sizeof(sentence));
                         rc = hazer_checksum2characters(checksum, &msb, &lsb);
                         assert(rc >= 0);
+
+                        LOG("NMEA %s%c%c", sentence, msb, lsb);
 
                         printf("%s%c%c\r\n", sentence, msb, lsb);
 
