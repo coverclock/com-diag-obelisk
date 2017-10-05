@@ -16,6 +16,10 @@
 #include <stdio.h>
 #include <errno.h>
 
+/*
+ * Runs for about 20 minutes om the Pi 3.
+ */
+
 int main(int argc, char ** argv)
 {
     SETLOGMASK();
