@@ -77,6 +77,16 @@ int main(int argc, char ** argv)
         FSM(START, -1, -1, -1, MARKER, START, -1, -1, -1);
         FSM(START, -1, -1, -1, INVALID, START, -1, -1, -1);
 
+        FSM(START, 5, 0, 0, ZERO, WAIT, 5, 0, 0);
+        FSM(START, 5, 0, 0, ONE, WAIT, 5, 0, 0);
+        FSM(START, 5, 0, 0, MARKER, START, 5, 0, 0);
+        FSM(START, 5, 0, 0, INVALID, START, 5, 0, 0);
+
+        FSM(START, 5, 0, 1, ZERO, WAIT, 5, 0, 1);
+        FSM(START, 5, 0, 1, ONE, WAIT, 5, 0, 1);
+        FSM(START, 5, 0, 1, MARKER, START, 5, 0, 1);
+        FSM(START, 5, 0, 1, INVALID, START, 5, 0, 1);
+
         STATUS();
     }
 
@@ -88,6 +98,16 @@ int main(int argc, char ** argv)
         FSM(WAIT, -1, -1, -1, MARKER, BEGIN, -1, -1, -1);
         FSM(WAIT, -1, -1, -1, INVALID, START, -1, -1, -1);
 
+        FSM(WAIT, 5, 0, 0, ZERO, WAIT, 5, 0, 0);
+        FSM(WAIT, 5, 0, 0, ONE, WAIT, 5, 0, 0);
+        FSM(WAIT, 5, 0, 0, MARKER, BEGIN, 5, 0, 0);
+        FSM(WAIT, 5, 0, 0, INVALID, START, 5, 0, 0);
+
+        FSM(WAIT, 5, 0, 1, ZERO, WAIT, 5, 0, 1);
+        FSM(WAIT, 5, 0, 1, ONE, WAIT, 5, 0, 1);
+        FSM(WAIT, 5, 0, 1, MARKER, BEGIN, 5, 0, 1);
+        FSM(WAIT, 5, 0, 1, INVALID, START, 5, 0, 1);
+
         STATUS();
     }
 
@@ -98,6 +118,16 @@ int main(int argc, char ** argv)
         FSM(BEGIN, -1, -1, -1, ONE, WAIT, -1, -1, -1);
         FSM(BEGIN, -1, -1, -1, MARKER, LEAP, 0, 8, 0);
         FSM(BEGIN, -1, -1, -1, INVALID, START, -1, -1, -1);
+
+        FSM(BEGIN, 5, 0, 0, ZERO, WAIT, 5, 0, 0);
+        FSM(BEGIN, 5, 0, 0, ONE, WAIT, 5, 0, 0);
+        FSM(BEGIN, 5, 0, 0, MARKER, LEAP, 0, 8, 0);
+        FSM(BEGIN, 5, 0, 0, INVALID, START, 5, 0, 0);
+
+        FSM(BEGIN, 5, 0, 1, ZERO, WAIT, 5, 0, 1);
+        FSM(BEGIN, 5, 0, 1, ONE, WAIT, 5, 0, 1);
+        FSM(BEGIN, 5, 0, 1, MARKER, LEAP, 0, 8, 0);
+        FSM(BEGIN, 5, 0, 1, INVALID, START, 5, 0, 1);
 
         STATUS();
     }
