@@ -880,6 +880,7 @@ int main(int argc, char ** argv)
                         LOG("NMEA %s%c%c", sentence, msb, lsb);
 
                         printf("%s%c%c\r\n", sentence, msb, lsb);
+                        fflush(stdout);
 
                     }
 
