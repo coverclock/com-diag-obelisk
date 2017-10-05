@@ -55,6 +55,7 @@ static const const char * TOKEN[] = {
 
 static const char * STATE[] = {
     "START",    /* OBELISK_STATE_START */
+    "WAIT",     /* OBELISK_STATE_WAIT */
     "BEGIN",    /* OBELISK_STATE_BEGIN */
     "LEAP",     /* OBELISK_STATE_LEAP */
     "DATA",     /* OBELISK_STATE_DATA */

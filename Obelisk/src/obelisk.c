@@ -66,6 +66,22 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
 {
     obelisk_action_t action = OBELISK_ACTION_NONE;
 
+    /*
+     * The finite state machine synchronizes at the start of a frame by
+     * looking for the sequence
+     *
+     *   DATA   DATA   END    BEGIN    LEAP
+     * ( ZERO | ONE  ) MARKER MARKER [ MARKER ]
+     *
+     * which unambiguously signals the beginning of a new frame with an
+     * optional third MARKER indicating a leap second. We have to start
+     * by looking for the final ZERO or ONE data bits at the end of the
+     * prior frame to distinguish between the sequence of BEGIN and END
+     * MARKERs (which we want) and BEGIN and LEAP MARKERS. The latter
+     * case causes us to be one second off in our classification of
+     * the current minute.
+     */
+
     switch (state) {
 
     case OBELISK_STATE_START:
@@ -74,15 +90,40 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
 
         case OBELISK_TOKEN_ZERO:
         case OBELISK_TOKEN_ONE:
+            state = OBELISK_STATE_WAIT;
+            break;
+
+        case OBELISK_TOKEN_MARKER:
         case OBELISK_TOKEN_INVALID:
+            break;
+
+        default:
+            assert(token != token);
+            break;
+
+        }
+
+        break;
+
+    case OBELISK_STATE_WAIT:
+
+        switch (token) {
+
+        case OBELISK_TOKEN_ZERO:
+        case OBELISK_TOKEN_ONE:
             break;
 
         case OBELISK_TOKEN_MARKER:
             state = OBELISK_STATE_BEGIN;
             break;
 
+        case OBELISK_TOKEN_INVALID:
+            state = OBELISK_STATE_START;
+            break;
+
         default:
             assert(token != token);
+            state = OBELISK_STATE_START;
             break;
 
         }
@@ -95,13 +136,16 @@ obelisk_state_t obelisk_parse(obelisk_state_t state, obelisk_token_t token, int 
 
         case OBELISK_TOKEN_ZERO:
         case OBELISK_TOKEN_ONE:
-        case OBELISK_TOKEN_INVALID:
-            state = OBELISK_STATE_START;
+            state = OBELISK_STATE_WAIT;
             break;
 
         case OBELISK_TOKEN_MARKER:
             action = OBELISK_ACTION_CLEAR;
             state = OBELISK_STATE_LEAP;
+            break;
+
+        case OBELISK_TOKEN_INVALID:
+            state = OBELISK_STATE_START;
             break;
 
         default:

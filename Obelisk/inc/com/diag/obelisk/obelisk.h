@@ -47,7 +47,8 @@ extern obelisk_token_t obelisk_tokenize(int milliseconds_pulse);
  * these are the states the FSM may assume.
  */
 typedef enum ObeliskState {
-    OBELISK_STATE_START,    /* Expecting END MARKER. */
+    OBELISK_STATE_START,    /* Expecting final ZERO or ONE. */
+    OBELISK_STATE_WAIT,     /* Expecting initial END MARKER. */
     OBELISK_STATE_BEGIN,    /* Expecting BEGIN MARKER. */
     OBELISK_STATE_LEAP,     /* Expecting LEAP MARKER, ZERO, or ONE. */
     OBELISK_STATE_DATA,     /* Expecting ZERO or ONE. */
