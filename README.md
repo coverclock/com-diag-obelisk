@@ -36,6 +36,13 @@ and the Diminuto library. Both Obelisk and Diminuto are written in C.
 <http://www.popsci.com/diy/article/2010-03/build-clock-uses-atomic-timekeeping>    
 <https://github.com/spuder/WWVB-Clock>    
 <https://www.rs-online.com/designspark/atomic-time-for-the-raspberry-pi>    
+## Targets
+"obelisk"    
+Raspberry Pi 3    
+Raspbian 9    
+gcc 6.3.0    
+Linux 4.9.41    
+SYM-RFT-60    
 ## Usage
     $ wwvbtool -h
     usage: wwvbtool [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]
@@ -57,6 +64,25 @@ and the Diminuto library. Both Obelisk and Diminuto are written in C.
            -u              Unexport pins initially ignoring errors.
            -v              Display verbose output.
 ## Notes
+Clone, build, and install Diminuto in /usr/local.
+
+    cd ~
+    mkdir -p src
+    cd src
+    git clone https://github.com/coverclock/com-diag-diminuto
+    cd com-diag-diminuto
+    make
+    make install
+
+Clone, build, and install Obelisk in /usr/local.
+
+    cd ~
+    mkdir -p src
+    cd src
+    git clone https://github.com/coverclock/com-diag-obelisk
+    cd com-diag-obelisk
+    make
+    make install
 
 Run interactively for debugging.
 
