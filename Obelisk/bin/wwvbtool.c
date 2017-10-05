@@ -859,7 +859,7 @@ int main(int argc, char ** argv)
                             sentence, sizeof(sentence) - 1,
                             "%c%2.2s%3.3s,%02d%02d%02d.%02d,A,,,,,,,%02d%02d%02d,,,D%c",
                             HAZER_STIMULUS_START,
-                            HAZER_NMEA_GPS_TALKER,
+                            HAZER_NMEA_RADIO_TALKER,
                             HAZER_NMEA_GPS_MESSAGE_RMC,
                             time.tm_hour,
                             time.tm_min,

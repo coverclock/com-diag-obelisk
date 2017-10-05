@@ -88,7 +88,7 @@ enum HazerStimulus {
  * @def HAZER_NMEA_GPS_TALKER
  * NMEA 0183 4.10, 6.1.4, Table 6
  */
-#define HAZER_NMEA_GPS_TALKER "GP"
+#define HAZER_NMEA_RADIO_TALKER "ZV"
 
 /**
  * @def HAZER_NMEA_GPS_MESSAGE_RMC
