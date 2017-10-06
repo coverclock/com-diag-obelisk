@@ -61,7 +61,7 @@ start_x=0
 enable_uart=1
 
 #Timeserver customizations begin here
-#dtoverlay=pi3-disable-bt
-#dtoverlay=pps-gpio,gpiopin=18
+dtoverlay=pi3-disable-bt
+dtoverlay=pps-gpio,gpiopin=18
 
 dtoverlay=i2c-rtc,ds1307
