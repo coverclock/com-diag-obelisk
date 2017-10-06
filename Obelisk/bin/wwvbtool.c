@@ -93,13 +93,15 @@ static int set = 0;
 static int hour_juliet = -1;
 static int minute_juliet = -1;
 static const char * path_prefix = (char *)0;
+static const char * nmea_talker = (char *)0;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
+    fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
     fprintf(stderr, "       -H HOUR         Set time of day at HOUR local (%d).\n", hour_juliet);
     fprintf(stderr, "       -L PATH         Use PATH for lock directory (\"%s\").\n", path_prefix);
     fprintf(stderr, "       -M MINUTE       Set time of day at MINUTE local (%d).\n", minute_juliet);
+    fprintf(stderr, "       -N TALKER       Set NMEA TALKER (\"%s\").\n", nmea_talker);
     fprintf(stderr, "       -P PIN          Use P1 output GPIO PIN (%d).\n", pin_out_p1);
     fprintf(stderr, "       -S PIN          Use PPS output GPIO PIN (%d).\n", pin_out_pps);
     fprintf(stderr, "       -T PIN          Use T input GPIO PIN (%d).\n", pin_in_t);
@@ -188,10 +190,11 @@ int main(int argc, char ** argv)
     pin_in_t = PIN_IN_T;
     hour_juliet = HOUR_JULIET;
     minute_juliet = MINUTE_JULIET;
+    nmea_talker = HAZER_NMEA_RADIO_TALKER;
 
     error = 0;
 
-    while ((opt = getopt(argc, argv, "H:L:M:P:S:T:bdghklnprsuv")) >= 0) {
+    while ((opt = getopt(argc, argv, "H:L:M:N:P:S:T:bdghklnprsuv")) >= 0) {
 
         switch (opt) {
 
@@ -215,6 +218,10 @@ int main(int argc, char ** argv)
                 perror(optarg);
                 error = !0;
             }
+            break;
+
+        case 'N':
+            nmea_talker = optarg;
             break;
 
         case 'P':
@@ -850,16 +857,11 @@ int main(int argc, char ** argv)
                         perror("gmtime_r");
                     } else {
 
-/*
- * $GPRMC,144706.200,A,3947.6533,N,10509.2013,W,0.25,305.51,090217,,,D
- * $GPRMC,144745.200,A,3947.6542,N,10509.2020,W,0.21,305.51,090217,,,D
- */
-
                         rc = snprintf(
                             sentence, sizeof(sentence) - 1,
                             "%c%2.2s%3.3s,%02d%02d%02d.%02d,A,,,,,,,%02d%02d%02d,,,D%c",
                             HAZER_STIMULUS_START,
-                            HAZER_NMEA_RADIO_TALKER,
+                            nmea_talker,
                             HAZER_NMEA_GPS_MESSAGE_RMC,
                             time.tm_hour,
                             time.tm_min,
