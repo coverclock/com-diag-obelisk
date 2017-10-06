@@ -37,8 +37,8 @@
 
 #define LOG(_FORMAT_, ...) do { if (debug) { fprintf(stderr, "%s: " _FORMAT_ "\n", program, ## __VA_ARGS__); } } while (0)
 
-static const char RUN_PREFIX[] = "/var/run/";
-static const char RUN_SUFFIX[] = ".pid";
+static const char RUN_PATH[] = "/var/run/wwvbtool.pid";
+static const char NMEA_PATH[] = "-";
 static const int PIN_OUT_P1 = 23; /* output, radio enable, active low. */
 static const int PIN_IN_T = 24; /* input, modulated pulse, active high */
 static const int PIN_OUT_PPS = 25; /* output, pulse per second , active high */
@@ -46,7 +46,6 @@ static const int HERTZ_DELAY = 2;
 static const int HERTZ_TIMER = 100;
 static const int HOUR_JULIET = 1;
 static const int MINUTE_JULIET = 30;
-static const char NMEA_PATH[] = "-";
 
 static const const char * TOKEN[] = {
     "ZERO",     /* OBELISK_TOKEN_ZERO */
@@ -93,7 +92,7 @@ static int background = 0;
 static int set = 0;
 static int hour_juliet = -1;
 static int minute_juliet = -1;
-static const char * run_prefix = (char *)0;
+static const char * run_path = (char *)0;
 static const char * nmea_talker = (char *)0;
 static const char * nmea_path = (char *)0;
 
@@ -101,7 +100,7 @@ static void usage(void)
 {
     fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
     fprintf(stderr, "       -H HOUR         Set time of day at HOUR local (%d).\n", hour_juliet);
-    fprintf(stderr, "       -L PATH         Use PATH for lock directory (\"%s\").\n", run_prefix);
+    fprintf(stderr, "       -L PATH         Use PATH for lock file (\"%s\").\n", run_path);
     fprintf(stderr, "       -M MINUTE       Set time of day at MINUTE local (%d).\n", minute_juliet);
     fprintf(stderr, "       -N TALKER       Set NMEA TALKER (\"%s\").\n", nmea_talker);
     fprintf(stderr, "       -O PATH         Write NMEA sentences to PATH (\"%s\").\n", nmea_path);
@@ -126,7 +125,6 @@ int main(int argc, char ** argv)
 {
     int rc = -1;
     pid_t pid = -1;
-    char * path = (char *)0;
     FILE * pin_out_p1_fp = (FILE *)0;
     FILE * pin_out_pps_fp = (FILE *)0;
     FILE * pin_in_t_fp = (FILE *)0;
@@ -188,7 +186,7 @@ int main(int argc, char ** argv)
     program = strrchr(argv[0], '/');
     program = (program == (const char *)0) ? argv[0] : program + 1;
 
-    run_prefix = RUN_PREFIX;
+    run_path = RUN_PATH;
     pin_out_p1 = PIN_OUT_P1;
     pin_out_pps = PIN_OUT_PPS;
     pin_in_t = PIN_IN_T;
@@ -213,7 +211,7 @@ int main(int argc, char ** argv)
             break;
 
         case 'L':
-            run_prefix = optarg;
+            run_path = optarg;
             break;
 
         case 'M':
@@ -321,13 +319,7 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    limit = strlen(run_prefix) + strlen(program) + strlen(RUN_SUFFIX) + 1;
-    path = malloc(limit);
-    strcpy(path, run_prefix);
-    strcat(path, program);
-    strcat(path, RUN_SUFFIX);
-    LOG("PATH \"%s\".", path);
-    assert(strlen(path) == (limit - 1));
+    LOG("LOCK \"%s\".", run_path);
 
     if (unlock) {
 
@@ -335,8 +327,8 @@ int main(int argc, char ** argv)
          * Remove the lock file.
          */
 
-        LOG("UNLOCK.");
-        (void)diminuto_lock_unlock(path);
+        LOG("UNLOCKING.");
+        (void)diminuto_lock_unlock(run_path);
     }
 
     if (terminate) {
@@ -346,9 +338,9 @@ int main(int argc, char ** argv)
          * and then exit.
          */
 
-        pid = diminuto_lock_check(path);
+        pid = diminuto_lock_check(run_path);
         if (pid < 0) { return 2; }
-        LOG("TERMINATE %d.", pid);
+        LOG("TERMINATING %d.", pid);
         rc = kill(pid, SIGTERM);
         if (rc < 0) {
             perror("kill");
@@ -363,9 +355,9 @@ int main(int argc, char ** argv)
          * and then exit.
          */
 
-        pid = diminuto_lock_check(path);
+        pid = diminuto_lock_check(run_path);
         if (pid < 0) { return 2; }
-        LOG("HANGUP %d.", pid);
+        LOG("HANGINGUP %d.", pid);
         rc = kill(pid, SIGHUP);
         if (rc < 0) {
             perror("kill");
@@ -380,8 +372,8 @@ int main(int argc, char ** argv)
          * process identifier will be left in /var/lock.
          */
 
-        LOG("DAEMONIZE.");
-        rc = diminuto_daemon(program, path);
+        LOG("DAEMONIZING.");
+        rc = diminuto_daemon(program, run_path);
         if (rc < 0) { return 2; }
 
     } else {
@@ -390,8 +382,8 @@ int main(int argc, char ** argv)
          * Create a lock file containing our PID.
          */
 
-        LOG("LOCK.");
-        rc = diminuto_lock_lock(path);
+        LOG("LOCKING.");
+        rc = diminuto_lock_lock(run_path);
         if (rc < 0) { return 2; }
 
     }
@@ -478,15 +470,16 @@ int main(int argc, char ** argv)
      * above.
      */
 
-    if (!nmea) {
-        /* Do nothing. */
-    } else if (strcmp(nmea_path, NMEA_PATH) == 0) {
-        nmea_out_fp = stdout;
-    } else if ((nmea_out_fp = fopen(nmea_path, "a+")) == (FILE *)0) {
-        perror(nmea_path);
-        assert(nmea_out_fp != (FILE *)0);
-    } else {
-        /* Do nothing. */
+    if (nmea) {
+        LOG("NMEA \"%s\".", nmea_path);
+        if (strcmp(nmea_path, NMEA_PATH) == 0) {
+            nmea_out_fp = stdout;
+        } else if ((nmea_out_fp = fopen(nmea_path, "a+")) == (FILE *)0) {
+            perror(nmea_path);
+            assert(nmea_out_fp != (FILE *)0);
+        } else {
+            /* Do nothing. */
+        }
     }
 
     /*
@@ -953,7 +946,7 @@ int main(int argc, char ** argv)
     ** Release resources.
     */
 
-    LOG("RELEASE.");
+    LOG("RELEASING.");
 
     if (pin_in_t_fp != (FILE *)0) {
         pin_in_t_fp = diminuto_pin_unused(pin_in_t_fp, pin_in_t);
@@ -976,7 +969,7 @@ int main(int argc, char ** argv)
         assert(rc == 0);
     }
 
-    (void)diminuto_lock_unlock(path);
+    (void)diminuto_lock_unlock(run_path);
 
     /*
     ** Exit.
