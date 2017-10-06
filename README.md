@@ -119,7 +119,7 @@ Stop time service.
 
 Process Obelisk wwvbtool NMEA output using Hazer gpstool.
 
-    ./out/host/bin/wwvbtool -r -s -u -l -n -p | gpstool -R
+    wwvbtool -r -s -u -l -n -p | gpstool -R
    
     2017-10-05T21:08:17.934603Z 6 [8209] wwvbtool: running pid=8209.
     2017-10-05T21:09:59.847936Z 5 [8209] wwvbtool: acquired.
@@ -137,3 +137,16 @@ Process Obelisk wwvbtool NMEA output using Hazer gpstool.
     $ZVRMC,211200.00,A,,,,,,,051017,,,D*79\r\n
     MAP 2017-10-05T21:12:00Z  0*00'00.00"N,  0*00'00.00"E     0.00' N     0.000mph
     RMC  0.000000,  0.000000     0.000m   0.000*    0.000knots [00] 0 0 0 0 0 
+
+Make a FIFO (First In First Out), that is, a named pipe in the file
+system. Run wwvbtool to write to the FIFO, gpsd to read from the FIFO,
+and gpsmon to read from gpsd. gpsd, wwvbtool, and gpsmon are all run in
+the foreground from three different windows.
+
+    mkfifo wwvb.fifo
+    gpsd -b -N -D 2 -n ./wwvb.fifo
+
+    wwvbtool -N GP -r -s -u -l -n -p -O ./wwvb.fifo
+
+    gpsmon
+
