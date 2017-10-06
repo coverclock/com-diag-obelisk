@@ -44,11 +44,12 @@ gcc 6.3.0
 Linux 4.9.41    
 SYM-RFT-60    
 ## Usage
-    usage: wwvbtool [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]
+    usage: wwvbtool [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]
            -H HOUR         Set time of day at HOUR local (1).
            -L PATH         Use PATH for lock directory ("/var/run/").
            -M MINUTE       Set time of day at MINUTE local (30).
            -N TALKER       Set NMEA TALKER ("ZV").
+           -O PATH         Write NMEA sentences to PATH ("-").
            -P PIN          Use P1 output GPIO PIN (23).
            -S PIN          Use PPS output GPIO PIN (25).
            -T PIN          Use T input GPIO PIN (24).
