@@ -37,8 +37,8 @@
 
 #define LOG(_FORMAT_, ...) do { if (debug) { fprintf(stderr, "%s: " _FORMAT_ "\n", program, ## __VA_ARGS__); } } while (0)
 
-static const char PATH_PREFIX[] = "/var/run/";
-static const char PATH_SUFFIX[] = ".pid";
+static const char RUN_PREFIX[] = "/var/run/";
+static const char RUN_SUFFIX[] = ".pid";
 static const int PIN_OUT_P1 = 23; /* output, radio enable, active low. */
 static const int PIN_IN_T = 24; /* input, modulated pulse, active high */
 static const int PIN_OUT_PPS = 25; /* output, pulse per second , active high */
@@ -46,6 +46,7 @@ static const int HERTZ_DELAY = 2;
 static const int HERTZ_TIMER = 100;
 static const int HOUR_JULIET = 1;
 static const int MINUTE_JULIET = 30;
+static const char NMEA_PATH[] = "-";
 
 static const const char * TOKEN[] = {
     "ZERO",     /* OBELISK_TOKEN_ZERO */
@@ -92,16 +93,18 @@ static int background = 0;
 static int set = 0;
 static int hour_juliet = -1;
 static int minute_juliet = -1;
-static const char * path_prefix = (char *)0;
+static const char * run_prefix = (char *)0;
 static const char * nmea_talker = (char *)0;
+static const char * nmea_path = (char *)0;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
+    fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
     fprintf(stderr, "       -H HOUR         Set time of day at HOUR local (%d).\n", hour_juliet);
-    fprintf(stderr, "       -L PATH         Use PATH for lock directory (\"%s\").\n", path_prefix);
+    fprintf(stderr, "       -L PATH         Use PATH for lock directory (\"%s\").\n", run_prefix);
     fprintf(stderr, "       -M MINUTE       Set time of day at MINUTE local (%d).\n", minute_juliet);
     fprintf(stderr, "       -N TALKER       Set NMEA TALKER (\"%s\").\n", nmea_talker);
+    fprintf(stderr, "       -O PATH         Write NMEA sentences to PATH (\"%s\").\n", nmea_path);
     fprintf(stderr, "       -P PIN          Use P1 output GPIO PIN (%d).\n", pin_out_p1);
     fprintf(stderr, "       -S PIN          Use PPS output GPIO PIN (%d).\n", pin_out_pps);
     fprintf(stderr, "       -T PIN          Use T input GPIO PIN (%d).\n", pin_in_t);
@@ -127,6 +130,7 @@ int main(int argc, char ** argv)
     FILE * pin_out_p1_fp = (FILE *)0;
     FILE * pin_out_pps_fp = (FILE *)0;
     FILE * pin_in_t_fp = (FILE *)0;
+    FILE * nmea_out_fp = (FILE *)0;
     diminuto_sticks_t ticks_frequency = -1;
     diminuto_ticks_t ticks_delay = -1;
     diminuto_ticks_t ticks_timer = -1;
@@ -184,17 +188,18 @@ int main(int argc, char ** argv)
     program = strrchr(argv[0], '/');
     program = (program == (const char *)0) ? argv[0] : program + 1;
 
-    path_prefix = PATH_PREFIX;
+    run_prefix = RUN_PREFIX;
     pin_out_p1 = PIN_OUT_P1;
     pin_out_pps = PIN_OUT_PPS;
     pin_in_t = PIN_IN_T;
     hour_juliet = HOUR_JULIET;
     minute_juliet = MINUTE_JULIET;
     nmea_talker = HAZER_NMEA_RADIO_TALKER;
+    nmea_path = NMEA_PATH;
 
     error = 0;
 
-    while ((opt = getopt(argc, argv, "H:L:M:N:P:S:T:bdghklnprsuv")) >= 0) {
+    while ((opt = getopt(argc, argv, "H:L:M:N:O:P:S:T:bdghklnprsuv")) >= 0) {
 
         switch (opt) {
 
@@ -208,7 +213,7 @@ int main(int argc, char ** argv)
             break;
 
         case 'L':
-            path_prefix = optarg;
+            run_prefix = optarg;
             break;
 
         case 'M':
@@ -222,6 +227,10 @@ int main(int argc, char ** argv)
 
         case 'N':
             nmea_talker = optarg;
+            break;
+
+        case 'O':
+            nmea_path = optarg;
             break;
 
         case 'P':
@@ -312,11 +321,11 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    limit = strlen(path_prefix) + strlen(program) + strlen(PATH_SUFFIX) + 1;
+    limit = strlen(run_prefix) + strlen(program) + strlen(RUN_SUFFIX) + 1;
     path = malloc(limit);
-    strcpy(path, path_prefix);
+    strcpy(path, run_prefix);
     strcat(path, program);
-    strcat(path, PATH_SUFFIX);
+    strcat(path, RUN_SUFFIX);
     LOG("PATH \"%s\".", path);
     assert(strlen(path) == (limit - 1));
 
@@ -458,6 +467,26 @@ int main(int argc, char ** argv)
         ticks_slack = diminuto_delay(ticks_delay, 0);
         assert(ticks_slack == 0);
 
+    }
+
+    /*
+     * Open NMEA output file if requested. We open for reading and
+     * writing ("a+") so that we don't get a SIGPIPE in the event
+     * the user has specified a FIFO and the reader (e.g. gpsd)
+     * hasn't opened its end for reading yet. That's also why
+     * we delay the fopen(3) until after the GPIO radio initialization
+     * above.
+     */
+
+    if (!nmea) {
+        /* Do nothing. */
+    } else if (strcmp(nmea_path, NMEA_PATH) == 0) {
+        nmea_out_fp = stdout;
+    } else if ((nmea_out_fp = fopen(nmea_path, "a+")) == (FILE *)0) {
+        perror(nmea_path);
+        assert(nmea_out_fp != (FILE *)0);
+    } else {
+        /* Do nothing. */
     }
 
     /*
@@ -879,10 +908,10 @@ int main(int argc, char ** argv)
                         rc = hazer_checksum2characters(checksum, &msb, &lsb);
                         assert(rc >= 0);
 
-                        LOG("NMEA %s%c%c", sentence, msb, lsb);
+                        LOG("NMEA %s%c%c\\r\\n", sentence, msb, lsb);
 
-                        printf("%s%c%c\r\n", sentence, msb, lsb);
-                        fflush(stdout);
+                        fprintf(nmea_out_fp, "%s%c%c\r\n", sentence, msb, lsb);
+                        fflush(nmea_out_fp);
 
                     }
 
@@ -939,6 +968,12 @@ int main(int argc, char ** argv)
     if (pin_out_pps_fp != (FILE *)0) {
         pin_out_pps_fp = diminuto_pin_unused(pin_out_pps_fp, pin_out_pps);
         assert(pin_out_pps_fp == (FILE *)0);
+    }
+
+    if (nmea_out_fp != (FILE *)0) {
+        rc = fclose(nmea_out_fp);
+        if (rc != 0) { perror(nmea_path); }
+        assert(rc == 0);
     }
 
     (void)diminuto_lock_unlock(path);
