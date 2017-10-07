@@ -106,9 +106,10 @@ Send SIGTERM to terminate (equivalent commands).
 
     sudo wwvbtool -k
 
-Enable time service (only needed once ever).
+Disable gps and Enable time service (only needed once ever).
 
-    systemctl enable timeservice
+    sudo systemctl disable gpsd
+    sudo systemctl enable timeservice
 
 Start time service.
 
@@ -151,3 +152,20 @@ the foreground from three different windows.
 
     gpsmon
 
+Configure and test Pulse Per Second (PPS) when using -p flag on wwvbtool. Note
+that in this example gpiopin=18 is GPIO18 a.k.a. physical pin 12.
+
+    $ sudo apt-get install pps-tools
+    :
+    $ grep pps /boot/config.txt
+    dtoverlay=pps-gpio,gpiopin=18
+    $ lsmod | grep pps
+    pps_gpio                3293  0
+    pps_core                9164  1 pps_gpio
+    $ sudo ppstest /dev/pps0
+    trying PPS source "/dev/pps0"
+    found PPS source "/dev/pps0"
+    ok, found 1 source(s), now start fetching data...
+    source 0 - assert 1507391765.063823536, sequence: 71286 - clear  0.000000000, sequence: 0
+    source 0 - assert 1507391766.063842614, sequence: 71287 - clear  0.000000000, sequence: 0
+    source 0 - assert 1507391767.063818786, sequence: 71288 - clear  0.000000000, se

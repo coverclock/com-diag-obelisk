@@ -16,9 +16,11 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <signal.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <signal.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
 #include "com/diag/diminuto/diminuto_pin.h"
 #include "com/diag/diminuto/diminuto_frequency.h"
 #include "com/diag/diminuto/diminuto_delay.h"
@@ -31,6 +33,7 @@
 #include "com/diag/diminuto/diminuto_hangup.h"
 #include "com/diag/diminuto/diminuto_daemon.h"
 #include "com/diag/diminuto/diminuto_lock.h"
+#include "com/diag/diminuto/diminuto_serial.h"
 #include "com/diag/diminuto/diminuto_log.h"
 #include "com/diag/obelisk/hazer.h"
 #include "com/diag/obelisk/obelisk.h"
@@ -93,32 +96,49 @@ static int set = 0;
 static int hour_juliet = -1;
 static int minute_juliet = -1;
 static const char * run_path = (char *)0;
-static const char * nmea_talker = (char *)0;
+static char nmea_talker[sizeof("GP")] = { '\0', '\0', '\0' };
 static const char * nmea_path = (char *)0;
+static int serial_bitspersecond = DIMINUTO_SERIAL_BITSPERSECOND_NOMINAL;
+static diminuto_serial_databits_t serial_databits = DIMINUTO_SERIAL_DATABITS_NOMINAL;
+static diminuto_serial_paritybit_t serial_paritybit = DIMINUTO_SERIAL_PARITYBIT_NOMINAL;
+static int serial_stopbits = DIMINUTO_SERIAL_STOPBITS_NOMINAL;
+static int serial_modemcontrol = 0;
+static int serial_xonxoff = 0;
+static int serial_rtscts = 0;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]\n", program);
+    fprintf(stderr, "usage: %s [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]\n", program);
+    fprintf(stderr, "       -1              Use one stop bit for OUTPUT (default).\n");
+    fprintf(stderr, "       -2              Use two stop bits for OUTPUT.\n");
+    fprintf(stderr, "       -7              Use seven data bits for OUTPUT.\n");
+    fprintf(stderr, "       -8              Use eight data bits for OUTPUT (default).\n");
+    fprintf(stderr, "       -B BAUD         Use BAUD bits per second for OUTPUT (%d).\n", serial_bitspersecond);
     fprintf(stderr, "       -H HOUR         Set time of day at HOUR local (%d).\n", hour_juliet);
     fprintf(stderr, "       -L PATH         Use PATH for lock file (\"%s\").\n", run_path);
     fprintf(stderr, "       -M MINUTE       Set time of day at MINUTE local (%d).\n", minute_juliet);
     fprintf(stderr, "       -N TALKER       Set NMEA TALKER (\"%s\").\n", nmea_talker);
-    fprintf(stderr, "       -O PATH         Write NMEA sentences to PATH (\"%s\").\n", nmea_path);
+    fprintf(stderr, "       -O OUTPUT       Write NMEA sentences to OUTPUT (\"%s\").\n", nmea_path);
     fprintf(stderr, "       -P PIN          Use P1 output GPIO PIN (%d).\n", pin_out_p1);
     fprintf(stderr, "       -S PIN          Use PPS output GPIO PIN (%d).\n", pin_out_pps);
     fprintf(stderr, "       -T PIN          Use T input GPIO PIN (%d).\n", pin_in_t);
     fprintf(stderr, "       -b              Daemonize into the background.\n");
+    fprintf(stderr, "       -c              Use RTS/CTS for OUTPUT.\n");
     fprintf(stderr, "       -d              Display debug output.\n");
+    fprintf(stderr, "       -e              Use even parity for OUTPUT.\n");
     fprintf(stderr, "       -g              Send SIGHUP to the PID in the lock file and exit.\n");
     fprintf(stderr, "       -h              Display help menu and exit.\n");
     fprintf(stderr, "       -k              Send SIGTERM to the PID in the lock file and exit.\n");
     fprintf(stderr, "       -l              Remove the lock file initially ignoring errors.\n");
+    fprintf(stderr, "       -m              Use modem control for OUTPUT.\n");
     fprintf(stderr, "       -n              Generate NMEA output.\n");
+    fprintf(stderr, "       -o              Use odd parity for OUTPUT.\n");
     fprintf(stderr, "       -p              Generate PPS output.\n");
     fprintf(stderr, "       -r              Reset device initially.\n");
     fprintf(stderr, "       -s              Set time of day when possible.\n");
     fprintf(stderr, "       -u              Unexport pins initially ignoring errors.\n");
     fprintf(stderr, "       -v              Display verbose output.\n");
+    fprintf(stderr, "       -x              Use XON/XOFF for OUTPUT.\n");
 }
 
 int main(int argc, char ** argv)
@@ -176,6 +196,7 @@ int main(int argc, char ** argv)
     uint8_t checksum = -1;
     char msb = -1;
     char lsb = -1;
+    int fd = -1;
 
     diminuto_log_setmask();
 
@@ -192,14 +213,59 @@ int main(int argc, char ** argv)
     pin_in_t = PIN_IN_T;
     hour_juliet = HOUR_JULIET;
     minute_juliet = MINUTE_JULIET;
-    nmea_talker = HAZER_NMEA_RADIO_TALKER;
+    strncpy(nmea_talker, HAZER_NMEA_RADIO_TALKER, sizeof(nmea_talker) - 1);
     nmea_path = NMEA_PATH;
 
     error = 0;
 
-    while ((opt = getopt(argc, argv, "H:L:M:N:O:P:S:T:bdghklnprsuv")) >= 0) {
+    while ((opt = getopt(argc, argv, "1278B:H:L:M:N:O:P:S:T:bcdeghklmonprsuvx")) >= 0) {
 
         switch (opt) {
+
+        case '1':
+            serial_stopbits = DIMINUTO_SERIAL_STOPBITS_1;
+            break;
+
+        case '2':
+            serial_stopbits = DIMINUTO_SERIAL_STOPBITS_2;
+            break;
+
+        case '7':
+            serial_databits = DIMINUTO_SERIAL_DATABITS_7;
+            break;
+
+        case '8':
+            serial_databits = DIMINUTO_SERIAL_DATABITS_8;
+            break;
+
+        case 'e':
+            serial_paritybit = DIMINUTO_SERIAL_PARITYBIT_EVEN;
+            break;
+
+        case 'o':
+            serial_paritybit = DIMINUTO_SERIAL_PARITYBIT_ODD;
+            break;
+
+        case 'x':
+            serial_xonxoff = !0;
+            break;
+
+        case 'c':
+            serial_rtscts = !0;
+            break;
+
+        case 'm':
+            serial_modemcontrol = !0;
+            break;
+
+        case 'B':
+            serial_bitspersecond = strtoul(optarg, &endptr, 0);
+            if ((*endptr != '\0') || (serial_bitspersecond < 0)) {
+                errno = EINVAL;
+                perror(optarg);
+                error = !0;
+            }
+            break;
 
         case 'H':
             hour_juliet = strtol(optarg, &endptr, 0);
@@ -224,7 +290,13 @@ int main(int argc, char ** argv)
             break;
 
         case 'N':
-            nmea_talker = optarg;
+            if (strlen(optarg) == (sizeof(nmea_talker) - 1)) {
+                strncpy(nmea_talker, optarg, sizeof(nmea_talker) - 1);
+            } else {
+                errno = EINVAL;
+                perror(optarg);
+                error = !0;
+            }
             break;
 
         case 'O':
@@ -477,6 +549,17 @@ int main(int argc, char ** argv)
         } else if ((nmea_out_fp = fopen(nmea_path, "a+")) == (FILE *)0) {
             perror(nmea_path);
             assert(nmea_out_fp != (FILE *)0);
+        } else if ((fd = fileno(nmea_out_fp)) < 0) {
+            perror(nmea_path);
+            assert(fd >= 0);
+        } else if ((rc = isfdtype(fd, S_IFCHR)) < 0) {
+            perror(nmea_path);
+            assert(rc >= 0);
+        } else if (rc) {
+            rc = diminuto_serial_set(fd, serial_bitspersecond, serial_databits, serial_paritybit, serial_stopbits, serial_modemcontrol, serial_xonxoff, serial_rtscts);
+            assert(rc >= 0);
+            rc = diminuto_serial_raw(fd);
+            assert(rc >= 0);
         } else {
             /* Do nothing. */
         }
