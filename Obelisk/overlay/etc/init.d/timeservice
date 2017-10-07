@@ -49,8 +49,14 @@ FIFO="/var/run/wwvbtool.fifo"
 test -p $FIFO || mkfifo -m 0666 $FIFO
 
 GPSD_OPTS="-b -n $FIFO"
+NTPD_OPTS="-g"
 WWVB_OPTS="-N GP -O $FIFO -n -p -l -u -r -b"
-NTPD_OPTS="-g -u $(getent passwd ntp | cut -f 3,4 -d:)"
+
+RUNASUSER=ntp
+UGID=$(getent passwd $RUNASUSER | cut -f 3,4 -d:) || true
+if test "$(uname -s)" = "Linux"; then
+	NTPD_OPTS="$NTPD_OPTS -u $UGID"
+fi
 
 case $1 in
 	start)

@@ -66,6 +66,15 @@ SYM-RFT-60
            -u              Unexport pins initially ignoring errors.
            -v              Display verbose output.
 ## Notes
+Here is a partial list of additional packages needed.
+
+    pps-tools
+    scons
+    bison
+    flex
+    libssl-dev
+    libcap-dev
+
 Clone, build, and install Diminuto in /usr/local.
 
     cd ~
@@ -85,6 +94,27 @@ Clone, build, and install Obelisk in /usr/local.
     cd com-diag-obelisk
     make
     make install
+
+Clone, build, and install NTPsec daemon in /usr/local.
+
+    cd ~
+    mkdir -p src
+    cd src
+    git clone https://gitlab.com/NTPsec/ntpsec.git
+    cd ntpsec
+    ./waf configure
+    ./waf build
+    sudo ./waf install
+
+Clone, build, and install GPS daemon in /usr/local.
+
+    cd ~
+    mkdir -p src
+    cd src
+    git clone https://git.savannah.gnu.org/git/gpsd.git
+    cd gpsd
+    scons timeservice=yes nmea0183=yes prefix="/usr/local" pps=yes ntpshm=yes
+    sudo scons install
 
 Run interactively for debugging.
 
@@ -169,3 +199,12 @@ that in this example gpiopin=18 is GPIO18 a.k.a. physical pin 12.
     source 0 - assert 1507391765.063823536, sequence: 71286 - clear  0.000000000, sequence: 0
     source 0 - assert 1507391766.063842614, sequence: 71287 - clear  0.000000000, sequence: 0
     source 0 - assert 1507391767.063818786, sequence: 71288 - clear  0.000000000, se
+
+Run wwvbtool using a serial port as the NMEA output device. The serial
+options are only applied if the NMEA output parameter is a character
+device. The device below is the Raspberry Pi console port. The port is
+configured below for 9600 baud, 8 data bits, 1 stop bit, and no parity
+(by not specifying -e or -o).
+
+    wwvbtool -d -O /dev/ttyAMA0 -B 9600 -8 -1 -n -p -r -s -u -N GP
+
