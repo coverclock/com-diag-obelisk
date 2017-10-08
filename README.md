@@ -126,17 +126,17 @@ Run as a daemon in the background.
 
 Send SIGHUP to resynchronize (equivalent commands).
 
-    sudo kill -HUP `cat /var/run/wwvbtool`
+    sudo kill -HUP `cat /var/run/wwvbtool.pid`
 
     sudo wwvbtool -g
 
 Send SIGTERM to terminate (equivalent commands).
 
-    sudo kill -TERM `cat /var/run/wwvbtool`
+    sudo kill -TERM `cat /var/run/wwvbtool.pid`
 
     sudo wwvbtool -k
 
-Disable gps and Enable time service (only needed once ever).
+Disable gpsd and enable time service (only needed once ever).
 
     sudo systemctl disable gpsd
     sudo systemctl enable timeservice
@@ -149,7 +149,7 @@ Stop time service.
 
     service timeservice stop
 
-Process Obelisk wwvbtool NMEA output using Hazer gpstool.
+Process Obelisk wwvbtool NMEA output using Hazer gpstool (for testing).
 
     wwvbtool -r -s -u -l -n -p | gpstool -R
    
