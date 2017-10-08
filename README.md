@@ -68,12 +68,12 @@ SYM-RFT-60
 ## Notes
 Here is a partial list of additional packages needed.
 
-    pps-tools
-    scons
-    bison
-    flex
-    libssl-dev
-    libcap-dev
+    sudo apt-get install pps-tools
+    sudo apt-get install scons
+    sudo apt-get install bison
+    sudo apt-get install flex
+    sudo apt-get install libssl-dev
+    sudo apt-get install libcap-dev
 
 Clone, build, and install Diminuto in /usr/local.
 
