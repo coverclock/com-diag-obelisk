@@ -44,27 +44,37 @@ gcc 6.3.0
 Linux 4.9.41    
 SYM-RFT-60    
 ## Usage
-    usage: wwvbtool [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -d ] [ -g ] [ -h ] [ -k ] [ -l ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ]
+    usage: wwvbtool [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]
+           -1              Use one stop bit for OUTPUT (default).
+           -2              Use two stop bits for OUTPUT.
+           -7              Use seven data bits for OUTPUT.
+           -8              Use eight data bits for OUTPUT (default).
+           -B BAUD         Use BAUD bits per second for OUTPUT (115200).
            -H HOUR         Set time of day at HOUR local (1).
-           -L PATH         Use PATH for lock directory ("/var/run/").
+           -L PATH         Use PATH for lock file ("/var/run/wwvbtool.pid").
            -M MINUTE       Set time of day at MINUTE local (30).
            -N TALKER       Set NMEA TALKER ("ZV").
-           -O PATH         Write NMEA sentences to PATH ("-").
+           -O OUTPUT       Write NMEA sentences to OUTPUT ("-").
            -P PIN          Use P1 output GPIO PIN (23).
            -S PIN          Use PPS output GPIO PIN (25).
            -T PIN          Use T input GPIO PIN (24).
            -b              Daemonize into the background.
+           -c              Use RTS/CTS for OUTPUT.
            -d              Display debug output.
+           -e              Use even parity for OUTPUT.
            -g              Send SIGHUP to the PID in the lock file and exit.
            -h              Display help menu and exit.
            -k              Send SIGTERM to the PID in the lock file and exit.
            -l              Remove the lock file initially ignoring errors.
+           -m              Use modem control for OUTPUT.
            -n              Generate NMEA output.
+           -o              Use odd parity for OUTPUT.
            -p              Generate PPS output.
            -r              Reset device initially.
            -s              Set time of day when possible.
            -u              Unexport pins initially ignoring errors.
            -v              Display verbose output.
+           -x              Use XON/XOFF for OUTPUT.
 ## Notes
 Here is a partial list of additional packages needed.
 
