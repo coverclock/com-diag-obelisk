@@ -78,12 +78,12 @@ SYM-RFT-60
 ## Notes
 Here is a partial list of additional packages needed.
 
-    pps-tools
-    scons
-    bison
-    flex
-    libssl-dev
-    libcap-dev
+    sudo apt-get install pps-tools
+    sudo apt-get install scons
+    sudo apt-get install bison
+    sudo apt-get install flex
+    sudo apt-get install libssl-dev
+    sudo apt-get install libcap-dev
 
 Clone, build, and install Diminuto in /usr/local.
 
@@ -136,17 +136,17 @@ Run as a daemon in the background.
 
 Send SIGHUP to resynchronize (equivalent commands).
 
-    sudo kill -HUP `cat /var/run/wwvbtool`
+    sudo kill -HUP `cat /var/run/wwvbtool.pid`
 
     sudo wwvbtool -g
 
 Send SIGTERM to terminate (equivalent commands).
 
-    sudo kill -TERM `cat /var/run/wwvbtool`
+    sudo kill -TERM `cat /var/run/wwvbtool.pid`
 
     sudo wwvbtool -k
 
-Disable gps and Enable time service (only needed once ever).
+Disable gpsd and enable time service (only needed once ever).
 
     sudo systemctl disable gpsd
     sudo systemctl enable timeservice
@@ -159,7 +159,7 @@ Stop time service.
 
     service timeservice stop
 
-Process Obelisk wwvbtool NMEA output using Hazer gpstool.
+Process Obelisk wwvbtool NMEA output using Hazer gpstool (for testing).
 
     wwvbtool -r -s -u -l -n -p | gpstool -R
    
