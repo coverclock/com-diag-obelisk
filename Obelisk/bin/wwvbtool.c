@@ -188,7 +188,6 @@ int main(int argc, char ** argv)
     char * endptr = (char *)0;
     int error = -1;
     int armed = -1;
-    int phaselocked = -1;
     int synchronized = -1;
     int year = -1;
     int month = -1;
@@ -636,7 +635,6 @@ int main(int argc, char ** argv)
     cycles = 0;
 
     armed = 0;
-    phaselocked = 0;
     synchronized = 0;
     acquired = 0;
 
@@ -657,7 +655,7 @@ int main(int argc, char ** argv)
         }
 
         if (diminuto_hangup_check()) {
-            DIMINUTO_LOG_NOTICE("%s: hungup acquired=%d synchronized=%d armed=%d phaselocked=%d risings=%d fallings=%d cycles=%d.\n", program, acquired, synchronized, armed, phaselocked, risings, fallings, cycles);
+            DIMINUTO_LOG_NOTICE("%s: hungup acquired=%d synchronized=%d armed=%d risings=%d fallings=%d cycles=%d.\n", program, acquired, synchronized, armed, risings, fallings, cycles);
             synchronized = 0;
         }
 
@@ -700,8 +698,6 @@ int main(int argc, char ** argv)
             if (!nmea) {
                 /* Do nothing. */
             } else if (!acquired) {
-                /* Do nothing. */
-            } else if (!phaselocked) {
                 /* Do nothing. */
             } else {
                 timep = gmtime_r(&value.tv_sec, &time);
@@ -920,11 +916,6 @@ int main(int argc, char ** argv)
 
             } else {
 
-                if (!acquired) {
-                    acquired = !0;
-                    DIMINUTO_LOG_NOTICE("%s: acquired.\n", program);
-                }
-
                 /*
                  * Seconds will always be 59 at this point in the frame
                  * unless a leap second has been inserted.
@@ -1010,10 +1001,14 @@ int main(int argc, char ** argv)
 
                 value.tv_usec = (2 * milliseconds_cycle) * 1000;
 
+                if (!acquired) {
+                    acquired = !0;
+                    DIMINUTO_LOG_NOTICE("%s: acquired.\n", program);
+                }
+
                 LOG("EPOCH %ld.%06ld.", value.tv_sec, value.tv_usec);
 
                 armed = !0;
-                phaselocked = !0;
 
                 /*
                  * If we think the system clock has been synchronized, then
