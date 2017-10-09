@@ -154,6 +154,12 @@ Clone, build, and install GPS daemon in /usr/local.
     scons timeservice=yes nmea0183=yes prefix="/usr/local" pps=yes ntpshm=yes
     sudo scons install
 
+These user identifiers in /etc/passwd may be required by the GPS daemon and
+the NTP daemon; Obelisk runs as root.
+
+    gpsd:x:111:20:GPSD system user,,,:/run/gpsd:/bin/false
+    ntp:x:106:65534:,,,:/home/ntp:/bin/false
+
 Run interactively for debugging.
 
     sudo wwvbtool -d -r -s -u -l
