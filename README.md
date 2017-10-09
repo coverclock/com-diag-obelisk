@@ -29,15 +29,10 @@ library. Both Obelisk and Diminuto are written in C.
 
 Unlike Hourglass, a.k.a. O-1, which is a stratum-1 GPS-disciplined desk
 clock, and Astrolabe, a.k.a. O-2, which is a stratum-0 GPS-disciplined
-mantel clock with a chip-scale cesium atomic clock, Obelisk is not an
-NTP server. You can find evidence in this repository that I experimented
-with this. But I haven't been able to make the user-space wwvbtool utility
-precise enough to please the Network Time Protocol. It's hard to see why
-this would be worth the effort. If the clock has a network connection,
-better time sources than WWVB can be had over the internet; if not,
-both Hourglass and Astrolabe make far better time servers. But Obelisk
-sets itself from the NIST WWVB signal with enough accuracy to make a
-competely serviceable desk clock.
+mantel clock with a chip-scale cesium atomic clock, Obelisk may not be
+useful as a reference clock for an NTP server. You will find evidence in
+this repository that I am experimenting with using wwvbtool to generate
+both GPS (NMEA) and PPS reference clocks.
 
 The current options applied to wwvbtool in the timeservice init script
 cause the clock to set itself as soon as it receives a correct frame from
