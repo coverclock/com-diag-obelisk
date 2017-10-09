@@ -13,19 +13,19 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin/:/usr/local/bin
 
 . /lib/lsb/init-functions
 
-DAEMON1=/usr/local/sbin/gpsd
-PIDFILE1=/var/run/gpsd.pid
-DAEMON2=/usr/local/sbin/ntpd
-PIDFILE2=/var/run/ntpd.pid
-DAEMON3=/home/pi/bin/hourglass.py
-PIDFILE3=/var/run/hourglass.pid
-DAEMON4=/usr/local/bin/wwvbtool
-PIDFILE4=/var/run/wwvbtool.pid
+DAEMONW=/usr/local/bin/wwvbtool
+PIDFILEW=/var/run/wwvbtool.pid
+DAEMONG=/usr/local/sbin/gpsd
+PIDFILEG=/var/run/gpsd.pid
+DAEMONN=/usr/local/sbin/ntpd
+PIDFILEN=/var/run/ntpd.pid
+DAEMONH=/home/pi/bin/hourglass.py
+PIDFILEH=/var/run/hourglass.pid
 
-test -x $DAEMON1 || exit 5
-test -x $DAEMON2 || exit 5
-test -x $DAEMON3 || exit 5
-test -x $DAEMON4 || exit 5
+test -x $DAEMONW || exit 5
+test -x $DAEMONG || exit 5
+test -x $DAEMONN || exit 5
+test -x $DAEMONH || exit 5
 
 LOCKFILE=/var/lock/ntpdate
 
@@ -50,7 +50,7 @@ test -p $FIFO || mkfifo -m 0666 $FIFO
 
 GPSD_OPTS="-b -n $FIFO"
 NTPD_OPTS="-g"
-WWVB_OPTS="-N GP -O $FIFO -n -p -l -u -r -b"
+WWVB_OPTS="-N GP -O $FIFO -n -p -l -u -r -s -b"
 
 RUNASUSER=ntp
 UGID=$(getent passwd $RUNASUSER | cut -f 3,4 -d:) || true
@@ -65,47 +65,47 @@ case $1 in
 		hwclock -u -s
 		status=$?
 		log_end_msg $status
+		# Launch wwvbtool
+		log_daemon_msg "Starting WWVB daemon" "timeservice"
+		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEW --startas $DAEMONW -- $WWVB_OPTS
+		status=$?
+		log_end_msg $status
 		# Launch gpsd
 		log_daemon_msg "Starting GPS daemon" "timeservice"
-		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE1 --startas $DAEMON1 -- -P $PIDFILE1 $GPSD_OPTS
+		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEG --startas $DAEMONG -- -P $PIDFILEG $GPSD_OPTS
 		status=$?
 		log_end_msg $status
 		lock_ntpdate
 		# Launch ntpd
 		log_daemon_msg "Starting NTP daemon" "timeservice"
-		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE2 --startas $DAEMON2 -- -p $PIDFILE2 $NTPD_OPTS
+		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEN --startas $DAEMONN -- -p $PIDFILEN $NTPD_OPTS
 		status=$?
 		log_end_msg $status
 		unlock_ntpdate
 		# Launch hourglass
 		log_daemon_msg "Starting LCD daemon" "timeservice"
-		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE3 --startas $DAEMON3 --make-pidfile --background --
-		status=$?
-		log_end_msg $status
-		# Launch wwvbtool
-		log_daemon_msg "Starting WWVB daemon" "timeservice"
-		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE4 --startas $DAEMON4 -- $WWVB_OPTS
+		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEH --startas $DAEMONH --make-pidfile --background --
 		status=$?
 		log_end_msg $status
 		;;
 	stop)
-		log_daemon_msg "Stopping GPS daemon" "timeservice"
-		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE1
+		log_daemon_msg "Stopping LCD daemon" "timeservice"
+		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILEH --remove-pidfile
 		log_end_msg $?
 		log_daemon_msg "Stopping NTP daemon" "timeservice"
-		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE2
+		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILEN
 		log_end_msg $?
-		log_daemon_msg "Stopping LCD daemon" "timeservice"
-		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE3 --remove-pidfile
+		log_daemon_msg "Stopping GPS daemon" "timeservice"
+		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILEG
 		log_end_msg $?
 		log_daemon_msg "Stopping WWVB daemon" "timeservice"
-		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE4
+		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILEW
 		log_end_msg $?
 		log_daemon_msg "Writing hardware clock" "timeservice"
 		hwclock -u -w
 		status=$?
 		log_end_msg $status
-		rm -f $PIDFILE1 $PIDFILE2 $PIDFILE3 $PIDFILE4
+		rm -f $PIDFILEH $PIDFILEN $PIDFILEG $PIDFILEW
 		;;
 	restart|force-reload)
 		$0 stop && sleep 2 && $0 start
@@ -121,10 +121,10 @@ case $1 in
 		exit 3
 		;;
 	status)
-		status_of_proc $DAEMON1 "time service"
-		status_of_proc $DAEMON2 "time service"
-		status_of_proc $DAEMON3 "time service"
-		status_of_proc $DAEMON4 "time service"
+		status_of_proc $DAEMONW "time service"
+		status_of_proc $DAEMONG "time service"
+		status_of_proc $DAEMONN "time service"
+		status_of_proc $DAEMONH "time service"
 		;;
 	*)
 		echo "Usage: $0 {start|stop|restart|try-restart|force-reload|status}"

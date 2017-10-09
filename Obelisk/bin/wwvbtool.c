@@ -17,8 +17,9 @@
 #include <assert.h>
 #include <errno.h>
 #include <signal.h>
-#include <sys/time.h>
 #include <sys/types.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include "com/diag/diminuto/diminuto_pin.h"
@@ -49,6 +50,9 @@ static const int HERTZ_DELAY = 2;
 static const int HERTZ_TIMER = 100;
 static const int HOUR_JULIET = 1;
 static const int MINUTE_JULIET = 30;
+static const int NICE_MINIMUM = -20;
+static const int NICE_MAXIMUM = 19;
+static const int NICE_NONE = -21;
 
 static const const char * TOKEN[] = {
     "ZERO",     /* OBELISK_TOKEN_ZERO */
@@ -95,6 +99,7 @@ static int background = 0;
 static int set = 0;
 static int hour_juliet = -1;
 static int minute_juliet = -1;
+static int nice_priority = 0;
 static const char * run_path = (char *)0;
 static char nmea_talker[sizeof("GP")] = { '\0', '\0', '\0' };
 static const char * nmea_path = (char *)0;
@@ -108,12 +113,13 @@ static int serial_rtscts = 0;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]\n", program);
+    fprintf(stderr, "usage: %s [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]\n", program);
     fprintf(stderr, "       -1              Use one stop bit for OUTPUT (default).\n");
     fprintf(stderr, "       -2              Use two stop bits for OUTPUT.\n");
     fprintf(stderr, "       -7              Use seven data bits for OUTPUT.\n");
     fprintf(stderr, "       -8              Use eight data bits for OUTPUT (default).\n");
     fprintf(stderr, "       -B BAUD         Use BAUD bits per second for OUTPUT (%d).\n", serial_bitspersecond);
+    fprintf(stderr, "       -C NICE         Set scheduling priority to NICE (%d..%d).\n", NICE_MINIMUM, NICE_MAXIMUM);
     fprintf(stderr, "       -H HOUR         Set time of day at HOUR local (%d).\n", hour_juliet);
     fprintf(stderr, "       -L PATH         Use PATH for lock file (\"%s\").\n", run_path);
     fprintf(stderr, "       -M MINUTE       Set time of day at MINUTE local (%d).\n", minute_juliet);
@@ -215,10 +221,11 @@ int main(int argc, char ** argv)
     minute_juliet = MINUTE_JULIET;
     strncpy(nmea_talker, HAZER_NMEA_RADIO_TALKER, sizeof(nmea_talker) - 1);
     nmea_path = NMEA_PATH;
+    nice_priority = NICE_NONE;
 
     error = 0;
 
-    while ((opt = getopt(argc, argv, "1278B:H:L:M:N:O:P:S:T:bcdeghklmonprsuvx")) >= 0) {
+    while ((opt = getopt(argc, argv, "1278B:C:H:L:M:N:O:P:S:T:bcdeghklmonprsuvx")) >= 0) {
 
         switch (opt) {
 
@@ -261,6 +268,15 @@ int main(int argc, char ** argv)
         case 'B':
             serial_bitspersecond = strtoul(optarg, &endptr, 0);
             if ((*endptr != '\0') || (serial_bitspersecond < 0)) {
+                errno = EINVAL;
+                perror(optarg);
+                error = !0;
+            }
+            break;
+
+        case 'C':
+            nice_priority = strtoul(optarg, &endptr, 0);
+            if ((*endptr != '\0') || (nice_priority < NICE_MINIMUM) || (nice_priority > NICE_MAXIMUM)) {
                 errno = EINVAL;
                 perror(optarg);
                 error = !0;
@@ -460,11 +476,18 @@ int main(int argc, char ** argv)
 
     }
 
+    assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
+    assert(sizeof(obelisk_frame_t) == sizeof(uint64_t));
+
     pid = getpid();
     DIMINUTO_LOG_INFORMATION("%s: running pid=%d.\n", program, getpid());
 
-    assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
-    assert(sizeof(obelisk_frame_t) == sizeof(uint64_t));
+    if (nice_priority != NICE_NONE) {
+        LOG("PRIORITY %d.\n", nice_priority);
+        rc = setpriority(PRIO_PROCESS, 0, nice_priority);
+        if (rc < 0) { perror("setpriority"); }
+        assert(rc >= 0);
+    }
 
     /*
     ** Configure P1 output and T input pins.
