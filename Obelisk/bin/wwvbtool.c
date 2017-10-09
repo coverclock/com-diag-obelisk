@@ -177,7 +177,7 @@ int main(int argc, char ** argv)
     hazer_buffer_t sentence = { 0 };
     struct tm time = { 0 };
     struct tm * timep = (struct tm *)0;
-    struct timeval value = { 0 };
+    struct timeval epoch = { 0 };
     extern long timezone;
     extern int daylight;
     int field = -1;
@@ -700,7 +700,7 @@ int main(int argc, char ** argv)
             } else if (!acquired) {
                 /* Do nothing. */
             } else {
-                timep = gmtime_r(&value.tv_sec, &time);
+                timep = gmtime_r(&epoch.tv_sec, &time);
                 assert(timep == &time);
                 rc = snprintf(
                     sentence, sizeof(sentence) - 1,
@@ -711,7 +711,7 @@ int main(int argc, char ** argv)
                     time.tm_hour,
                     time.tm_min,
                     time.tm_sec,
-                    value.tv_usec / (1000000000 / 100),
+                    epoch.tv_usec / (1000000000 / 100),
                     time.tm_mday,
                     time.tm_mon + 1,
                     (time.tm_year + 1900) % 100,
@@ -725,7 +725,6 @@ int main(int argc, char ** argv)
                 LOG("NMEA %s%c%c\\r\\n", sentence, msb, lsb);
                 fprintf(nmea_out_fp, "%s%c%c\r\n", sentence, msb, lsb);
                 fflush(nmea_out_fp);
-                value.tv_sec += 1;
             }
             risings += 1;
             milliseconds_pulse = milliseconds_cycle;
@@ -840,7 +839,7 @@ int main(int argc, char ** argv)
             /* Do nothing. */
         } else {
 
-            if ((rc = settimeofday(&value, (struct timezone *)0)) < 0) {
+            if ((rc = settimeofday(&epoch, (struct timezone *)0)) < 0) {
                 perror("settimeodday");
             } else {
 
@@ -861,6 +860,16 @@ int main(int argc, char ** argv)
 
             }
 
+        }
+
+        /*
+         * Advance the second for the next NMEA sentence. We wait until
+         * we may have set the time in this cycle since this is for the
+         * next cycle.
+         */
+
+        if (acquired) {
+            epoch.tv_sec += 1;
         }
 
         /*
@@ -968,7 +977,7 @@ int main(int argc, char ** argv)
                  */
 
                 time.tm_sec = 0;
-                value.tv_sec = mktime(&time);
+                epoch.tv_sec = mktime(&time);
 
                 /*
                  * mktime(3) always assumes that the tm structure contains local
@@ -977,13 +986,13 @@ int main(int argc, char ** argv)
                  * to account for Daylight Saving Time in the local time zone.
                  */
 
-                value.tv_sec -= timezone;
+                epoch.tv_sec -= timezone;
                 if (!daylight) {
                     /* Do nothing. */
                 } else if (!time.tm_isdst) {
                     /* Do nothing. */
                 } else {
-                    value.tv_sec += 3600;
+                    epoch.tv_sec += 3600;
                 }
     
                 /*
@@ -992,21 +1001,21 @@ int main(int argc, char ** argv)
                  * we do so at all).
                  */
 
-                value.tv_sec += 60;
+                epoch.tv_sec += 60;
     
                 /*
                  * The microsecond offset accounts for the latency in the
                  * cue debouncer: two cycles of 10ms (10000usec) each.
                  */
 
-                value.tv_usec = (2 * milliseconds_cycle) * 1000;
+                epoch.tv_usec = (2 * milliseconds_cycle) * 1000;
 
                 if (!acquired) {
                     acquired = !0;
                     DIMINUTO_LOG_NOTICE("%s: acquired.\n", program);
                 }
 
-                LOG("EPOCH %ld.%06ld.", value.tv_sec, value.tv_usec);
+                LOG("EPOCH %ld.%06ld.", epoch.tv_sec, epoch.tv_usec);
 
                 armed = !0;
 
