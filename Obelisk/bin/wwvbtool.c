@@ -657,7 +657,7 @@ int main(int argc, char ** argv)
         }
 
         if (diminuto_hangup_check()) {
-            DIMINUTO_LOG_NOTICE("%s: hungup acquired=%d synchronized=%d armed=%d phaselocked=%drisings=%d fallings=%d cycles=%d.\n", program, acquired, synchronized, armed, phaselocked, risings, fallings, cycles);
+            DIMINUTO_LOG_NOTICE("%s: hungup acquired=%d synchronized=%d armed=%d phaselocked=%d risings=%d fallings=%d cycles=%d.\n", program, acquired, synchronized, armed, phaselocked, risings, fallings, cycles);
             synchronized = 0;
         }
 
