@@ -105,14 +105,18 @@ Clone, build, and install Obelisk in /usr/local.
     make
     make install
 
-Clone, build, and install NTPsec daemon in /usr/local.
+Clone, build, and install NTPsec daemon in /usr/local. Note that the
+version of ntpsec that I used in Obelisk requires the refclock configuration
+option; the earlier version I used in Hourglass and Astrolabe did not require
+this (as far as I can remember anyway).
 
     cd ~
     mkdir -p src
     cd src
     git clone https://gitlab.com/NTPsec/ntpsec.git
     cd ntpsec
-    ./waf configure
+    sudo ./buildprep
+    ./waf configure --refclock=gpsd,pps,nmea,shm
     ./waf build
     sudo ./waf install
 
