@@ -50,7 +50,7 @@ test -p $FIFO || mkfifo -m 0666 $FIFO
 
 GPSD_OPTS="-b -n $FIFO"
 NTPD_OPTS="-g"
-WWVB_OPTS="-N GP -O $FIFO -n -p -l -u -r -s -b"
+WWVB_OPTS="-N GP -O $FIFO -n -p -l -u -r -i -s -b"
 
 RUNASUSER=ntp
 UGID=$(getent passwd $RUNASUSER | cut -f 3,4 -d:) || true

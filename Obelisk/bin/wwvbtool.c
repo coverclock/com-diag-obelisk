@@ -96,7 +96,8 @@ static int pin_in_t = -1;
 static int pin_out_pps = -1;
 static int unexport = 0;
 static int background = 0;
-static int set = 0;
+static int set_initially = 0;
+static int set_daily = 0;
 static int hour_juliet = -1;
 static int minute_juliet = -1;
 static int nice_priority = 0;
@@ -113,7 +114,7 @@ static int serial_rtscts = 0;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]\n", program);
+    fprintf(stderr, "usage: %s [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -i ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]\n", program);
     fprintf(stderr, "       -1              Use one stop bit for OUTPUT (default).\n");
     fprintf(stderr, "       -2              Use two stop bits for OUTPUT.\n");
     fprintf(stderr, "       -7              Use seven data bits for OUTPUT.\n");
@@ -134,6 +135,7 @@ static void usage(void)
     fprintf(stderr, "       -e              Use even parity for OUTPUT.\n");
     fprintf(stderr, "       -g              Send SIGHUP to the PID in the lock file and exit.\n");
     fprintf(stderr, "       -h              Display help menu and exit.\n");
+    fprintf(stderr, "       -i              Set time of day initially when possible.\n");
     fprintf(stderr, "       -k              Send SIGTERM to the PID in the lock file and exit.\n");
     fprintf(stderr, "       -l              Remove the lock file initially ignoring errors.\n");
     fprintf(stderr, "       -m              Use modem control for OUTPUT.\n");
@@ -141,7 +143,7 @@ static void usage(void)
     fprintf(stderr, "       -o              Use odd parity for OUTPUT.\n");
     fprintf(stderr, "       -p              Generate PPS output.\n");
     fprintf(stderr, "       -r              Reset device initially.\n");
-    fprintf(stderr, "       -s              Set time of day when possible.\n");
+    fprintf(stderr, "       -s              Set time of day daily when possible.\n");
     fprintf(stderr, "       -u              Unexport pins initially ignoring errors.\n");
     fprintf(stderr, "       -v              Display verbose output.\n");
     fprintf(stderr, "       -x              Use XON/XOFF for OUTPUT.\n");
@@ -225,7 +227,7 @@ int main(int argc, char ** argv)
 
     error = 0;
 
-    while ((opt = getopt(argc, argv, "1278B:C:H:L:M:N:O:P:S:T:bcdeghklmonprsuvx")) >= 0) {
+    while ((opt = getopt(argc, argv, "1278B:C:H:L:M:N:O:P:S:T:bcdeghiklmonprsuvx")) >= 0) {
 
         switch (opt) {
 
@@ -363,6 +365,10 @@ int main(int argc, char ** argv)
             return 0;
             break;
 
+        case 'i':
+            set_initially = !0;
+            break;
+
         case 'k':
             terminate = !0;
             break;
@@ -384,7 +390,7 @@ int main(int argc, char ** argv)
             break;
 
         case 's':
-            set = !0;
+            set_daily = !0;
             break;
 
         case 'u':
@@ -594,9 +600,7 @@ int main(int argc, char ** argv)
 
     LOG("INITIALIZE.");
 
-    if (set) {
-        tzset();
-    }
+    tzset();
 
     diminuto_cue_init(&cue, 0);
 
@@ -792,7 +796,7 @@ int main(int argc, char ** argv)
          * set the time if we so desire.
          */
 
-        if (!set) {
+        if ((!set_initially) && (!set_daily)) {
             /* Do nothing. */
         } else if (!armed) {
             /* Do nothing. */
@@ -816,7 +820,7 @@ int main(int argc, char ** argv)
                 rc = diminuto_time_zulu(ticks_now, &year, &month, &day, &hour, &minute, &second, &fraction);
                 assert(rc >= 0);
 
-                DIMINUTO_LOG_NOTICE("%s: now zulu=%04d-%02d-%02dT%02d:%02d:%02d.%09llu.\n",
+                DIMINUTO_LOG_NOTICE("%s: set zulu=%04d-%02d-%02dT%02d:%02d:%02d.%09llu.\n",
                     program,
                     year, month, day,
                     hour, minute, second,
@@ -1023,7 +1027,11 @@ int main(int argc, char ** argv)
                  * again.
                  */
 
-                if (synchronized) {
+                if (!set_daily) {
+                    /* Do nothing. */
+                } else if (!synchronized) {
+                    /* Do nothing. */
+                } else {
 
                     ticks_now = diminuto_time_clock();
                     assert(ticks_now >= 0);
