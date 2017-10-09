@@ -188,6 +188,7 @@ int main(int argc, char ** argv)
     char * endptr = (char *)0;
     int error = -1;
     int armed = -1;
+    int phaselocked = -1;
     int synchronized = -1;
     int year = -1;
     int month = -1;
@@ -486,7 +487,7 @@ int main(int argc, char ** argv)
     assert(sizeof(obelisk_frame_t) == sizeof(uint64_t));
 
     pid = getpid();
-    DIMINUTO_LOG_INFORMATION("%s: running pid=%d.\n", program, getpid());
+    DIMINUTO_LOG_NOTICE("%s: running pid=%d.\n", program, getpid());
 
     if (nice_priority != NICE_NONE) {
         LOG("PRIORITY %d.\n", nice_priority);
@@ -635,6 +636,7 @@ int main(int argc, char ** argv)
     cycles = 0;
 
     armed = 0;
+    phaselocked = 0;
     synchronized = 0;
     acquired = 0;
 
@@ -650,12 +652,12 @@ int main(int argc, char ** argv)
         assert(rc == -1);
 
         if (diminuto_terminator_check()) {
-            DIMINUTO_LOG_INFORMATION("%s: terminated.\n", program);
+            DIMINUTO_LOG_NOTICE("%s: terminated.\n", program);
             break;
         }
 
         if (diminuto_hangup_check()) {
-            DIMINUTO_LOG_INFORMATION("%s: hungup acquired=%d synchronized=%d armed=%d risings=%d fallings=%d cycles=%d.\n", program, acquired, synchronized, armed, risings, fallings, cycles);
+            DIMINUTO_LOG_NOTICE("%s: hungup acquired=%d synchronized=%d armed=%d phaselocked=%drisings=%d fallings=%d cycles=%d.\n", program, acquired, synchronized, armed, phaselocked, risings, fallings, cycles);
             synchronized = 0;
         }
 
@@ -694,6 +696,40 @@ int main(int argc, char ** argv)
             } else {
                 rc = diminuto_pin_set(pin_out_pps_fp);
                 assert(rc >= 0);
+            }
+            if (!nmea) {
+                /* Do nothing. */
+            } else if (!acquired) {
+                /* Do nothing. */
+            } else if (!phaselocked) {
+                /* Do nothing. */
+            } else {
+                timep = gmtime_r(&value.tv_sec, &time);
+                assert(timep == &time);
+                rc = snprintf(
+                    sentence, sizeof(sentence) - 1,
+                    "%c%2.2s%3.3s,%02d%02d%02d.%02d,A,,,,,,,%02d%02d%02d,,,D%c",
+                    HAZER_STIMULUS_START,
+                    nmea_talker,
+                    HAZER_NMEA_GPS_MESSAGE_RMC,
+                    time.tm_hour,
+                    time.tm_min,
+                    time.tm_sec,
+                    value.tv_usec / (1000000000 / 100),
+                    time.tm_mday,
+                    time.tm_mon + 1,
+                    (time.tm_year + 1900) % 100,
+                    HAZER_STIMULUS_CHECKSUM
+                );
+                assert(rc < (sizeof(sentence) - 1));
+                sentence[sizeof(sentence) - 1] = '\0';
+                checksum = hazer_checksum(sentence, sizeof(sentence));
+                rc = hazer_checksum2characters(checksum, &msb, &lsb);
+                assert(rc >= 0);
+                LOG("NMEA %s%c%c\\r\\n", sentence, msb, lsb);
+                fprintf(nmea_out_fp, "%s%c%c\r\n", sentence, msb, lsb);
+                fflush(nmea_out_fp);
+                value.tv_sec += 1;
             }
             risings += 1;
             milliseconds_pulse = milliseconds_cycle;
@@ -913,7 +949,7 @@ int main(int argc, char ** argv)
                  */
 
                 if (!synchronized || (time.tm_min == 59)) {
-                    DIMINUTO_LOG_INFORMATION("%s: time zulu=%04d-%02d-%02dT%02d:%02d:%02d julian=%04d/%03d day=%s dst=%c dUT1=%c0.%d lyi=%d lsw=%d.",
+                    DIMINUTO_LOG_NOTICE("%s: time zulu=%04d-%02d-%02dT%02d:%02d:%02d julian=%04d/%03d day=%s dst=%c dUT1=%c0.%d lyi=%d lsw=%d.",
                         program,
                         time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
                         time.tm_hour, time.tm_min, time.tm_sec,
@@ -977,48 +1013,7 @@ int main(int argc, char ** argv)
                 LOG("EPOCH %ld.%06ld.", value.tv_sec, value.tv_usec);
 
                 armed = !0;
-
-                /*
-                 * Generate NMEA output if so requested.
-                 */
-
-                if (nmea) {
- 
-                    timep = gmtime_r(&value.tv_sec, &time);
-                    if (timep != &time) {
-                        perror("gmtime_r");
-                    } else {
-
-                        rc = snprintf(
-                            sentence, sizeof(sentence) - 1,
-                            "%c%2.2s%3.3s,%02d%02d%02d.%02d,A,,,,,,,%02d%02d%02d,,,D%c",
-                            HAZER_STIMULUS_START,
-                            nmea_talker,
-                            HAZER_NMEA_GPS_MESSAGE_RMC,
-                            time.tm_hour,
-                            time.tm_min,
-                            time.tm_sec,
-                            value.tv_usec / (1000000000 / 100),
-                            time.tm_mday,
-                            time.tm_mon + 1,
-                            (time.tm_year + 1900) % 100,
-                            HAZER_STIMULUS_CHECKSUM
-                        );
-                        assert(rc < (sizeof(sentence) - 1));
-                        sentence[sizeof(sentence) - 1] = '\0';
-
-                        checksum = hazer_checksum(sentence, sizeof(sentence));
-                        rc = hazer_checksum2characters(checksum, &msb, &lsb);
-                        assert(rc >= 0);
-
-                        LOG("NMEA %s%c%c\\r\\n", sentence, msb, lsb);
-
-                        fprintf(nmea_out_fp, "%s%c%c\r\n", sentence, msb, lsb);
-                        fflush(nmea_out_fp);
-
-                    }
-
-                }
+                phaselocked = !0;
 
                 /*
                  * If we think the system clock has been synchronized, then
@@ -1089,7 +1084,7 @@ int main(int argc, char ** argv)
     ** Exit.
     */
 
-    DIMINUTO_LOG_INFORMATION("%s: exiting.\n", program);
+    DIMINUTO_LOG_NOTICE("%s: exiting.\n", program);
 
     return 0;
 }
