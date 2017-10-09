@@ -15,22 +15,21 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin/:/usr/local/bin
 
 ENABLENTP=false
 
+DAEMONG=/usr/local/sbin/gpsd
+PIDFILEG=/var/run/gpsd.pid
 DAEMONW=/usr/local/bin/wwvbtool
 PIDFILEW=/var/run/wwvbtool.pid
 DAEMONH=/home/pi/bin/hourglass.py
 PIDFILEH=/var/run/hourglass.pid
+DAEMONN=/usr/local/sbin/ntpd
+PIDFILEN=/var/run/ntpd.pid
 
+test -x $DAEMONG || exit 5
 test -x $DAEMONW || exit 5
 test -x $DAEMONH || exit 5
 
 if $ENABNLENTP; then
 
-	DAEMONG=/usr/local/sbin/gpsd
-	PIDFILEG=/var/run/gpsd.pid
-	DAEMONN=/usr/local/sbin/ntpd
-	PIDFILEN=/var/run/ntpd.pid
-
-	test -x $DAEMONG || exit 5
 	test -x $DAEMONN || exit 5
 
 	LOCKFILE=/var/lock/ntpdate
@@ -50,13 +49,7 @@ if $ENABNLENTP; then
 		fi
 	}
 
-	FIFO="/var/run/wwvbtool.fifo"
-
-	test -p $FIFO || mkfifo -m 0666 $FIFO
-
-	GPSD_OPTS="-b -n $FIFO"
 	NTPD_OPTS="-g"
-	WWVB_OPTS="-N GP -O $FIFO -n -p -l -u -r -i -s -b"
 
 	RUNASUSER=ntp
 	UGID=$(getent passwd $RUNASUSER | cut -f 3,4 -d:) || true
@@ -64,73 +57,88 @@ if $ENABNLENTP; then
 		NTPD_OPTS="$NTPD_OPTS -u $UGID"
 	fi
 
-else
-
-	WWVB_OPTS="-l -u -r -i -s -b"
-
 fi
+
+FIFO="/var/run/wwvbtool.fifo"
+
+test -p $FIFO || mkfifo -m 0666 $FIFO
+
+GPSD_OPTS="-b -n $FIFO"
+WWVB_OPTS="-N GP -O $FIFO -n -p -l -u -r -i -s -b"
 
 case $1 in
 	start)
+
 		# Set the system clock from the hardware clock.
 		log_daemon_msg "Reading hardware clock" "timeservice"
 		hwclock -u -s
 		status=$?
 		log_end_msg $status
+
+		# Launch gpsd
+		log_daemon_msg "Starting GPS daemon" "timeservice"
+		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEG --startas $DAEMONG -- -P $PIDFILEG $GPSD_OPTS
+		status=$?
+		log_end_msg $status
+
 		# Launch wwvbtool
 		log_daemon_msg "Starting WWVB daemon" "timeservice"
 		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEW --startas $DAEMONW -- $WWVB_OPTS
 		status=$?
 		log_end_msg $status
+
 		if $ENABLENTP; then
-			# Launch gpsd
-			log_daemon_msg "Starting GPS daemon" "timeservice"
-			start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEG --startas $DAEMONG -- -P $PIDFILEG $GPSD_OPTS
-			status=$?
-			log_end_msg $status
-			lock_ntpdate
 			# Launch ntpd
+			lock_ntpdate
 			log_daemon_msg "Starting NTP daemon" "timeservice"
 			start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEN --startas $DAEMONN -- -p $PIDFILEN $NTPD_OPTS
 			status=$?
 			log_end_msg $status
 			unlock_ntpdate
 		fi
+
 		# Launch hourglass
 		log_daemon_msg "Starting LCD daemon" "timeservice"
 		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEH --startas $DAEMONH --make-pidfile --background --
 		status=$?
 		log_end_msg $status
+
 		;;
 	stop)
+
 		log_daemon_msg "Stopping LCD daemon" "timeservice"
 		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILEH --remove-pidfile
 		log_end_msg $?
+
 		if $ENABLENTP; then
 			log_daemon_msg "Stopping NTP daemon" "timeservice"
 			start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILEN
 			log_end_msg $?
-			log_daemon_msg "Stopping GPS daemon" "timeservice"
-			start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILEG
-			log_end_msg $?
 		fi
+
 		log_daemon_msg "Stopping WWVB daemon" "timeservice"
 		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILEW
 		log_end_msg $?
+
+		log_daemon_msg "Stopping GPS daemon" "timeservice"
+		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILEG
+		log_end_msg $?
+
 		log_daemon_msg "Writing hardware clock" "timeservice"
 		hwclock -u -w
 		status=$?
 		log_end_msg $status
+
+		rm -f $PIDFILEG
 		rm -f $PIDFILEW
-		if $ENABLENTP; then
-			rm -f $PIDFILEG
-			rm -f $PIDFILEN
-		fi
+		rm -f $PIDFILEN
 		rm -f $PIDFILEH
 		;;
+
 	restart|force-reload)
 		$0 stop && sleep 2 && $0 start
 		;;
+
 	try-restart)
 		if $0 status >/dev/null; then
 			$0 restart
@@ -138,15 +146,15 @@ case $1 in
 			exit 0
 		fi
 		;;
+
 	reload)
 		exit 3
 		;;
+
 	status)
+		status_of_proc $DAEMONG "time service"
 		status_of_proc $DAEMONW "time service"
-		if $ENABLENTP; then
-			status_of_proc $DAEMONG "time service"
-			status_of_proc $DAEMONN "time service"
-		fi
+		$ENABLENTP && status_of_proc $DAEMONN "time service"
 		status_of_proc $DAEMONH "time service"
 		;;
 	*)
