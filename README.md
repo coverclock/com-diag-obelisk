@@ -247,3 +247,6 @@ configured below for 9600 baud, 8 data bits, 1 stop bit, and no parity
 
     wwvbtool -d -O /dev/ttyAMA0 -B 9600 -8 -1 -n -p -r -s -u -N GP
 
+Before enabling the NTP peerstats capability in /etc/ntp.conf, do this.
+
+    sudo mkdir -p -m 0777 /var/log/ntpstats
