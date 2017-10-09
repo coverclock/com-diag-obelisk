@@ -15,17 +15,41 @@ Wheat Ridge CO 80033
 U.S.A.  
 ## Abstract
 Obelisk is my excuse to learn how to use the NIST WWVB radio time
-signal. It is a work in progress. Obelisk, a.k.a. O-3, consists
-of a small library and an application. The application runs on a
-Raspberry Pi. It decodes the amplitude-modulated pulse-duration-encoded
-binary-coded-decimal data stream from a SYM-RFT-60 radio receiver. WWVB is
-a 60KHz long-wave transmitter near Fort Collins Colorado. The facility is
-managed by the U.S. National Institute of Standards and Technology. WWVB
-transmits the current time every minute. This time is disciplined by
-atomic clocks at the transmitter site. These clocks are ultimately
-synchronized to the master atomic clock at the NIST laboratories in
-Boulder Colorado.  The application is built on top of the Obelisk library
-and the Diminuto library. Both Obelisk and Diminuto are written in C.
+signal. Obelisk, a.k.a. O-3, consists of a small library and an
+application. The application runs on a Raspberry Pi. It decodes the
+amplitude-modulated pulse-duration-encoded binary-coded-decimal data
+stream from a SYM-RFT-60 radio receiver. WWVB is a 60KHz long-wave
+transmitter near Fort Collins Colorado. The facility is managed by the
+U.S. National Institute of Standards and Technology. WWVB transmits the
+current time every minute. This time is disciplined by atomic clocks
+at the transmitter site. These clocks are ultimately synchronized to
+the master atomic clock at the NIST laboratories in Boulder Colorado.
+The application is built on top of the Obelisk library and the Diminuto
+library. Both Obelisk and Diminuto are written in C.
+
+Unlike Hourglass, a.k.a. O-1, which is a stratum-1 GPS-disciplined desk
+clock, and Astrolabe, a.k.a. O-2, which is a stratum-0 GPS-disciplined
+mantel clock with a chip-scale cesium atomic clock, Obelisk is not an
+NTP server. You can find evidence in this repository that I experimented
+with this. But I haven't been able to make the user-space wwvbtool utility
+precise enough to please the Network Time Protocol. It's hard to see why
+this would be worth the effort. If the clock has a network connection,
+better time sources than WWVB can be had over the internet; if not,
+both Hourglass and Astrolabe make far better time servers. But Obelisk
+sets itself from the NIST WWVB signal with enough accuracy to make a
+competely serviceable desk clock.
+
+The current options applied to wwvbtool in the timeservice init script
+cause the clock to set itself as soon as it receives a correct frame from
+WWVB, and to correct itself at 1:30AM local time ("juliet" in NATO speak)
+when it receives another correct frame. This strategy was borrowed from my
+Casio Wave Captor Multi Band 6, a solar-powered wristwatch with its own
+WWVB receiver. Here in Denver Colorado, the WWVB long-wave signal is strong
+enough to "pick up in the fillings of your teeth" as my short-wave friends
+say. But elsewhere the signal can be extremely finicky; the position of the
+antenna, neighborhood radio frequency, and even a sunny day, can interfere
+with it. The signal is frequently best late at night, which is the reason
+for the 1:30AM local time strategy.
 ## Links
 <https://github.com/coverclock/com-diag-obelisk>    
 <https://github.com/coverclock/com-diag-diminuto>    
