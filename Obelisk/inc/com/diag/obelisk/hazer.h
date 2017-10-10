@@ -85,7 +85,7 @@ enum HazerStimulus {
 };
 
 /**
- * @def HAZER_NMEA_GPS_TALKER
+ * @def HAZER_NMEA_RADIO_TALKER
  * NMEA 0183 4.10, 6.1.4, Table 6
  */
 #define HAZER_NMEA_RADIO_TALKER "ZV"
@@ -107,8 +107,8 @@ extern uint8_t hazer_checksum(const void * buffer, size_t size);
 /**
  * Given an eight-bit checksum, concert into the two checksum characters.
  * @param ck is the checksum.
- * @param mnsp points where the most significant character is stored.
- * @param lnsp points where the least significant character is stored.
+ * @param msnp points where the most significant character is stored.
+ * @param lsnp points where the least significant character is stored.
  * @return 0 for success, <0 if an error occurred.
  */
 extern int hazer_checksum2characters(uint8_t ck, char * msnp, char * lsnp);
