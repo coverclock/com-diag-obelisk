@@ -52,6 +52,7 @@ late at night, which is the reason for the 1:30AM local time strategy.
 ## Links
 <https://github.com/coverclock/com-diag-obelisk>    
 <https://github.com/coverclock/com-diag-diminuto>    
+<https://github.com/coverclock/com-diag-hazer>    
 <https://www.flickr.com/photos/johnlsloan/albums/72157689295451755>    
 <https://en.wikipedia.org/wiki/WWVB>    
 <https://universal-solder.com/product/60khz-wwvb-atomic-radio-clock-receiver-replaces-c-max-cmmr-6p-60/>    
