@@ -294,3 +294,19 @@ by wwvbtool.
     clock=dd8761ea.e9000a04 2017-10-10T15:12:42.910Z, peer=39979, tc=6, mintc=0,
     offset=-12.927091, frequency=-144.019516, sys_jitter=39.003832,
     clk_jitter=27.85568, clk_wander=4.046512
+
+The wwvbtool utility writes some stuff to the system log at the "notice"
+level when signficant events occur, or periodically at fifty-nine minutes
+after the hour, or whenever it receives a SIGHUP signal. Here are some
+examples.
+
+    Oct 10 09:00:21 obelisk wwvbtool[15223]: wwvbtool: running pid=15223.
+    Oct 10 09:01:59 obelisk wwvbtool[15223]: wwvbtool: time zulu=2017-10-10T15:01:59 julian=2017/283 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 10 09:01:59 obelisk wwvbtool[15223]: wwvbtool: acquired.
+    Oct 10 09:02:00 obelisk wwvbtool[15223]: wwvbtool: set zulu=2017-10-10T15:02:00.000020112.
+    Oct 10 09:59:59 obelisk wwvbtool[15223]: wwvbtool: time zulu=2017-10-10T15:59:59 julian=2017/283 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 10 10:59:59 obelisk wwvbtool[15223]: wwvbtool: time zulu=2017-10-10T16:59:59 julian=2017/283 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 10 11:59:59 obelisk wwvbtool[15223]: wwvbtool: time zulu=2017-10-10T17:59:59 julian=2017/283 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 10 12:33:20 obelisk wwvbtool[15223]: wwvbtool: hungup acquired=1 synchronized=1 armed=0 risings=1 fallings=1 cycles=71.
+    Oct 10 12:33:59 obelisk wwvbtool[15223]: wwvbtool: time zulu=2017-10-10T18:33:59 julian=2017/283 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 10 12:34:00 obelisk wwvbtool[15223]: wwvbtool: set zulu=2017-10-10T18:34:00.000020781.
