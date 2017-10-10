@@ -30,14 +30,13 @@ library. Both Obelisk and Diminuto are written in C.
 Unlike Hourglass, a.k.a. O-1, which is a stratum-1 GPS-disciplined desk
 clock, and Astrolabe, a.k.a. O-2, which is a stratum-0 GPS-disciplined
 mantel clock with a chip-scale cesium atomic clock, Obelisk may not be
-useful as a reference clock for an NTP server. You will find evidence
-in this repository that I am experimenting with using wwvbtool to
-generate both GPS (NMEA) and PPS reference clocks, but that is a work in
-progress. So far my user space approach doesn't produce precise enough
-PPS, which I attribute to software latency of going through wwvbtool to
-gpsd to ntpd. Regardless of its poor behavior as an NTP reference clock,
-Obelisk makes a fine desk clock just by synchronizing its own clock to
-WWVB as described below.
+useful as a reference clock for an NTP server. You will find evidence in
+this repository that I am experimenting with using wwvbtool to generate
+both GPS (NMEA) and PPS reference clocks, but that is a work in progress.
+My user space approach suffers a lot of sampling and software latency.
+Regardless of its poor behavior as an NTP reference clock, Obelisk
+makes a fine desk clock just by synchronizing its own clock to WWVB as
+described below.
 
 The current options applied to wwvbtool in the timeservice init script
 cause the clock to set itself as soon as it receives a correct frame from
@@ -255,3 +254,43 @@ configured below for 9600 baud, 8 data bits, 1 stop bit, and no parity
 Before enabling the NTP peerstats capability in /etc/ntp.conf, do this.
 
     sudo mkdir -p -m 0777 /var/log/ntpstats
+
+Sometimes NTP seems relatively happy with the GPS NMEA and PPS synthesized
+by wwvbtool.
+
+    $ networktime
+         remote           refid      st t when poll reach   delay   offset   jitter
+    ===============================================================================
+    *SHM(1)          .PPS.            0 l   36   64  377   0.0000 -12.9271  39.0038
+    +SHM(0)          .GPS.            0 l   35   64  377   0.0000   5.8287  38.9642
+     us.pool.ntp.org .POOL.          16 p    -  256    0   0.0000   0.0000   0.0019
+    -b1-66er.matrix. 129.6.15.30      2 u   62   64  377  64.1515  85.1565  65.9280
+    +coopnet.cc      216.218.254.202  2 u    -   64  377  23.3387  40.9690  34.3539
+    +soft-sea-01.ser 209.51.161.238   2 u   66   64  377  38.2534  -1.2305  54.6508
+    -clock.xmission. 150.143.81.69    2 u   61   64  377  38.3154  70.3081  58.3872
+    +biisoni.miuku.n 207.224.49.219   2 u   15   64  377  38.6064 -11.1295  68.6863
+    +y.ns.gin.ntt.ne 249.224.99.213   2 u   10   64  377  24.9829 -10.5371  67.2388
+    +209.208.79.69   130.207.244.240  2 u   12   64  377  53.0668  -8.5697  69.2658
+    +251.228.185.35. 169.254.169.254  3 u   12   64  377  39.4476 -11.8270  66.9695
+    
+    ind assid status  conf reach auth condition  last_event cnt
+    ===========================================================
+      1 39979  962a   yes   yes  none  sys.peer    sys_peer  2
+      2 39980  941a   yes   yes  none candidate    sys_peer  1
+      3 39981  8811   yes  none  none    reject    mobilize  1
+      4 39982  131a    no   yes  none   outlier    sys_peer  1
+      5 39983  141a    no   yes  none candidate    sys_peer  1
+      6 39984  1414    no   yes  none candidate   reachable  1
+      7 39985  1314    no   yes  none   outlier   reachable  1
+      8 39986  1414    no   yes  none candidate   reachable  1
+      9 39987  1414    no   yes  none candidate   reachable  1
+     10 39988  1414    no   yes  none candidate   reachable  1
+     11 39989  1414    no   yes  none candidate   reachable  1
+    associd=0 status=0415 leap_none, sync_uhf_radio, 1 event, clock_sync,
+    version="ntpd ntpsec-0.9.7+1473 2017-10-06T16:43:31Z", processor="armv7l",
+    system="Linux/4.9.41-v7+", leap=00, stratum=1, precision=-19, rootdelay=0.0,
+    rootdisp=54.926, refid=PPS,
+    reftime=dd8761c6.9842a985 2017-10-10T15:12:06.594Z,
+    clock=dd8761ea.e9000a04 2017-10-10T15:12:42.910Z, peer=39979, tc=6, mintc=0,
+    offset=-12.927091, frequency=-144.019516, sys_jitter=39.003832,
+    clk_jitter=27.85568, clk_wander=4.046512
