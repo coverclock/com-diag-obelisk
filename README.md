@@ -310,3 +310,5 @@ examples.
     Oct 10 12:33:20 obelisk wwvbtool[15223]: wwvbtool: hungup acquired=1 synchronized=1 armed=0 risings=1 fallings=1 cycles=71.
     Oct 10 12:33:59 obelisk wwvbtool[15223]: wwvbtool: time zulu=2017-10-10T18:33:59 julian=2017/283 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
     Oct 10 12:34:00 obelisk wwvbtool[15223]: wwvbtool: set zulu=2017-10-10T18:34:00.000020781.
+    Oct 10 12:39:03 obelisk wwvbtool[15223]: wwvbtool: terminated.
+    Oct 10 12:39:03 obelisk wwvbtool[15223]: wwvbtool: exiting.
