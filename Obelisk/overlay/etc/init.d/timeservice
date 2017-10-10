@@ -13,7 +13,7 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin/:/usr/local/bin
 
 . /lib/lsb/init-functions
 
-ENABLENTP=false
+ENABLENTP=true
 
 DAEMONG=/usr/local/sbin/gpsd
 PIDFILEG=/var/run/gpsd.pid
@@ -49,7 +49,7 @@ if $ENABNLENTP; then
 		fi
 	}
 
-	NTPD_OPTS="-g"
+	NTPD_OPTS="-g -N"
 
 	RUNASUSER=ntp
 	UGID=$(getent passwd $RUNASUSER | cut -f 3,4 -d:) || true
@@ -60,11 +60,12 @@ if $ENABNLENTP; then
 fi
 
 FIFO="/var/run/wwvbtool.fifo"
+PPS0="/dev/pps0"
 
 test -p $FIFO || mkfifo -m 0666 $FIFO
 
-GPSD_OPTS="-b -n $FIFO"
-WWVB_OPTS="-N GP -O $FIFO -n -p -l -u -r -i -s -b"
+GPSD_OPTS="-b -n $FIFO $PPS0"
+WWVB_OPTS="-C -20 -N GP -O $FIFO -n -p -l -u -r -i -s -b"
 
 case $1 in
 	start)

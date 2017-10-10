@@ -46,7 +46,7 @@ static const char NMEA_PATH[] = "-";
 static const int PIN_OUT_P1 = 23; /* output, radio enable, active low. */
 static const int PIN_IN_T = 24; /* input, modulated pulse, active high */
 static const int PIN_OUT_PPS = 25; /* output, pulse per second , active high */
-static const int HERTZ_DELAY = 2;
+static const int HERTZ_DELAY = 10;
 static const int HERTZ_TIMER = 100;
 static const int HOUR_JULIET = 1;
 static const int MINUTE_JULIET = 30;
@@ -205,6 +205,9 @@ int main(int argc, char ** argv)
     char msb = -1;
     char lsb = -1;
     int fd = -1;
+
+    assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
+    assert(sizeof(obelisk_frame_t) == sizeof(uint64_t));
 
     diminuto_log_setmask();
 
@@ -425,6 +428,10 @@ int main(int argc, char ** argv)
         (void)diminuto_lock_unlock(run_path);
     }
 
+    /*
+     * Figure out what mode we're running in.
+     */
+
     if (terminate) {
 
         /*
@@ -463,7 +470,8 @@ int main(int argc, char ** argv)
 
         /*
          * Daemonize if so instructed. A lock file containing the daemon's
-         * process identifier will be left in /var/lock.
+         * process identifier will be left in /var/lock. Continue running
+         * as the background child process.
          */
 
         LOG("DAEMONIZING.");
@@ -473,7 +481,8 @@ int main(int argc, char ** argv)
     } else {
 
         /*
-         * Create a lock file containing our PID.
+         * Create a lock file containing our PID. Continue running as
+         * the original foreground process.
          */
 
         LOG("LOCKING.");
@@ -481,9 +490,6 @@ int main(int argc, char ** argv)
         if (rc < 0) { return 2; }
 
     }
-
-    assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
-    assert(sizeof(obelisk_frame_t) == sizeof(uint64_t));
 
     pid = getpid();
     DIMINUTO_LOG_NOTICE("%s: running pid=%d.\n", program, getpid());
@@ -496,7 +502,7 @@ int main(int argc, char ** argv)
     }
 
     /*
-    ** Configure P1 output and T input pins.
+    ** Configure P1 and PPS output pins and T input pin.
     */
 
     if (unexport) {
@@ -522,22 +528,27 @@ int main(int argc, char ** argv)
         assert(pin_out_p1_fp != (FILE *)0);
     }
 
+    pin_in_t_fp = diminuto_pin_input(pin_in_t);
+    assert(pin_in_t_fp != (FILE *)0);
+
     if (pps) {
         pin_out_pps_fp = diminuto_pin_output(pin_out_pps);
         assert(pin_out_p1_fp != (FILE *)0);
     }
 
-    pin_in_t_fp = diminuto_pin_input(pin_in_t);
-    assert(pin_in_t_fp != (FILE *)0);
-
     /*
-    ** Toggle P1 output pin (active low) if requested.
-    */
+     * Initially clear PPS output pin.
+     */
 
     if (pps) {
         rc = diminuto_pin_clear(pin_out_pps_fp);
         assert(rc == 0);
     }
+
+    /*
+    * Toggle P1 output pin (active low) to restart radio
+    * receiver.
+    */
 
     ticks_frequency = diminuto_frequency();
     assert(ticks_frequency > 0);
@@ -556,9 +567,6 @@ int main(int argc, char ** argv)
 
         rc = diminuto_pin_clear(pin_out_p1_fp);
         assert(rc == 0);
-
-        ticks_slack = diminuto_delay(ticks_delay, 0);
-        assert(ticks_slack == 0);
 
     }
 
@@ -649,15 +657,27 @@ int main(int argc, char ** argv)
         rc = pause();
         assert(rc == -1);
 
+        /*
+         * Check for SIGTERM and if seen leave work loop.
+         */
+
         if (diminuto_terminator_check()) {
             DIMINUTO_LOG_NOTICE("%s: terminated.\n", program);
             break;
         }
 
+        /*
+         * Check for SIGHUP and if seen report and desynchronize.
+         */
+
         if (diminuto_hangup_check()) {
             DIMINUTO_LOG_NOTICE("%s: hungup acquired=%d synchronized=%d armed=%d risings=%d fallings=%d cycles=%d.\n", program, acquired, synchronized, armed, risings, fallings, cycles);
             synchronized = 0;
         }
+
+        /*
+         * Check for SIGALRM and if NOT seen we're done.
+         */
 
         if (!diminuto_alarm_check()) {
             continue;
@@ -666,7 +686,7 @@ int main(int argc, char ** argv)
         if (verbose) { LOG("SIGALRM."); }
 
         /*
-        ** Determine T input pin state.
+        ** Poll T input pin state and submit to debouncer.
         */
 
         level_raw = diminuto_pin_get(pin_in_t_fp);
@@ -687,14 +707,33 @@ int main(int argc, char ** argv)
             break;
 
         case DIMINUTO_CUE_EDGE_RISING:
+
+            /*
+             * Take PPS high on output pin. As a side effect, this
+             * mimics the duration of the T pin - smoothed by our
+             * sampling rate of 100Hz - and so can be used to
+             * measure the modulationed pulses from the radio
+             * receiver.
+             */
+
             if (!pps) {
                 /* Do nothing. */
+#if 0
             } else if (!acquired) {
                 /* Do nothing. */
+#endif
             } else {
                 rc = diminuto_pin_set(pin_out_pps_fp);
                 assert(rc >= 0);
             }
+
+            /*
+             * Generate a synthesized NMEA RMC timestamp. Since we
+             * do this as the rise of the T pulse, we generate a
+             * timestamp every second, phaselocked - subject to fixed
+             * latency in the debouncer - to WWVB.
+             */
+
             if (!nmea) {
                 /* Do nothing. */
             } else if (!acquired) {
@@ -726,20 +765,36 @@ int main(int argc, char ** argv)
                 fprintf(nmea_out_fp, "%s%c%c\r\n", sentence, msb, lsb);
                 fflush(nmea_out_fp);
             }
+
+            /*
+             * Handle pulse rise.
+             */
+
             risings += 1;
             milliseconds_pulse = milliseconds_cycle;
             LOG("RISING %dms.", milliseconds_pulse);
             break;
 
         case DIMINUTO_CUE_EDGE_HIGH:
+
+            /*
+             * Keep counting off milliseconds of pulse.
+             */
+
             milliseconds_pulse += milliseconds_cycle;
             break;
 
         case DIMINUTO_CUE_EDGE_FALLING:
+
             if (pps) {
                 rc = diminuto_pin_clear(pin_out_pps_fp);
                 assert(rc >= 0);
             }
+
+            /*
+             * Handle pulse fall.
+             */
+
             fallings += 1;
             milliseconds_pulse += milliseconds_cycle;
             LOG("FALLING %dms.", milliseconds_pulse);
