@@ -17,8 +17,8 @@ U.S.A.
 Obelisk is my excuse to learn how to use the NIST WWVB radio time
 signal. Obelisk, a.k.a. O-3, consists of a small library and an
 application. The application runs on a Raspberry Pi. It decodes the
-amplitude-modulated pulse-duration-encoded binary-coded-decimal data
-stream from a SYM-RFT-60 radio receiver. WWVB is a 60KHz long-wave
+amplitude-modulated (AM) pulse-duration-encoded binary-coded-decimal
+(BCD) data stream from a SYM-RFT-60 radio receiver. WWVB is a 60KHz
 transmitter near Fort Collins Colorado. The facility is managed by the
 U.S. National Institute of Standards and Technology. WWVB transmits the
 current time every minute. This time is disciplined by atomic clocks
@@ -43,13 +43,20 @@ cause the clock to set itself as soon as it receives a correct frame
 from WWVB, and to correct itself at 1:30AM local time ("juliet" in
 NATO speak) when it receives another correct frame. This strategy
 was borrowed from my Casio Wave Captor Multi Band 6, a solar-powered
-wristwatch with its own WWVB receiver. Here in Denver Colorado, the
-WWVB long-wave signal is strong enough to "pick up in the fillings of
-your teeth" as my short-wave friends say. But elsewhere the signal can
-be extremely finicky; the position of the antenna, interference from
-radio frequency sources in the neighborhood, and even a sunny day,
-can interfere with it. The signal is frequently best late at night,
-which is the reason for the 1:30AM local time strategy.
+wristwatch with its own WWVB receiver.
+
+Reception of the long-wave AM signal can affected by the position of the
+antenna, interference from perhaps inadvertent radio frequency sources in
+the neighborhood, other electronic equipment (particularly LCD displays),
+and even a sunny day. This is true even in Denver Colorado, where the WWVB
+long-wave signal is strong enough to "pick up in the fillings of your
+teeth" as my short-wave friends say. The signal is frequently best late
+at night, which is the reason for the 1:30AM local time strategy. The
+clock should be oriented such that the long direction (lateral) of the
+ferrite antenna core is at right angles (orthogonal) to the direction
+of the WWVB transmitter in Fort Collins Colorado. The Obelisk software
+is also quite paranoid about checking for errors, rejecting invalid
+frames and logging signal loss and acquision in the system log.
 ## Links
 <https://github.com/coverclock/com-diag-obelisk>    
 <https://github.com/coverclock/com-diag-diminuto>    
