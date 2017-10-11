@@ -54,9 +54,15 @@ teeth" as my short-wave friends say. The signal is frequently best late
 at night, which is the reason for the 1:30AM local time strategy. The
 clock should be oriented such that the long direction (lateral) of the
 ferrite antenna core is at right angles (orthogonal) to the direction
-of the WWVB transmitter in Fort Collins Colorado. The Obelisk software
-is also quite paranoid about checking for errors, rejecting invalid
-frames and logging signal loss and acquision in the system log.
+of the WWVB transmitter in Fort Collins Colorado.
+
+The Obelisk software is quite paranoid about checking for errors,
+rejecting invalid frames and logging signal loss and acquision in the
+system log. The software processing the modulated signal is in effect a
+kind of language interpreter: a tokenizer classifies pulses into one of
+four symbols, ZERO, ONE, MARKER or INVALID; and a finite state machine
+parses the symbols according to a simple grammer, rejecting any input
+that violates what is in effect a language specification.
 ## Links
 <https://github.com/coverclock/com-diag-obelisk>    
 <https://github.com/coverclock/com-diag-diminuto>    
