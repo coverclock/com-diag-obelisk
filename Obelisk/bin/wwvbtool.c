@@ -143,7 +143,7 @@ static void usage(void)
     fprintf(stderr, "       -o              Use odd parity for OUTPUT.\n");
     fprintf(stderr, "       -p              Generate PPS output.\n");
     fprintf(stderr, "       -r              Reset device initially.\n");
-    fprintf(stderr, "       -s              Set time of day daily when possible.\n");
+    fprintf(stderr, "       -s              Set time of day initially and also daily when possible.\n");
     fprintf(stderr, "       -u              Unexport pins initially ignoring errors.\n");
     fprintf(stderr, "       -v              Display verbose output.\n");
     fprintf(stderr, "       -x              Use XON/XOFF for OUTPUT.\n");

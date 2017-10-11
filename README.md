@@ -30,25 +30,26 @@ library. Both Obelisk and Diminuto are written in C.
 Unlike Hourglass, a.k.a. O-1, which is a stratum-1 GPS-disciplined desk
 clock, and Astrolabe, a.k.a. O-2, which is a stratum-0 GPS-disciplined
 mantel clock with a chip-scale cesium atomic clock, Obelisk may not be
-useful as a reference clock for an NTP server. You will find evidence in
-this repository that I am experimenting with using wwvbtool to generate
-both GPS (NMEA) and PPS reference clocks, but that is a work in progress.
-My user space approach suffers a lot of sampling and software latency.
-Regardless of its poor behavior as an NTP reference clock, Obelisk
-makes a fine desk clock just by synchronizing its own clock to WWVB as
-described below.
+useful as a reference clock for an NTP server. You will find evidence
+in this repository that I have experimented with using wwvbtool to
+generate both GPS (NMEA) and PPS reference clocks, with mixed results.
+My user-space approach suffers from a lot of sampling jitter and
+scheduling latency.
 
+But regardless of its poor behavior as an NTP reference clock, Obelisk
+makes a fine desk clock just by synchronizing its own clock to WWVB.
 The current options applied to wwvbtool in the timeservice init script
-cause the clock to set itself as soon as it receives a correct frame from
-WWVB, and to correct itself at 1:30AM local time ("juliet" in NATO speak)
-when it receives another correct frame. This strategy was borrowed from my
-Casio Wave Captor Multi Band 6, a solar-powered wristwatch with its own
-WWVB receiver. Here in Denver Colorado, the WWVB long-wave signal is strong
-enough to "pick up in the fillings of your teeth" as my short-wave friends
-say. But elsewhere the signal can be extremely finicky; the position of the
-antenna, interference from radio frequency sources in the neighborhood, and
-even a sunny day, can interfere with it. The signal is frequently best
-late at night, which is the reason for the 1:30AM local time strategy.
+cause the clock to set itself as soon as it receives a correct frame
+from WWVB, and to correct itself at 1:30AM local time ("juliet" in
+NATO speak) when it receives another correct frame. This strategy
+was borrowed from my Casio Wave Captor Multi Band 6, a solar-powered
+wristwatch with its own WWVB receiver. Here in Denver Colorado, the
+WWVB long-wave signal is strong enough to "pick up in the fillings of
+your teeth" as my short-wave friends say. But elsewhere the signal can
+be extremely finicky; the position of the antenna, interference from
+radio frequency sources in the neighborhood, and even a sunny day,
+can interfere with it. The signal is frequently best late at night,
+which is the reason for the 1:30AM local time strategy.
 ## Links
 <https://github.com/coverclock/com-diag-obelisk>    
 <https://github.com/coverclock/com-diag-diminuto>    
