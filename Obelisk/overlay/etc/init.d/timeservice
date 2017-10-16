@@ -65,7 +65,7 @@ PPS0="/dev/pps0"
 test -p $FIFO || mkfifo -m 0666 $FIFO
 
 GPSD_OPTS="-b -n $FIFO $PPS0"
-WWVB_OPTS="-C -20 -N GP -O $FIFO -n -p -l -u -r -i -s -b"
+WWVB_OPTS="-C -20 -N GP -O $FIFO -n -p -l -u -r -i -s -a -b"
 
 case $1 in
 	start)
