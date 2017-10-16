@@ -143,6 +143,16 @@ Clone, build, and install Diminuto in /usr/local.
     make
     make install
 
+Clone, build, and install Hazer in /usr/local.
+
+    cd ~
+    mkdir -p src
+    cd src
+    git clone https://github.com/coverclock/com-diag-hazer
+    cd com-diag-hazer
+    make
+    make install
+
 Clone, build, and install Obelisk in /usr/local.
 
     cd ~
