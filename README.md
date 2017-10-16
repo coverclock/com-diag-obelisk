@@ -82,7 +82,7 @@ gcc 6.3.0
 Linux 4.9.41    
 SYM-RFT-60    
 ## Usage
-    usage: wwvbtool [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -i ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]
+    usage: wwvbtool [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -a ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -i ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]
            -1              Use one stop bit for OUTPUT (default).
            -2              Use two stop bits for OUTPUT.
            -7              Use seven data bits for OUTPUT.
@@ -97,6 +97,7 @@ SYM-RFT-60
            -P PIN          Use P1 output GPIO PIN (23).
            -S PIN          Use PPS output GPIO PIN (25).
            -T PIN          Use T input GPIO PIN (24).
+           -a              Set time of day when leap second occurs.
            -b              Daemonize into the background.
            -c              Use RTS/CTS for OUTPUT.
            -d              Display debug output.

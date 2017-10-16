@@ -120,6 +120,20 @@ TARGETMAKEFILE		:= $(CFG_DIR)/$(TARGET).mk
 
 include $(TARGETMAKEFILE)
 
+########## Hazer Configuration
+
+HAZER_TITLE			:=	Hazer
+
+HAZER_PROJECT		:=	$(shell echo $(HAZER_TITLE) | tr '[A-Z]' '[a-z]')
+HAZER_SYMBOL		:=	$(shell echo $(HAZER_TITLE) | tr '[a-z]' '[A-Z]')
+
+HAZER_ROOT			:=	$(HOME)/src/com-diag-$(HAZER_PROJECT)/$(HAZER_TITLE)
+HAZER_HEADERS		:=	$(HAZER_ROOT)/$(INC_DIR)
+HAZER_LIBRARIES		:=	$(HAZER_ROOT)/$(OUT)/$(LIB_DIR)
+
+HAZER_CPPFLAGS		:=	-iquote $(HAZER_HEADERS)
+HAZER_LDFLAGS		:=	-L$(HAZER_LIBRARIES) -l$(HAZER_PROJECT)
+
 ########## Diminuto Configuration
 
 DIMINUTO_TITLE		:=	Diminuto
@@ -132,7 +146,7 @@ DIMINUTO_HEADERS	:=	$(DIMINUTO_ROOT)/$(INC_DIR)
 DIMINUTO_LIBRARIES	:=	$(DIMINUTO_ROOT)/$(OUT)/$(LIB_DIR)
 
 DIMINUTO_CPPFLAGS	:=	-iquote $(DIMINUTO_HEADERS)
-DIMINUTO_LDFLAGS	:=	-L$(DIMINUTO_LIBRARIES) -l$(DIMINUTO_PROJECT) -lpthread -lrt -ldl
+DIMINUTO_LDFLAGS	:=	-L$(DIMINUTO_LIBRARIES) -l$(DIMINUTO_PROJECT)
 
 ########## Commands and Option Flags
 
@@ -149,11 +163,11 @@ STRIP				:=	$(CROSS_COMPILE)strip
 CDEFINES			:=
 
 ARFLAGS				:=	crsv
-CPPFLAGS			:=	$(CDEFINES) -iquote $(SRC_DIR) -iquote $(INC_DIR) -iquote $(OUT)/$(INC_DIR) $(DIMINUTO_CPPFLAGS) $(CPPARCH)
+CPPFLAGS			:=	$(CDEFINES) -iquote $(SRC_DIR) -iquote $(INC_DIR) -iquote $(OUT)/$(INC_DIR) $(HAZER_CPPFLAGS) $(DIMINUTO_CPPFLAGS) $(CPPARCH)
 CFLAGS				:=	$(CARCH) -g
 CPFLAGS				:=	-i
 MVFLAGS				:=	-i
-LDFLAGS				:=	$(LDARCH) -l$(PROJECT) $(LDLIBRARIES) $(DIMINUTO_LDFLAGS)
+LDFLAGS				:=	$(LDARCH) -l$(PROJECT) $(LDLIBRARIES) $(HAZER_LDFLAGS) $(DIMINUTO_LDFLAGS) -lpthread -lrt -ldl
 MOFLAGS				:=	$(MOARCH) -l$(PROJECT) $(LDLIBRARIES)
 SOFLAGS				:=	$(SOARCH) $(LDLIBRARIES)
 
@@ -495,6 +509,7 @@ $(OUT)/$(BIN_DIR)/setup:	Makefile
 	echo 'COM_DIAG_$(SYMBOL)_PATH=`dirname $${BASH_ARGV[0]}`; COM_DIAG_$(SYMBOL)_ROOT=`cd $$COM_DIAG_$(SYMBOL)_PATH; pwd`' > $@
 	echo 'export PATH=$$PATH:$$COM_DIAG_$(SYMBOL)_ROOT/../$(BIN_DIR):$$COM_DIAG_$(SYMBOL)_ROOT/../$(TST_DIR)' >> $@
 	echo 'export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$$COM_DIAG_$(SYMBOL)_ROOT/../$(LIB_DIR)' >> $@
+	echo '. $(HAZER_ROOT)/$(OUT)/$(BIN_DIR)/setup' >> $@
 	echo '. $(DIMINUTO_ROOT)/$(OUT)/$(BIN_DIR)/setup' >> $@
 	chmod 644 $@
 
@@ -503,6 +518,7 @@ $(OUT)/$(SYM_DIR)/setup:	Makefile
 	echo 'COM_DIAG_$(SYMBOL)_PATH=`dirname $${BASH_ARGV[0]}`; COM_DIAG_$(SYMBOL)_ROOT=`cd $$COM_DIAG_$(SYMBOL)_PATH; pwd`' > $@
 	echo 'export PATH=$$PATH:$$COM_DIAG_$(SYMBOL)_ROOT/../$(SYM_DIR):$$COM_DIAG_$(SYMBOL)_ROOT/../$(BIN_DIR):$$COM_DIAG_$(SYMBOL)_ROOT/../$(TST_DIR)' >> $@
 	echo 'export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$$COM_DIAG_$(SYMBOL)_ROOT/../$(LIB_DIR)' >> $@
+	echo '. $(HAZER_ROOT)/$(OUT)/$(SYM_DIR)/setup' >> $@
 	echo '. $(DIMINUTO_ROOT)/$(OUT)/$(SYM_DIR)/setup' >> $@
 	chmod 644 $@
 
@@ -513,6 +529,7 @@ $(OUT)/$(BIN_DIR)/generate:	Makefile
 	echo 'COM_DIAG_$(SYMBOL)_PATH=`dirname $$0`; COM_DIAG_$(SYMBOL)_ROOT=`cd $$COM_DIAG_$(SYMBOL)_PATH; pwd`' > $@
 	echo 'echo export PATH=$$PATH:$$COM_DIAG_$(SYMBOL)_ROOT/../$(BIN_DIR):$$COM_DIAG_$(SYMBOL)_ROOT/../$(TST_DIR)' >> $@
 	echo 'echo export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$$COM_DIAG_$(SYMBOL)_ROOT/../$(LIB_DIR)' >> $@
+	echo 'echo . $(HAZER_ROOT)/$(OUT)/$(BIN_DIR)/setup' >> $@
 	echo 'echo . $(DIMINUTO_ROOT)/$(OUT)/$(BIN_DIR)/setup' >> $@
 	chmod 755 $@
 
@@ -521,6 +538,7 @@ $(OUT)/$(SYM_DIR)/generate:	Makefile
 	echo 'COM_DIAG_$(SYMBOL)_PATH=`dirname $$0`; COM_DIAG_$(SYMBOL)_ROOT=`cd $$COM_DIAG_$(SYMBOL)_PATH; pwd`' > $@
 	echo 'echo export PATH=$$PATH:$$COM_DIAG_$(SYMBOL)_ROOT/../$(SYM_DIR):$$COM_DIAG_$(SYMBOL)_ROOT/../$(BIN_DIR):$$COM_DIAG_$(SYMBOL)_ROOT/../$(TST_DIR)' >> $@
 	echo 'echo export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$$COM_DIAG_$(SYMBOL)_ROOT/../$(LIB_DIR)' >> $@
+	echo 'echo . $(HAZER_ROOT)/$(OUT)/$(SYM_DIR)/setup' >> $@
 	echo 'echo . $(DIMINUTO_ROOT)/$(OUT)/$(SYM_DIR)/setup' >> $@
 	chmod 755 $@
 

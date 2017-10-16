@@ -36,7 +36,8 @@
 #include "com/diag/diminuto/diminuto_lock.h"
 #include "com/diag/diminuto/diminuto_serial.h"
 #include "com/diag/diminuto/diminuto_log.h"
-#include "com/diag/obelisk/hazer.h"
+#include "com/diag/diminuto/diminuto_phex.h"
+#include "com/diag/hazer/hazer.h"
 #include "com/diag/obelisk/obelisk.h"
 
 #define LOG(_FORMAT_, ...) do { if (debug) { fprintf(stderr, "%s: " _FORMAT_ "\n", program, ## __VA_ARGS__); } } while (0)
@@ -98,6 +99,7 @@ static int unexport = 0;
 static int background = 0;
 static int set_initially = 0;
 static int set_daily = 0;
+static int set_leap = 0;
 static int hour_juliet = -1;
 static int minute_juliet = -1;
 static int nice_priority = 0;
@@ -114,7 +116,7 @@ static int serial_rtscts = 0;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -i ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]\n", program);
+    fprintf(stderr, "usage: %s [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -a ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -i ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]\n", program);
     fprintf(stderr, "       -1              Use one stop bit for OUTPUT (default).\n");
     fprintf(stderr, "       -2              Use two stop bits for OUTPUT.\n");
     fprintf(stderr, "       -7              Use seven data bits for OUTPUT.\n");
@@ -129,6 +131,7 @@ static void usage(void)
     fprintf(stderr, "       -P PIN          Use P1 output GPIO PIN (%d).\n", pin_out_p1);
     fprintf(stderr, "       -S PIN          Use PPS output GPIO PIN (%d).\n", pin_out_pps);
     fprintf(stderr, "       -T PIN          Use T input GPIO PIN (%d).\n", pin_in_t);
+    fprintf(stderr, "       -a              Set time of day when leap second occurs.\n");
     fprintf(stderr, "       -b              Daemonize into the background.\n");
     fprintf(stderr, "       -c              Use RTS/CTS for OUTPUT.\n");
     fprintf(stderr, "       -d              Display debug output.\n");
@@ -148,6 +151,17 @@ static void usage(void)
     fprintf(stderr, "       -v              Display verbose output.\n");
     fprintf(stderr, "       -x              Use XON/XOFF for OUTPUT.\n");
 }
+
+static void emit(FILE *fp, const char * bb)
+{
+    size_t current = 0;
+    int end = 0;
+
+    while (*bb != '\0') {
+        diminuto_phex_emit(fp, *(bb++), ~(size_t)0, 0, 0, 0, &current, &end, 0);
+    }
+}
+
 
 int main(int argc, char ** argv)
 {
@@ -202,8 +216,6 @@ int main(int argc, char ** argv)
     int fallings = -1;
     ssize_t limit = -1;
     uint8_t checksum = -1;
-    char msb = -1;
-    char lsb = -1;
     int fd = -1;
 
     assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
@@ -230,7 +242,7 @@ int main(int argc, char ** argv)
 
     error = 0;
 
-    while ((opt = getopt(argc, argv, "1278B:C:H:L:M:N:O:P:S:T:bcdeghiklmonprsuvx")) >= 0) {
+    while ((opt = getopt(argc, argv, "1278B:C:H:L:M:N:O:P:S:T:abcdeghiklmonprsuvx")) >= 0) {
 
         switch (opt) {
 
@@ -351,6 +363,10 @@ int main(int argc, char ** argv)
             }
             break;
 
+        case 'a':
+            set_leap = !0;
+            break;
+
         case 'b':
             background = !0;
             break;
@@ -416,7 +432,7 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    LOG("LOCK \"%s\".", run_path);
+    LOG("LOCKPATH \"%s\".", run_path);
 
     if (unlock) {
 
@@ -580,7 +596,7 @@ int main(int argc, char ** argv)
      */
 
     if (nmea) {
-        LOG("NMEA \"%s\".", nmea_path);
+        LOG("NMEAPATH \"%s\".", nmea_path);
         if (strcmp(nmea_path, NMEA_PATH) == 0) {
             nmea_out_fp = stdout;
         } else if ((nmea_out_fp = fopen(nmea_path, "a+")) == (FILE *)0) {
@@ -743,7 +759,7 @@ int main(int argc, char ** argv)
                 assert(timep == &time);
                 rc = snprintf(
                     sentence, sizeof(sentence) - 1,
-                    "%c%2.2s%3.3s,%02d%02d%02d.%02d,A,,,,,,,%02d%02d%02d,,,D%c",
+                    "%c%2.2s%3.3s,%02d%02d%02d.%02d,A,,,,,,,%02d%02d%02d,,,D%cXX\r\n",
                     HAZER_STIMULUS_START,
                     nmea_talker,
                     HAZER_NMEA_GPS_MESSAGE_RMC,
@@ -759,10 +775,16 @@ int main(int argc, char ** argv)
                 assert(rc < (sizeof(sentence) - 1));
                 sentence[sizeof(sentence) - 1] = '\0';
                 checksum = hazer_checksum(sentence, sizeof(sentence));
-                rc = hazer_checksum2characters(checksum, &msb, &lsb);
+                assert(sentence[rc - 4] == 'X');
+                assert(sentence[rc - 3] == 'X');
+                rc = hazer_checksum2characters(checksum, &sentence[rc - 4], &sentence[rc - 3]);
                 assert(rc >= 0);
-                LOG("NMEA %s%c%c\\r\\n", sentence, msb, lsb);
-                fprintf(nmea_out_fp, "%s%c%c\r\n", sentence, msb, lsb);
+                if (debug) {
+                    fprintf(stderr, "%s: NMEA \"", program);
+                    emit(stderr, sentence);
+                    fputs("\".\n", stderr);
+                }
+                fputs(sentence, nmea_out_fp);
                 fflush(nmea_out_fp);
             }
 
@@ -794,6 +816,7 @@ int main(int argc, char ** argv)
             /*
              * Handle pulse fall.
              */
+
 
             fallings += 1;
             milliseconds_pulse += milliseconds_cycle;
@@ -882,7 +905,7 @@ int main(int argc, char ** argv)
          * set the time if we so desire.
          */
 
-        if ((!set_initially) && (!set_daily)) {
+        if (!(set_initially || set_daily || set_leap)) {
             /* Do nothing. */
         } else if (!armed) {
             /* Do nothing. */
@@ -1073,6 +1096,19 @@ int main(int argc, char ** argv)
                 LOG("EPOCH %ld.%06ld.", epoch.tv_sec, epoch.tv_usec);
 
                 armed = !0;
+
+                /*
+                 * If a leap second occurred, resynchronize clock if
+                 * requested.
+                 */
+
+                if (!set_leap) {
+                    /* Do nothing. */
+                } else if (!synchronized) {
+                    /* Do nothing. */
+                } else {
+                    synchronized = 0;
+                }
 
                 /*
                  * If we think the system clock has been synchronized, then
