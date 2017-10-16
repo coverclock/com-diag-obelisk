@@ -1106,8 +1106,11 @@ int main(int argc, char ** argv)
                     /* Do nothing. */
                 } else if (!synchronized) {
                     /* Do nothing. */
+                } else if (!leap) {
+                    /* Do nothing. */
                 } else {
                     synchronized = 0;
+                    LOG("READY %d.", leap);
                 }
 
                 /*
