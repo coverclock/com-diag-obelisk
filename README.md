@@ -24,8 +24,15 @@ U.S. National Institute of Standards and Technology. WWVB transmits the
 current time every minute. This time is disciplined by atomic clocks
 at the transmitter site. These clocks are ultimately synchronized to
 the master atomic clock at the NIST laboratories in Boulder Colorado.
-The application is built on top of the Obelisk library and the Diminuto
-library. Both Obelisk and Diminuto are written in C.
+
+The application, wwbvtool, is built on top of the Obelisk library, the
+Hazer library, and the Diminuto library. Obelisk implements functions to
+demodulate, decode, and parse the data frames transmitted by WWVB. Hazer
+implements functions to both parse and generate the NMEA sentences
+associated with the typical GPS device. Diminuto is a general purpose
+systems programming library. The wwvbtool application, Obelisk, Hazer,
+and Diminuto are all written in C, are all products of the Digital
+Aggregates Corporation, and are all open source.
 
 Unlike Hourglass, a.k.a. O-1, which is a stratum-1 GPS-disciplined desk
 clock, and Astrolabe, a.k.a. O-2, which is a stratum-0 GPS-disciplined
@@ -65,8 +72,8 @@ parses the symbols according to a simple grammer, rejecting any input
 that violates what is in effect a language specification.
 ## Links
 <https://github.com/coverclock/com-diag-obelisk>    
-<https://github.com/coverclock/com-diag-diminuto>    
 <https://github.com/coverclock/com-diag-hazer>    
+<https://github.com/coverclock/com-diag-diminuto>    
 <https://www.flickr.com/photos/johnlsloan/albums/72157689295451755>    
 <https://en.wikipedia.org/wiki/WWVB>    
 <https://universal-solder.com/product/60khz-wwvb-atomic-radio-clock-receiver-replaces-c-max-cmmr-6p-60/>    
