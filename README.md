@@ -70,6 +70,10 @@ kind of language interpreter: a tokenizer classifies pulses into one of
 four symbols, ZERO, ONE, MARKER or INVALID; and a finite state machine
 parses the symbols according to a simple grammer, rejecting any input
 that violates what is in effect a language specification.
+## Bugs
+I've identified a bug in the state machine regarding handling leap
+seconds. I'll fix it. There is no leap second planned in the foreseeable
+fuure, but it's just a matter of... time!
 ## Links
 <https://github.com/coverclock/com-diag-obelisk>    
 <https://github.com/coverclock/com-diag-hazer>    

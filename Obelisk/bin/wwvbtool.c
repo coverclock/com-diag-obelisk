@@ -992,6 +992,11 @@ int main(int argc, char ** argv)
 
             if (rc < 0) {
 
+                /*
+                 * If the frame doesn't pass the validity check, it's at least
+                 * corrupt; if we had acquired the signal, we've lost it.
+                 */
+
                 if (acquired) {
                     acquired = 0;
                     DIMINUTO_LOG_NOTICE("%s: lost rc=%d.\n", program, rc);
@@ -1002,6 +1007,21 @@ int main(int argc, char ** argv)
                 }
 
             } else {
+
+                /*
+                 * If we received a leap second indication without the
+                 * Leap Second Warning flag having been set in the frame,
+                 * the frame is perhaps invalid, and at least ambiguous.
+                 * This seems unlikely, but we at least should log it.
+                 */
+
+                if (!leap) {
+                    /* Do nothing. */
+                } else if (frame.lsw) {
+                    /* Do nothing. */
+                } else {
+                    DIMINUTO_LOG_NOTICE("%s: ambiguous lyi=%d leap=%d.", program, frame.lsw, leap);
+                }
 
                 /*
                  * Seconds will always be 59 at this point in the frame
