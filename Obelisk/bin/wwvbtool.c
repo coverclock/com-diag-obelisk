@@ -72,6 +72,14 @@ static const char * STATE[] = {
     "END",      /* OBELISK_STATE_END */
 };
 
+static const char * STATUS[] = {
+    "NOMINAL",  /* OBELISK_STATUS_NOMINAL */
+    "INVALID",  /* OBELISK_STATUS_INVALID */
+    "TIME",     /* OBELISK_STATUS_TIME */
+    "FRAME",    /* OBELISK_STATUS_FRAME */
+    "LEAP",     /* OBELISK_STATUS_LEAP */
+};
+
 static const char * DAY[] = {
     "SUN",
     "MON",
@@ -184,8 +192,9 @@ int main(int argc, char ** argv)
     int milliseconds_pulse = -1;
     int cycles_limit = -1;
     obelisk_token_t token = (obelisk_token_t)-1;
-    obelisk_state_t state_before = (obelisk_state_t)-1;
-    obelisk_state_t state_after = (obelisk_state_t)-1;
+    obelisk_state_t state = (obelisk_state_t)-1;
+    obelisk_status_t status = (obelisk_status_t)-1;
+    obelisk_state_t temp = (obelisk_state_t)-1;
     obelisk_buffer_t buffer = -1;
     obelisk_frame_t frame = { 0 };
     hazer_buffer_t sentence = { 0 };
@@ -196,7 +205,6 @@ int main(int argc, char ** argv)
     extern int daylight;
     int field = -1;
     int length = -1;
-    int leap = -1;
     int opt = -1;
     extern char * optarg;
     char * endptr = (char *)0;
@@ -596,7 +604,9 @@ int main(int argc, char ** argv)
      */
 
     if (nmea) {
+
         LOG("NMEAPATH \"%s\".", nmea_path);
+
         if (strcmp(nmea_path, NMEA_PATH) == 0) {
             nmea_out_fp = stdout;
         } else if ((nmea_out_fp = fopen(nmea_path, "a+")) == (FILE *)0) {
@@ -616,6 +626,7 @@ int main(int argc, char ** argv)
         } else {
             /* Do nothing. */
         }
+
     }
 
     /*
@@ -637,8 +648,7 @@ int main(int argc, char ** argv)
     level_raw = OBELISK_LEVEL_ZERO;
 
     token = OBELISK_TOKEN_INVALID;
-
-    state_after = OBELISK_STATE_START;
+    state = OBELISK_STATE_START;
 
     rc = diminuto_alarm_install(!0);
     assert(rc >= 0);
@@ -867,55 +877,66 @@ int main(int argc, char ** argv)
         */
 
         token = obelisk_tokenize(milliseconds_pulse);
-        assert((OBELISK_TOKEN_ZERO <= token) && (token <= OBELISK_TOKEN_INVALID));
-        assert((0 <= token) && (token < countof(TOKEN)));
 
         /*
         ** Parse grammar by transitioning state based on token.
         */
 
-        state_before = state_after;
-        assert((OBELISK_STATE_START <= state_before) && (state_before <= OBELISK_STATE_END));
-        assert((0 <= state_before) && (state_before < countof(STATE)));
+        temp = state;
 
-        state_after = obelisk_parse(state_before, token, &field, &length, &leap, &buffer);
-        assert((OBELISK_STATE_START <= state_after) && (state_after <= OBELISK_STATE_END));
-        assert((0 <= state_after) && (state_after < countof(STATE)));
+        status = obelisk_parse(&state, token, &field, &length, &buffer, &frame);
 
-        LOG("PARSE %s %s %s %d %d %d 0x%llx.", STATE[state_before], TOKEN[token], STATE[state_after], field, length, leap, buffer);
+        assert((0 <= temp) && (temp < countof(STATE)));
+        assert((0 <= token) && (token < countof(TOKEN)));
+        assert((0 <= state) && (state < countof(STATE)));
+        assert((0 <= status) && (status < countof(STATUS)));
+
+        LOG("PARSE %s %s %s %s %d %d 0x%llx.", STATE[temp], TOKEN[token], STATE[state], STATUS[status], field, length, buffer);
 
         /*
          * Detect an error that causes the state machine to return
          * to its start state.
          */
 
-        if (!acquired) {
+        if (status != OBELISK_STATUS_INVALID) {
             /* Do nothing. */
-        } else if (state_before == OBELISK_STATE_START) {
-            /* Do nothing. */
-        } else if (state_after != OBELISK_STATE_START) {
+        } else if (!acquired) {
             /* Do nothing. */
         } else {
             acquired = 0;
-            DIMINUTO_LOG_NOTICE("%s: lost state_before=%s state_after=%s.\n", program, STATE[state_before], STATE[state_after]);
+            DIMINUTO_LOG_NOTICE("%s: lost state=%s token=%s state=%s.\n", program, STATE[temp], TOKEN[token], STATE[state]);
         }
 
         /*
-         * Detect the beginning of the next minute so that we can
-         * set the time if we so desire.
+         * Detect the beginning of the minute so that we can set the time
+         * if we so desire.
          */
 
-        if (!(set_initially || set_daily || set_leap)) {
+        if (status != OBELISK_STATUS_TIME) {
+            /* Do nothing. */
+        } else if (!(set_initially || set_daily || set_leap)) {
             /* Do nothing. */
         } else if (!armed) {
             /* Do nothing. */
         } else if (synchronized) {
             /* Do nothing. */
-        } else if (state_before != OBELISK_STATE_BEGIN) {
-            /* Do nothing. */
-        } else if (state_after != OBELISK_STATE_LEAP) {
-            /* Do nothing. */
         } else {
+    
+             /*
+             * Adjust the epoch seconds forward to the beginning of the
+             * this minute, which is the minute subsequent to the one
+             * we just processed on the event of its final second.
+             */
+
+            epoch.tv_sec += 1;
+
+            /*
+             * Set the system clock. For most (larger) UNIX systems,
+             * this is a rare and potentially violent operation. That's
+             * because a lot of subsystems depend on the system clock to
+             * know when to do things. Changing the system clock can
+             * cause unexpected results.
+             */
 
             if ((rc = settimeofday(&epoch, (struct timezone *)0)) < 0) {
                 perror("settimeodday");
@@ -956,14 +977,8 @@ int main(int argc, char ** argv)
 
         armed = 0;
 
-        if (state_before != OBELISK_STATE_END) {
-            /* Do nothing. */
-        } else if (state_after != OBELISK_STATE_BEGIN) {
-            /* Do nothing. */
-        } else {
+        if (status == OBELISK_STATUS_FRAME) {
             
-            obelisk_extract(&frame, buffer);
-
             LOG("FRAME 0x%016lld %d %d %d %d %d %d %d %d %d %d %d %d %d %d.",
                  buffer,
                  frame.year10, frame.year1,
@@ -1009,26 +1024,10 @@ int main(int argc, char ** argv)
             } else {
 
                 /*
-                 * If we received a leap second indication without the
-                 * Leap Second Warning flag having been set in the frame,
-                 * the frame is perhaps invalid, and at least ambiguous.
-                 * This seems unlikely, but we at least should log it.
+                 * Seconds will always be 59 at this point in the frame.
                  */
 
-                if (!leap) {
-                    /* Do nothing. */
-                } else if (frame.lsw) {
-                    /* Do nothing. */
-                } else {
-                    DIMINUTO_LOG_NOTICE("%s: ambiguous lyi=%d leap=%d.", program, frame.lsw, leap);
-                }
-
-                /*
-                 * Seconds will always be 59 at this point in the frame
-                 * unless a leap second has been inserted.
-                 */
-
-                time.tm_sec = leap ? 60 : 59;
+                time.tm_sec = 59;
 
                 assert((0 <= time.tm_wday) && (time.tm_wday < countof(DAY)));
                 LOG("TIME %d %04d-%02d-%02dT%02d:%02d:%02dZ %04d/%03d %s %s.",
@@ -1069,12 +1068,9 @@ int main(int argc, char ** argv)
 
                 /*
                  * Derive the seconds since the POSIX Epoch that our time
-                 * code represents. This will be time at the beginning of
-                 * the next time frame, which will be at zero seconds past
-                 * that subsequent minute (which we'll fix below).
+                 * code represents.
                  */
 
-                time.tm_sec = 0;
                 epoch.tv_sec = mktime(&time);
 
                 /*
@@ -1094,14 +1090,6 @@ int main(int argc, char ** argv)
                 }
     
                 /*
-                 * Adjust the epoch seconds forward to the beginning of the
-                 * next minute. That is when we'll set the system time (if
-                 * we do so at all).
-                 */
-
-                epoch.tv_sec += 60;
-    
-                /*
                  * The microsecond offset accounts for the latency in the
                  * cue debouncer: two cycles of 10ms (10000usec) each.
                  */
@@ -1117,20 +1105,8 @@ int main(int argc, char ** argv)
 
                 armed = !0;
 
-                /*
-                 * If a leap second occurred, resynchronize clock if
-                 * requested.
-                 */
-
-                if (!set_leap) {
-                    /* Do nothing. */
-                } else if (!synchronized) {
-                    /* Do nothing. */
-                } else if (!leap) {
-                    /* Do nothing. */
-                } else {
-                    synchronized = 0;
-                    LOG("READY %d.", leap);
+                if (!synchronized) {
+                    LOG("READY.");
                 }
 
                 /*
@@ -1158,11 +1134,48 @@ int main(int argc, char ** argv)
                         /* Do nothing. */
                     } else {
                         synchronized = 0;
-                        LOG("READY %02d:%02d:00J", hour, minute);
+                        LOG("READY %02d:%02d:00J.", hour, minute);
                     }
 
                 }
 
+            }
+
+        }
+
+        /*
+         * If a leap second just occurred, adjust the epoch that we
+         * just computed at the end of the prior second.
+         */
+
+        if (status == OBELISK_STATUS_LEAP) {
+
+            /*
+             * If we received a leap second indication without the
+             * Leap Second Warning flag having been set in the frame,
+             * the frame is perhaps invalid, and at least unexpected.
+             * This seems unlikely, but we at least should log it.
+             */
+
+            DIMINUTO_LOG_NOTICE("%s: leap lsw=%d.", program, frame.lsw);
+
+            /*
+             * Advance the epoch by one second.
+             */
+
+            epoch.tv_sec += 1;
+
+            /*
+             * Resynchronize clock if so requested.
+             */
+
+            if (!set_leap) {
+                /* Do nothing. */
+            } else if (!synchronized) {
+                /* Do nothing. */
+            } else {
+                synchronized = 0;
+                LOG("READY %d.", epoch.tv_sec);
             }
 
         }

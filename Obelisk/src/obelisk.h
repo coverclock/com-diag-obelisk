@@ -11,6 +11,22 @@
  */
 
 /**
+ * When we parse the IRIQ timecode frame using a finite state machine,
+ * these are the actions that the FSM may perform.
+ */
+typedef enum ObeliskAction {
+    OBELISK_ACTION_NONE,    /* Do nothing. */
+    OBELISK_ACTION_CLEAR,   /* Empty frame. */
+    OBELISK_ACTION_ZERO,    /* Insert 0. */
+    OBELISK_ACTION_ONE,     /* Insert 1. */
+    OBELISK_ACTION_LEAP,    /* Leap second indicated. */
+    OBELISK_ACTION_MARK,    /* Insert MARK. */
+    OBELISK_ACTION_FINAL,   /* Complete frame. */
+    OBELISK_ACTION_FIRST = OBELISK_ACTION_NONE,
+    OBELISK_ACTION_LAST = OBELISK_ACTION_FINAL,
+} obelisk_action_t;
+
+/**
  * These are the bit offsets of the fields in the IRIQ timecode buffer.
  */
 typedef enum ObeliskOffset {
@@ -50,7 +66,20 @@ typedef enum ObeliskMask {
     OBELISK_MASK_DST          = 0x3,
 } obelisk_mask_t;
 
+/**
+ * @def OBELISK_EXTRACT
+ * This generates code to extract a single field from the buffer. The field
+ * name is turned into an bit offset and a bit mask.
+ */
 #define OBELISK_EXTRACT(_BUFFER_, _FIELD_) ((_BUFFER_ >> OBELISK_OFFSET_ ## _FIELD_) & OBELISK_MASK_ ## _FIELD_)
+
+/**
+ * Extract the individual IRIQ timecode fields from the buffer and store
+ * them in a frame.
+ * @param framep points to the output frame structure.
+ * @param buffer is the input buffer.
+ */
+extern void obelisk_extract(obelisk_frame_t * framep, obelisk_buffer_t buffer);
 
 /**
  * Convert Julian day of the year [1..365 or 366] to a Gregorian month
@@ -65,6 +94,9 @@ typedef enum ObeliskMask {
  */
 extern int obelisk_julian2gregorian(int julian, int lyi, int * monthp, int * dayp);
 
+/**
+ * This describes how the Zeller algorithm encodes the day of the week.
+ */
 typedef enum ObeliskZeller {
     OBELISK_ZELLER_SUNDAY    = 0,
     OBELISK_ZELLER_MONDAY    = 1,

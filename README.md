@@ -70,10 +70,11 @@ kind of language interpreter: a tokenizer classifies pulses into one of
 four symbols, ZERO, ONE, MARKER or INVALID; and a finite state machine
 parses the symbols according to a simple grammer, rejecting any input
 that violates what is in effect a language specification.
-## Bugs
-I've identified a bug in the state machine regarding handling leap
-seconds. I'll fix it. There is no leap second planned in the foreseeable
-fuure, but it's just a matter of... time!
+## Issues
+I'm not entirely satisfied with the Obelisk state machine. In particularly, I'm
+not happy with how it handles the leap second. So far I haven't found a way
+to detect the leap second unambiguously and process it on the correct second
+boundry.
 ## Links
 <https://github.com/coverclock/com-diag-obelisk>    
 <https://github.com/coverclock/com-diag-hazer>    
@@ -200,11 +201,15 @@ the NTP daemon; Obelisk runs as root.
 
 Run interactively for debugging.
 
-    sudo wwvbtool -d -r -s -u -l
+    sudo su
+    . out/host/bin/setup
+    out/host/bin/wwvbtool -d -n -p -l -u -r -i -s -a
 
 Run as a daemon in the background.
 
-    sudo wwvbtool -b -r -s -u -l
+    sudo su
+    . out/host/bin/setup
+    out/host/bin/wwvbtool -b -n -p -l -u -r -i -s -a
 
 Send SIGHUP to resynchronize (equivalent commands).
 
