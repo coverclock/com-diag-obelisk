@@ -12,7 +12,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <assert.h>
-#include "com/diag/obelisk/hazer.h"
+#include "com/diag/hazer/hazer.h"
 
 int main(void)
 {
