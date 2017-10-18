@@ -128,6 +128,7 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
             break;
 
         default:
+            /* Do nothing. */
             break;
 
         }
@@ -140,6 +141,7 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
 
         case OBELISK_TOKEN_ZERO:
         case OBELISK_TOKEN_ONE:
+            /* Do nothing. */
             break;
 
         case OBELISK_TOKEN_MARKER:
@@ -293,6 +295,7 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
     switch (action) {
 
     case OBELISK_ACTION_NONE:
+        /* Do nothing. */
         break;
 
     case OBELISK_ACTION_CLEAR:
@@ -325,6 +328,7 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
         break;
 
     default:
+        /* Do nothing. */
         break;
 
     }

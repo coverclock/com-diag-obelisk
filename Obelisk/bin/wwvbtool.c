@@ -225,6 +225,7 @@ int main(int argc, char ** argv)
     ssize_t limit = -1;
     uint8_t checksum = -1;
     int fd = -1;
+    float dut1 = 0.0;
 
     assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
     assert(sizeof(obelisk_frame_t) == sizeof(uint64_t));
@@ -739,18 +740,24 @@ int main(int argc, char ** argv)
              * mimics the duration of the T pin - smoothed by our
              * sampling rate of 100Hz - and so can be used to
              * measure the modulationed pulses from the radio
-             * receiver.
+             * receiver. Unfortunately, this will exhibit any scheduling
+             * jitter in our sampling timer.
              */
 
-            if (!pps) {
-                /* Do nothing. */
-#if 0
-            } else if (!acquired) {
-                /* Do nothing. */
-#endif
-            } else {
+            if (pps) {
                 rc = diminuto_pin_set(pin_out_pps_fp);
                 assert(rc >= 0);
+            }
+
+            /*
+             * Advance the epoch second by one second. Each pulse indicates
+             * the start of the next second. This has the useful side effect
+             * of keeping the epoch updated in case we want to set the time,
+             * and also in the event a leap second was inserted.
+             */
+
+            if (acquired) {
+                epoch.tv_sec += 1;
             }
 
             /*
@@ -835,7 +842,6 @@ int main(int argc, char ** argv)
 
         default:
             assert(edge != edge);
-            milliseconds_pulse = 0;
             break;
 
         }
@@ -922,14 +928,6 @@ int main(int argc, char ** argv)
             /* Do nothing. */
         } else {
     
-             /*
-             * Adjust the epoch seconds forward to the beginning of the
-             * this minute, which is the minute subsequent to the one
-             * we just processed on the event of its final second.
-             */
-
-            epoch.tv_sec += 1;
-
             /*
              * Set the system clock. For most (larger) UNIX systems,
              * this is a rare and potentially violent operation. That's
@@ -959,16 +957,6 @@ int main(int argc, char ** argv)
 
             }
 
-        }
-
-        /*
-         * Advance the second for the next NMEA sentence. We wait until
-         * we may have set the time in this cycle since this is for the
-         * next cycle.
-         */
-
-        if (acquired) {
-            epoch.tv_sec += 1;
         }
 
         /*
@@ -1029,14 +1017,25 @@ int main(int argc, char ** argv)
 
                 time.tm_sec = 59;
 
+                /*
+                 * Calculate the difference from UT1. This will always be
+                 * in the range [-0.9 .. +0.9]; any more, and another leap
+                 * second would have been inserted.
+                 */
+
+                dut1 = frame.dutone1;
+                dut1 /= 10.0;
+                if (frame.dutonesign == OBELISK_SIGN_NEGATIVE) { dut1 = -dut1; }
+
                 assert((0 <= time.tm_wday) && (time.tm_wday < countof(DAY)));
-                LOG("TIME %d %04d-%02d-%02dT%02d:%02d:%02dZ %04d/%03d %s %s.",
+                LOG("TIME %d %04d-%02d-%02dT%02d:%02d:%02dZ %04d/%03d %s %s %+4.1f.",
                     rc,
                     time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
                     time.tm_hour, time.tm_min, time.tm_sec,
                     time.tm_year + 1900, time.tm_yday + 1,
                     DAY[time.tm_wday],
-                    time.tm_isdst ? "DST" : "!DST"
+                    time.tm_isdst ? "DST" : "!DST",
+                    dut1
                 );
 
                 /*
@@ -1158,12 +1157,6 @@ int main(int argc, char ** argv)
              */
 
             DIMINUTO_LOG_NOTICE("%s: leap lsw=%d.", program, frame.lsw);
-
-            /*
-             * Advance the epoch by one second.
-             */
-
-            epoch.tv_sec += 1;
 
             /*
              * Resynchronize clock if so requested.
