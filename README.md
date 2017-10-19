@@ -71,10 +71,13 @@ four symbols, ZERO, ONE, MARKER or INVALID; and a finite state machine
 parses the symbols according to a simple grammer, rejecting any input
 that violates what is in effect a language specification.
 ## Issues
-I'm not entirely satisfied with the Obelisk state machine. In particularly, I'm
-not happy with how it handles the leap second. So far I haven't found a way
-to detect the leap second unambiguously and process it on the correct second
-boundry.
+I haven't found a good way to test the leap second handling to my
+satisfaction.  Anything I might do is extremely synthetic and relies
+on what may be my own misunderstanding for both the implementation and
+the test. I suppose I'll just have to keep track of when the next leap
+second is inserted (okay, I would have done that anyway), and check the
+log file the next morning. Or maybe stay up and see what the clock does
+at midnight.
 ## Links
 <https://github.com/coverclock/com-diag-obelisk>    
 <https://github.com/coverclock/com-diag-hazer>    
