@@ -65,14 +65,16 @@ static const const char * TOKEN[] = {
 static const char * STATE[] = {
     "START",    /* OBELISK_STATE_START */
     "WAIT",     /* OBELISK_STATE_WAIT */
-    "BEGIN",    /* OBELISK_STATE_BEGIN */
-    "LEAP",     /* OBELISK_STATE_LEAP */
+    "SYNC",     /* OBELISK_STATE_SYNC */
     "DATA",     /* OBELISK_STATE_DATA */
     "MARK",     /* OBELISK_STATE_MARK */
     "END",      /* OBELISK_STATE_END */
+    "BEGIN",    /* OBELISK_STATE_BEGIN */
+    "LEAP",     /* OBELISK_STATE_LEAP */
 };
 
 static const char * STATUS[] = {
+    "WAITING",  /* OBELISK_STATUS_WAITING */
     "NOMINAL",  /* OBELISK_STATUS_NOMINAL */
     "INVALID",  /* OBELISK_STATUS_INVALID */
     "TIME",     /* OBELISK_STATUS_TIME */

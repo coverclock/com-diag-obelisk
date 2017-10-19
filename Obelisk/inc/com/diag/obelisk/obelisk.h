@@ -17,7 +17,11 @@
 #include <time.h>
 
 /**
- * These are the values that the GPIO pin may assume.
+ * These are the values that the GPIO pin may assume. Since the raw
+ * GPIO values are fed to the debouncer, and all subsequent decisions
+ * are based on its edge detector, these values are mostly used for
+ * documentation purposes. Notice though that the SYM-RFT-60 radio
+ * receiver inverts the raw modulated signal for us.
  */
 typedef enum ObeliskLevel {
     OBELISK_LEVEL_ZERO  = 0,    /*   0 dBr */
@@ -49,15 +53,16 @@ extern obelisk_token_t obelisk_tokenize(int milliseconds_pulse);
  * these are the states the FSM may assume.
  */
 typedef enum ObeliskState {
-    OBELISK_STATE_START,    /* Expecting final ZERO or ONE. */
-    OBELISK_STATE_WAIT,     /* Expecting initial END MARKER. */
+    OBELISK_STATE_START,    /* Expecting initial END MARKER.. */
+    OBELISK_STATE_WAIT,     /* Expecting initial BEGIN or LEAP MARKER. */
+    OBELISK_STATE_SYNC,     /* Expecting initial LEAP MARKER, ZERO, or ONE. */
+    OBELISK_STATE_DATA,     /* Expecting ZERO or ONE. */
+    OBELISK_STATE_MARK,     /* Expecting separator MARKER. */
+    OBELISK_STATE_END,      /* Expecting END MARKER. */
     OBELISK_STATE_BEGIN,    /* Expecting BEGIN MARKER. */
     OBELISK_STATE_LEAP,     /* Expecting LEAP MARKER, ZERO, or ONE. */
-    OBELISK_STATE_DATA,     /* Expecting ZERO or ONE. */
-    OBELISK_STATE_MARK,     /* Expecting intermediate MARKER. */
-    OBELISK_STATE_END,      /* Expecting END MARKER. */
     OBELISK_STATE_FIRST = OBELISK_STATE_START,
-    OBELISK_STATE_LAST = OBELISK_STATE_END,
+    OBELISK_STATE_LAST = OBELISK_STATE_LEAP,
 } obelisk_state_t;
 
 /**
@@ -65,12 +70,13 @@ typedef enum ObeliskState {
  * suggest what it should do based on the most recent state transition.
  */
 typedef enum ObeliskStatus {
+    OBELISK_STATUS_WAITING, /* Waiting for frame synchronization. */
     OBELISK_STATUS_NOMINAL, /* Processing input normally. */
     OBELISK_STATUS_INVALID, /* Restarting due to invalid data. */
     OBELISK_STATUS_TIME,    /* This is the beginning of the minute. */
     OBELISK_STATUS_FRAME,   /* This is the end of the minute. */
     OBELISK_STATUS_LEAP,    /* A leap second was inserted. */
-    OBELISK_STATUS_FIRST = OBELISK_STATUS_NOMINAL,
+    OBELISK_STATUS_FIRST = OBELISK_STATUS_WAITING,
     OBELISK_STATUS_LAST = OBELISK_STATUS_LEAP,
 } obelisk_status_t;
 

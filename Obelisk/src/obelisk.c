@@ -124,11 +124,17 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
 
         case OBELISK_TOKEN_ZERO:
         case OBELISK_TOKEN_ONE:
+            status = OBELISK_STATUS_WAITING;
+            break;
+
+        case OBELISK_TOKEN_MARKER:
+            /* First MARKER could be END, BNEGIN, or LEAP. */
+            status = OBELISK_STATUS_WAITING;
             state = OBELISK_STATE_WAIT;
             break;
 
         default:
-            /* Do nothing. */
+            status = OBELISK_STATUS_INVALID;
             break;
 
         }
@@ -141,35 +147,15 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
 
         case OBELISK_TOKEN_ZERO:
         case OBELISK_TOKEN_ONE:
-            /* Do nothing. */
-            break;
-
-        case OBELISK_TOKEN_MARKER:
-            state = OBELISK_STATE_BEGIN;
-            break;
-
-        default:
-            status = OBELISK_STATUS_INVALID;
+            status = OBELISK_STATUS_WAITING;
             state = OBELISK_STATE_START;
             break;
 
-        }
-
-        break;
-
-    case OBELISK_STATE_BEGIN:
-
-        switch (token) {
-
-        case OBELISK_TOKEN_ZERO:
-        case OBELISK_TOKEN_ONE:
-            state = OBELISK_STATE_WAIT;
-            break;
-
         case OBELISK_TOKEN_MARKER:
-            status = OBELISK_STATUS_TIME;
+            /* Second MARKER could be BEGIN or LEAP. */
+            status = OBELISK_STATUS_WAITING;
             action = OBELISK_ACTION_CLEAR;
-            state = OBELISK_STATE_LEAP;
+            state = OBELISK_STATE_SYNC;
             break;
 
         default:
@@ -181,22 +167,25 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
 
         break;
 
-    case OBELISK_STATE_LEAP:
+    case OBELISK_STATE_SYNC:
 
         switch (token) {
 
         case OBELISK_TOKEN_ZERO:
+            status = OBELISK_STATUS_NOMINAL;
             action = OBELISK_ACTION_ZERO;
             state = OBELISK_STATE_DATA;
             break;
 
         case OBELISK_TOKEN_ONE:
+            status = OBELISK_STATUS_NOMINAL;
             action = OBELISK_ACTION_ONE;
             state = OBELISK_STATE_DATA;
             break;
 
         case OBELISK_TOKEN_MARKER:
-            status = OBELISK_STATUS_LEAP;
+            /* Ignore third MARKER which must be LEAP. */
+            status = OBELISK_STATUS_NOMINAL;
             state = OBELISK_STATE_DATA;
             break;
 
@@ -281,6 +270,53 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
 
         break;
 
+    case OBELISK_STATE_BEGIN:
+
+        switch (token) {
+
+        case OBELISK_TOKEN_MARKER:
+            status = OBELISK_STATUS_TIME;
+            action = OBELISK_ACTION_CLEAR;
+            state = OBELISK_STATE_LEAP;
+            break;
+
+        default:
+            status = OBELISK_STATUS_INVALID;
+            state = OBELISK_STATE_START;
+            break;
+
+        }
+
+        break;
+
+    case OBELISK_STATE_LEAP:
+
+        switch (token) {
+
+        case OBELISK_TOKEN_ZERO:
+            action = OBELISK_ACTION_ZERO;
+            state = OBELISK_STATE_DATA;
+            break;
+
+        case OBELISK_TOKEN_ONE:
+            action = OBELISK_ACTION_ONE;
+            state = OBELISK_STATE_DATA;
+            break;
+
+        case OBELISK_TOKEN_MARKER:
+            status = OBELISK_STATUS_LEAP;
+            state = OBELISK_STATE_DATA;
+            break;
+
+        default:
+            status = OBELISK_STATUS_INVALID;
+            state = OBELISK_STATE_START;
+            break;
+
+        }
+
+        break;
+
     default:
         status = OBELISK_STATUS_INVALID;
         state = OBELISK_STATE_START;
@@ -301,7 +337,8 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
     case OBELISK_ACTION_CLEAR:
         *bufferp = 0;
         *fieldp = 0;
-        *lengthp = LENGTH[0];
+        assert((0 <= *fieldp) && (*fieldp < countof(LENGTH)));
+        *lengthp = LENGTH[*fieldp];
         break;
 
     case OBELISK_ACTION_ZERO:
