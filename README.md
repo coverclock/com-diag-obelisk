@@ -70,14 +70,6 @@ kind of language interpreter: a tokenizer classifies pulses into one of
 four symbols, ZERO, ONE, MARKER or INVALID; and a finite state machine
 parses the symbols according to a simple grammer, rejecting any input
 that violates what is in effect a language specification.
-## Issues
-I haven't found a good way to test the leap second handling to my
-satisfaction.  Anything I might do is extremely synthetic and relies
-on what may be my own misunderstanding for both the implementation and
-the test. I suppose I'll just have to keep track of when the next leap
-second is inserted (okay, I would have done that anyway), and check the
-log file the next morning. Or maybe stay up and see what the clock does
-at midnight.
 ## Links
 <https://github.com/coverclock/com-diag-obelisk>    
 <https://github.com/coverclock/com-diag-hazer>    
