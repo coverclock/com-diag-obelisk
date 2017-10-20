@@ -344,18 +344,53 @@ by wwvbtool.
 
 The wwvbtool utility writes some stuff to the system log at the "notice"
 level when signficant events occur, or periodically at fifty-nine minutes
-after the hour, or whenever it receives a SIGHUP signal. Here are some
-examples.
+after the hour, or whenever it receives a SIGHUP signal. My version
+of Raspbian extracts messages at this level from the /var/log/syslog
+and saves them in /var/log/messages. Here are an extended example. You
+can see that the system lost the WWVB signal and reacquired it. The NTP
+query shows a "falsetick" logged against the PPS, which I attribute to
+the signal loss. You can also see that the system is set up to set the
+time initially, to update it after 1:30AM local time, and to log the
+received data once an hour.
 
-    Oct 10 09:00:21 obelisk wwvbtool[15223]: wwvbtool: running pid=15223.
-    Oct 10 09:01:59 obelisk wwvbtool[15223]: wwvbtool: time zulu=2017-10-10T15:01:59 julian=2017/283 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 10 09:01:59 obelisk wwvbtool[15223]: wwvbtool: acquired.
-    Oct 10 09:02:00 obelisk wwvbtool[15223]: wwvbtool: set zulu=2017-10-10T15:02:00.000020112.
-    Oct 10 09:59:59 obelisk wwvbtool[15223]: wwvbtool: time zulu=2017-10-10T15:59:59 julian=2017/283 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 10 10:59:59 obelisk wwvbtool[15223]: wwvbtool: time zulu=2017-10-10T16:59:59 julian=2017/283 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 10 11:59:59 obelisk wwvbtool[15223]: wwvbtool: time zulu=2017-10-10T17:59:59 julian=2017/283 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 10 12:33:20 obelisk wwvbtool[15223]: wwvbtool: hungup acquired=1 synchronized=1 armed=0 risings=1 fallings=1 cycles=71.
-    Oct 10 12:33:59 obelisk wwvbtool[15223]: wwvbtool: time zulu=2017-10-10T18:33:59 julian=2017/283 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 10 12:34:00 obelisk wwvbtool[15223]: wwvbtool: set zulu=2017-10-10T18:34:00.000020781.
-    Oct 10 12:39:03 obelisk wwvbtool[15223]: wwvbtool: terminated.
-    Oct 10 12:39:03 obelisk wwvbtool[15223]: wwvbtool: exiting.
+    Oct 19 07:42:24 obelisk wwvbtool[13140]: wwvbtool: terminated.
+    Oct 19 07:42:24 obelisk wwvbtool[13140]: wwvbtool: exiting.
+    Oct 19 08:43:42 obelisk wwvbtool[17464]: wwvbtool: running pid=17464.
+    Oct 19 08:44:59 obelisk wwvbtool[17464]: wwvbtool: time zulu=2017-10-19T14:44:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 08:44:59 obelisk wwvbtool[17464]: wwvbtool: acquired.
+    Oct 19 08:45:00 obelisk wwvbtool[17464]: wwvbtool: set zulu=2017-10-19T14:45:00.000020130.
+    Oct 19 08:52:17 obelisk wwvbtool[17464]: wwvbtool: terminated.
+    Oct 19 08:52:17 obelisk wwvbtool[17464]: wwvbtool: exiting.
+    Oct 19 08:58:32 obelisk wwvbtool[18641]: wwvbtool: running pid=18641.
+    Oct 19 08:59:59 obelisk wwvbtool[18641]: wwvbtool: time zulu=2017-10-19T14:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 08:59:59 obelisk wwvbtool[18641]: wwvbtool: acquired.
+    Oct 19 09:00:00 obelisk wwvbtool[18641]: wwvbtool: set zulu=2017-10-19T15:00:00.000020116.
+    Oct 19 09:59:59 obelisk wwvbtool[18641]: wwvbtool: time zulu=2017-10-19T15:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 10:25:54 obelisk wwvbtool[18641]: wwvbtool: terminated.
+    Oct 19 10:25:54 obelisk wwvbtool[18641]: wwvbtool: exiting.
+    Oct 19 10:25:55 obelisk wwvbtool[19139]: wwvbtool: running pid=19139.
+    Oct 19 10:26:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T16:26:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 10:26:59 obelisk wwvbtool[19139]: wwvbtool: acquired.
+    Oct 19 10:27:00 obelisk wwvbtool[19139]: wwvbtool: set zulu=2017-10-19T16:27:00.000020102.
+    Oct 19 10:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T16:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 11:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T17:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 12:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T18:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 13:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T19:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 14:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T20:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 15:28:29 obelisk wwvbtool[19139]: wwvbtool: lost risings=0 fallings=0.
+    Oct 19 15:30:59 obelisk wwvbtool[19139]: wwvbtool: acquired.
+    Oct 19 15:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T21:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 16:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T22:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 17:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T23:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 18:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T00:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 19:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T01:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 20:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T02:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 21:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T03:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 22:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T04:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 19 23:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T05:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 20 00:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T06:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 20 01:31:00 obelisk wwvbtool[19139]: wwvbtool: set zulu=2017-10-20T07:31:00.000023819.
+    Oct 20 01:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T07:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 20 02:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T08:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 20 03:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T09:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 20 04:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T10:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
