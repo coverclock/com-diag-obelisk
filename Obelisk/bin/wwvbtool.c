@@ -55,42 +55,7 @@ static const int NICE_MINIMUM = -20;
 static const int NICE_MAXIMUM = 19;
 static const int NICE_NONE = -21;
 
-static const const char * TOKEN[] = {
-    "ZERO",     /* OBELISK_TOKEN_ZERO */
-    "ONE",      /* OBELISK_TOKEN_ONE */
-    "MARKER",   /* OBELISK_TOKEN_MARKER */
-    "INVALID",  /* OBELISK_TOKEN_INVALID */
-};
-
-static const char * STATE[] = {
-    "START",    /* OBELISK_STATE_START */
-    "WAIT",     /* OBELISK_STATE_WAIT */
-    "SYNC",     /* OBELISK_STATE_SYNC */
-    "DATA",     /* OBELISK_STATE_DATA */
-    "MARK",     /* OBELISK_STATE_MARK */
-    "END",      /* OBELISK_STATE_END */
-    "BEGIN",    /* OBELISK_STATE_BEGIN */
-    "LEAP",     /* OBELISK_STATE_LEAP */
-};
-
-static const char * STATUS[] = {
-    "WAITING",  /* OBELISK_STATUS_WAITING */
-    "NOMINAL",  /* OBELISK_STATUS_NOMINAL */
-    "INVALID",  /* OBELISK_STATUS_INVALID */
-    "TIME",     /* OBELISK_STATUS_TIME */
-    "FRAME",    /* OBELISK_STATUS_FRAME */
-    "LEAP",     /* OBELISK_STATUS_LEAP */
-};
-
-static const char * DAY[] = {
-    "SUN",
-    "MON",
-    "TUE",
-    "WED",
-    "THU",
-    "FRI",
-    "SAT",
-};
+#include "com/diag/obelisk/databases.h"
 
 static const char * program = (const char *)0;
 
