@@ -197,7 +197,6 @@ int main(int argc, char ** argv)
     obelisk_state_t state = (obelisk_state_t)-1;
     obelisk_state_t state_old = (obelisk_state_t)-1;
     obelisk_status_t status = (obelisk_status_t)-1;
-    obelisk_status_t status_old = (obelisk_status_t)-1;
     obelisk_buffer_t buffer = -1;
     obelisk_frame_t frame = { 0 };
     hazer_buffer_t sentence = { 0 };
@@ -903,7 +902,6 @@ int main(int argc, char ** argv)
         */
 
         state_old = state;
-        status_old = status;
 
         status = obelisk_parse(&state, token, &field, &length, &buffer, &frame);
 
@@ -915,14 +913,6 @@ int main(int argc, char ** argv)
         LOG("PARSE %s %s %s %s %d %d 0x%llx.", STATE[state_old], TOKEN[token], STATE[state], STATUS[status], field, length, buffer);
 
         /*
-         * Log status changes.
-         */
-
-        if (status != status_old) {
-            DIMINUTO_LOG_NOTICE("%s: status %s.\n", program, STATUS[status]);
-        }
-
-        /*
          * If our status indicates that we've synchronized with the framing,
          * we can enable stuff like PPS.
          */
@@ -931,8 +921,11 @@ int main(int argc, char ** argv)
             synchronized = 0;
         } else if (status == OBELISK_STATUS_INVALID) {
             synchronized = 0;
+        } else if (synchronized) {
+            /* Do nothing. */
         } else {
             synchronized = !0;
+            DIMINUTO_LOG_NOTICE("%s: synchronized.\n", program);
         }
 
         /*
