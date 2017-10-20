@@ -59,6 +59,20 @@ int main(int argc, char ** argv)
 
         status = parse(&frame, "0MM01100000M000000111M000000110M011000010M001100000M100001000M");
         EXPECT(status == OBELISK_STATUS_FRAME);
+        EXPECT(frame.minutes10 == 3);
+        EXPECT(frame.minutes1 == 0);
+        EXPECT(frame.hours10 == 0);
+        EXPECT(frame.hours1 == 7);
+        EXPECT(frame.day100 == 0);
+        EXPECT(frame.day10 == 6);
+        EXPECT(frame.day1 == 6);
+        EXPECT(frame.dutonesign == 2);
+        EXPECT(frame.dutone1 == 3);
+        EXPECT(frame.year10 == 0);
+        EXPECT(frame.year1 == 8);
+        EXPECT(frame.lyi == 1);
+        EXPECT(frame.lsw == 0);
+        EXPECT(frame.dst == 0);
 
         STATUS();
     }
