@@ -76,8 +76,8 @@ that violates what is in effect a language specification.
 <https://github.com/coverclock/com-diag-diminuto>    
 <http://coverclock.blogspot.com/2017/10/my-wwvb-radio-clock.html>    
 <https://www.flickr.com/photos/johnlsloan/albums/72157689295451755>    
-<http://www.pvelectronics.co.uk/rftime/SYM-RFT-XX.pdf>    
 <https://en.wikipedia.org/wiki/WWVB>    
+<http://www.pvelectronics.co.uk/rftime/SYM-RFT-XX.pdf>    
 <https://universal-solder.com/product/60khz-wwvb-atomic-radio-clock-receiver-replaces-c-max-cmmr-6p-60/>    
 <http://tinkersphere.com/sensors/1517-wwvb-nist-radio-time-receiver-kit.html>    
 <http://www.popsci.com/diy/article/2010-03/build-clock-uses-atomic-timekeeping>    
