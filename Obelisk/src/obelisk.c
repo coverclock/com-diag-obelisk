@@ -172,20 +172,17 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
         switch (token) {
 
         case OBELISK_TOKEN_ZERO:
-            status = OBELISK_STATUS_NOMINAL;
             action = OBELISK_ACTION_ZERO;
             state = OBELISK_STATE_DATA;
             break;
 
         case OBELISK_TOKEN_ONE:
-            status = OBELISK_STATUS_NOMINAL;
             action = OBELISK_ACTION_ONE;
             state = OBELISK_STATE_DATA;
             break;
 
         case OBELISK_TOKEN_MARKER:
             /* Ignore third MARKER which must be LEAP. */
-            status = OBELISK_STATUS_NOMINAL;
             state = OBELISK_STATE_DATA;
             break;
 

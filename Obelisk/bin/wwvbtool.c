@@ -55,42 +55,7 @@ static const int NICE_MINIMUM = -20;
 static const int NICE_MAXIMUM = 19;
 static const int NICE_NONE = -21;
 
-static const const char * TOKEN[] = {
-    "ZERO",     /* OBELISK_TOKEN_ZERO */
-    "ONE",      /* OBELISK_TOKEN_ONE */
-    "MARKER",   /* OBELISK_TOKEN_MARKER */
-    "INVALID",  /* OBELISK_TOKEN_INVALID */
-};
-
-static const char * STATE[] = {
-    "START",    /* OBELISK_STATE_START */
-    "WAIT",     /* OBELISK_STATE_WAIT */
-    "SYNC",     /* OBELISK_STATE_SYNC */
-    "DATA",     /* OBELISK_STATE_DATA */
-    "MARK",     /* OBELISK_STATE_MARK */
-    "END",      /* OBELISK_STATE_END */
-    "BEGIN",    /* OBELISK_STATE_BEGIN */
-    "LEAP",     /* OBELISK_STATE_LEAP */
-};
-
-static const char * STATUS[] = {
-    "WAITING",  /* OBELISK_STATUS_WAITING */
-    "NOMINAL",  /* OBELISK_STATUS_NOMINAL */
-    "INVALID",  /* OBELISK_STATUS_INVALID */
-    "TIME",     /* OBELISK_STATUS_TIME */
-    "FRAME",    /* OBELISK_STATUS_FRAME */
-    "LEAP",     /* OBELISK_STATUS_LEAP */
-};
-
-static const char * DAY[] = {
-    "SUN",
-    "MON",
-    "TUE",
-    "WED",
-    "THU",
-    "FRI",
-    "SAT",
-};
+#include "com/diag/obelisk/databases.h"
 
 static const char * program = (const char *)0;
 
@@ -195,8 +160,8 @@ int main(int argc, char ** argv)
     int cycles_limit = -1;
     obelisk_token_t token = (obelisk_token_t)-1;
     obelisk_state_t state = (obelisk_state_t)-1;
+    obelisk_state_t state_old = (obelisk_state_t)-1;
     obelisk_status_t status = (obelisk_status_t)-1;
-    obelisk_state_t temp = (obelisk_state_t)-1;
     obelisk_buffer_t buffer = -1;
     obelisk_frame_t frame = { 0 };
     hazer_buffer_t sentence = { 0 };
@@ -212,6 +177,7 @@ int main(int argc, char ** argv)
     char * endptr = (char *)0;
     int error = -1;
     int armed = -1;
+    int disciplined = -1;
     int synchronized = -1;
     int year = -1;
     int month = -1;
@@ -671,9 +637,10 @@ int main(int argc, char ** argv)
     fallings = 0;
     cycles = 0;
 
-    armed = 0;
     synchronized = 0;
     acquired = 0;
+    armed = 0;
+    disciplined = 0;
 
     buffer = 0;
 
@@ -696,12 +663,17 @@ int main(int argc, char ** argv)
         }
 
         /*
-         * Check for SIGHUP and if seen report and desynchronize.
+         * Check for SIGHUP and if seen report and dediscipline.
+         *
+         * synchronized:    we are synced to the IRIQ framing.
+         * acquired:        we have processed one complete frame.
+         * disciplined:     we have set the system clock.
+         * armed:           we are ready to set the system clock.
          */
 
         if (diminuto_hangup_check()) {
-            DIMINUTO_LOG_NOTICE("%s: hungup acquired=%d synchronized=%d armed=%d risings=%d fallings=%d cycles=%d.\n", program, acquired, synchronized, armed, risings, fallings, cycles);
-            synchronized = 0;
+            DIMINUTO_LOG_NOTICE("%s: hungup synchronized=%d acquired=%d disciplined=%d armed=%d risings=%d fallings=%d cycles=%d.\n", program, synchronized, acquired, disciplined, armed, risings, fallings, cycles);
+            disciplined = 0;
         }
 
         /*
@@ -746,7 +718,11 @@ int main(int argc, char ** argv)
              * jitter in our sampling timer.
              */
 
-            if (pps) {
+            if (!pps) {
+                /* Do nothing. */
+            } else if (!synchronized) {
+                /* Do nothing. */
+            } else {
                 rc = diminuto_pin_set(pin_out_pps_fp);
                 assert(rc >= 0);
             }
@@ -890,16 +866,32 @@ int main(int argc, char ** argv)
         ** Parse grammar by transitioning state based on token.
         */
 
-        temp = state;
+        state_old = state;
 
         status = obelisk_parse(&state, token, &field, &length, &buffer, &frame);
 
-        assert((0 <= temp) && (temp < countof(STATE)));
-        assert((0 <= token) && (token < countof(TOKEN)));
+        assert((0 <= state_old) && (state_old < countof(STATE)));
         assert((0 <= state) && (state < countof(STATE)));
+        assert((0 <= token) && (token < countof(TOKEN)));
         assert((0 <= status) && (status < countof(STATUS)));
 
-        LOG("PARSE %s %s %s %s %d %d 0x%llx.", STATE[temp], TOKEN[token], STATE[state], STATUS[status], field, length, buffer);
+        LOG("PARSE %s %s %s %s %d %d 0x%llx.", STATE[state_old], TOKEN[token], STATE[state], STATUS[status], field, length, buffer);
+
+        /*
+         * If our status indicates that we've synchronized with the framing,
+         * we can enable stuff like PPS.
+         */
+
+        if (status == OBELISK_STATUS_WAITING) {
+            synchronized = 0;
+        } else if (status == OBELISK_STATUS_INVALID) {
+            synchronized = 0;
+        } else if (synchronized) {
+            /* Do nothing. */
+        } else {
+            synchronized = !0;
+            DIMINUTO_LOG_NOTICE("%s: synchronized.\n", program);
+        }
 
         /*
          * Detect an error that causes the state machine to return
@@ -912,7 +904,7 @@ int main(int argc, char ** argv)
             /* Do nothing. */
         } else {
             acquired = 0;
-            DIMINUTO_LOG_NOTICE("%s: lost state=%s token=%s state=%s.\n", program, STATE[temp], TOKEN[token], STATE[state]);
+            DIMINUTO_LOG_NOTICE("%s: lost state=%s token=%s state=%s.\n", program, STATE[state_old], TOKEN[token], STATE[state]);
         }
 
         /*
@@ -926,7 +918,7 @@ int main(int argc, char ** argv)
             /* Do nothing. */
         } else if (!armed) {
             /* Do nothing. */
-        } else if (synchronized) {
+        } else if (disciplined) {
             /* Do nothing. */
         } else {
     
@@ -942,7 +934,7 @@ int main(int argc, char ** argv)
                 perror("settimeodday");
             } else {
 
-                synchronized = !0;
+                disciplined = !0;
 
                 ticks_now = diminuto_time_clock();
                 assert(ticks_now >= 0);
@@ -1005,7 +997,7 @@ int main(int argc, char ** argv)
                 if (acquired) {
                     acquired = 0;
                     DIMINUTO_LOG_NOTICE("%s: lost rc=%d.\n", program, rc);
-                } else if (!synchronized) {
+                } else if (!disciplined) {
                     DIMINUTO_LOG_NOTICE("%s: corrupt rc=%d.\n", program, rc);
                 } else {
                     /* Dothing. */
@@ -1046,7 +1038,7 @@ int main(int argc, char ** argv)
                  * captures the leap second at :59:60 if it occurs.
                  */
 
-                if (!synchronized || (time.tm_min == 59)) {
+                if (!disciplined || (time.tm_min == 59)) {
                     DIMINUTO_LOG_NOTICE("%s: time zulu=%04d-%02d-%02dT%02d:%02d:%02d julian=%04d/%03d day=%s dst=%c dUT1=%c0.%d lyi=%d lsw=%d.",
                         program,
                         time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
@@ -1106,12 +1098,12 @@ int main(int argc, char ** argv)
 
                 armed = !0;
 
-                if (!synchronized) {
+                if (!disciplined) {
                     LOG("READY.");
                 }
 
                 /*
-                 * If we think the system clock has been synchronized, then
+                 * If we think the system clock has been disciplined, then
                  * use it to determine the local time. If the local time is
                  * at the appropriate time, let the work loop set the time
                  * again.
@@ -1119,7 +1111,7 @@ int main(int argc, char ** argv)
 
                 if (!set_daily) {
                     /* Do nothing. */
-                } else if (!synchronized) {
+                } else if (!disciplined) {
                     /* Do nothing. */
                 } else {
 
@@ -1134,7 +1126,7 @@ int main(int argc, char ** argv)
                     } else if (minute != minute_juliet) {
                         /* Do nothing. */
                     } else {
-                        synchronized = 0;
+                        disciplined = 0;
                         LOG("READY %02d:%02d:00J.", hour, minute);
                     }
 
@@ -1166,10 +1158,10 @@ int main(int argc, char ** argv)
 
             if (!set_leap) {
                 /* Do nothing. */
-            } else if (!synchronized) {
+            } else if (!disciplined) {
                 /* Do nothing. */
             } else {
-                synchronized = 0;
+                disciplined = 0;
                 LOG("READY %d.", epoch.tv_sec);
             }
 
