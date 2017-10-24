@@ -161,7 +161,7 @@ int main(int argc, char ** argv)
     obelisk_token_t token = (obelisk_token_t)-1;
     obelisk_state_t state = (obelisk_state_t)-1;
     obelisk_state_t state_old = (obelisk_state_t)-1;
-    obelisk_status_t status = (obelisk_status_t)-1;
+    obelisk_event_t event = (obelisk_event_t)-1;
     obelisk_buffer_t buffer = -1;
     obelisk_frame_t frame = { 0 };
     hazer_buffer_t sentence = { 0 };
@@ -637,7 +637,7 @@ int main(int argc, char ** argv)
     fallings = 0;
     cycles = 0;
 
-    synchronized = 0;
+    synchronized = !0;
     acquired = 0;
     armed = 0;
     disciplined = 0;
@@ -665,10 +665,10 @@ int main(int argc, char ** argv)
         /*
          * Check for SIGHUP and if seen report and dediscipline.
          *
-         * synchronized:    we are synced to the IRIQ framing.
-         * acquired:        we have processed one complete frame.
-         * disciplined:     we have set the system clock.
-         * armed:           we are ready to set the system clock.
+         * synchronized:    true if we are synced to the IRIQ framing.
+         * acquired:        true if we have received a complete valid frame.
+         * armed:           true if we have constructed a valid time stamp.
+         * disciplined:     true if we have set the system clock.
          */
 
         if (diminuto_hangup_check()) {
@@ -868,99 +868,107 @@ int main(int argc, char ** argv)
 
         state_old = state;
 
-        status = obelisk_parse(&state, token, &field, &length, &buffer, &frame);
+        event = obelisk_parse(&state, token, &field, &length, &buffer, &frame);
 
         assert((0 <= state_old) && (state_old < countof(STATE)));
         assert((0 <= state) && (state < countof(STATE)));
         assert((0 <= token) && (token < countof(TOKEN)));
-        assert((0 <= status) && (status < countof(STATUS)));
+        assert((0 <= event) && (event < countof(EVENT)));
 
-        LOG("PARSE %s %s %s %s %d %d 0x%llx.", STATE[state_old], TOKEN[token], STATE[state], STATUS[status], field, length, buffer);
+        LOG("PARSE %s %s %s %s %d %d 0x%llx.", STATE[state_old], TOKEN[token], STATE[state], EVENT[event], field, length, buffer);
 
-        /*
-         * If our status indicates that we've synchronized with the framing,
-         * we can enable stuff like PPS.
-         */
+        switch (event) {
 
-        if (status == OBELISK_STATUS_WAITING) {
-            synchronized = 0;
-        } else if (status == OBELISK_STATUS_INVALID) {
-            synchronized = 0;
-        } else if (synchronized) {
-            /* Do nothing. */
-        } else {
-            synchronized = !0;
-            DIMINUTO_LOG_NOTICE("%s: synchronized.\n", program);
-        }
+        case OBELISK_EVENT_WAITING:
 
-        /*
-         * Detect an error that causes the state machine to return
-         * to its start state.
-         */
-
-        if (status != OBELISK_STATUS_INVALID) {
-            /* Do nothing. */
-        } else if (!acquired) {
-            /* Do nothing. */
-        } else {
-            acquired = 0;
-            DIMINUTO_LOG_NOTICE("%s: lost state=%s token=%s state=%s.\n", program, STATE[state_old], TOKEN[token], STATE[state]);
-        }
-
-        /*
-         * Detect the beginning of the minute so that we can set the time
-         * if we so desire.
-         */
-
-        if (status != OBELISK_STATUS_TIME) {
-            /* Do nothing. */
-        } else if (!(set_initially || set_daily || set_leap)) {
-            /* Do nothing. */
-        } else if (!armed) {
-            /* Do nothing. */
-        } else if (disciplined) {
-            /* Do nothing. */
-        } else {
-    
             /*
-             * Set the system clock. For most (larger) UNIX systems,
-             * this is a rare and potentially violent operation. That's
-             * because a lot of subsystems depend on the system clock to
-             * know when to do things. Changing the system clock can
-             * cause unexpected results.
-             */
+             * If our event indicates that we've synchronized with the framing,
+             * we can enable stuff like PPS.
+            */
 
-            if ((rc = settimeofday(&epoch, (struct timezone *)0)) < 0) {
-                perror("settimeodday");
-            } else {
-
-                disciplined = !0;
-
-                ticks_now = diminuto_time_clock();
-                assert(ticks_now >= 0);
-
-                rc = diminuto_time_zulu(ticks_now, &year, &month, &day, &hour, &minute, &second, &fraction);
-                assert(rc >= 0);
-
-                DIMINUTO_LOG_NOTICE("%s: set zulu=%04d-%02d-%02dT%02d:%02d:%02d.%09llu.\n",
-                    program,
-                    year, month, day,
-                    hour, minute, second,
-                    fraction / 1000
-                );
-
+            if (synchronized) {
+                synchronized = 0;
+                DIMINUTO_LOG_NOTICE("%s: synchronizing.\n", program);
             }
 
-        }
+            armed = 0;
 
-        /*
-         * Once we have a complete frame, extract it from the buffer.
-         */
+            break;
 
-        armed = 0;
+        case OBELISK_EVENT_INVALID:
 
-        if (status == OBELISK_STATUS_FRAME) {
-            
+            /*
+             * Detect an error that causes the state machine to return
+             * to its start state.
+             */
+
+            if (acquired) {
+                acquired = 0;
+                DIMINUTO_LOG_NOTICE("%s: lost state=%s token=%s state=%s.\n", program, STATE[state_old], TOKEN[token], STATE[state]);
+            }
+
+            armed = 0;
+
+            break;
+ 
+        case OBELISK_EVENT_TIME:
+
+            /*
+             * Detect the beginning of the minute so that we can set the
+             * time if we so desire.
+             */
+
+            if (!(set_initially || set_daily || set_leap)) {
+                /* Do nothing. */
+            } else if (!armed) {
+                /* Do nothing. */
+            } else if (disciplined) {
+                /* Do nothing. */
+            } else {
+        
+                /*
+                 * Set the system clock. For most (larger) UNIX systems,
+                 * this is a rare and potentially violent operation.
+                 * That's because a lot of subsystems depend on the
+                 * system clock to know when to do things. Changing the
+                 * system clock can cause unexpected results.
+                 */
+    
+                if ((rc = settimeofday(&epoch, (struct timezone *)0)) < 0) {
+                    perror("settimeodday");
+                } else {
+    
+                    disciplined = !0;
+    
+                    ticks_now = diminuto_time_clock();
+                    assert(ticks_now >= 0);
+    
+                    rc = diminuto_time_zulu(ticks_now, &year, &month, &day, &hour, &minute, &second, &fraction);
+                    assert(rc >= 0);
+    
+                    DIMINUTO_LOG_NOTICE("%s: set zulu=%04d-%02d-%02dT%02d:%02d:%02d.%09llu.\n",
+                        program,
+                        year, month, day,
+                        hour, minute, second,
+                        fraction / 1000
+                    );
+    
+                }
+    
+            }
+
+            armed = 0;
+
+            break;
+
+        case OBELISK_EVENT_FRAME:
+
+            armed = 0;
+
+            /*
+             * Once we have a complete frame, extract it from the buffer.
+             */
+
             LOG("FRAME 0x%016lld %d %d %d %d %d %d %d %d %d %d %d %d %d %d.",
                  buffer,
                  frame.year10, frame.year1,
@@ -1096,6 +1104,11 @@ int main(int argc, char ** argv)
 
                 LOG("EPOCH %ld.%06ld.", epoch.tv_sec, epoch.tv_usec);
 
+                /*
+                 * THis time stamp is usable only in the very next
+                 * TIME event.
+                 */
+
                 armed = !0;
 
                 if (!disciplined) {
@@ -1134,27 +1147,16 @@ int main(int argc, char ** argv)
 
             }
 
-        }
+            break;
 
-        /*
-         * If a leap second just occurred, adjust the epoch that we
-         * just computed at the end of the prior second.
-         */
-
-        if (status == OBELISK_STATUS_LEAP) {
+        case OBELISK_EVENT_LEAP:
 
             /*
-             * If we received a leap second indication without the
-             * Leap Second Warning flag having been set in the frame,
-             * the frame is perhaps invalid, and at least unexpected.
-             * This seems unlikely, but we at least should log it.
+             * Extra leap second marker encountered. The mere reception of
+             * this marker advanced the second in the epoch.
              */
 
             DIMINUTO_LOG_NOTICE("%s: leap lsw=%d.", program, frame.lsw);
-
-            /*
-             * Resynchronize clock if so requested.
-             */
 
             if (!set_leap) {
                 /* Do nothing. */
@@ -1164,6 +1166,29 @@ int main(int argc, char ** argv)
                 disciplined = 0;
                 LOG("READY %d.", epoch.tv_sec);
             }
+
+            armed = 0;
+
+            break;
+
+        case OBELISK_EVENT_NOMINAL:
+
+            /*
+             * If we're collecting data, we are synchronized.
+             */
+
+            if (!synchronized) {
+                synchronized = !0;
+                DIMINUTO_LOG_NOTICE("%s: synchronized.\n", program);
+            }
+
+            armed = 0;
+
+            break;
+
+        default:
+            assert(event != event);
+            break;
 
         }
 

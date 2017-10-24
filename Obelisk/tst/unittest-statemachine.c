@@ -16,22 +16,22 @@
 #include <stdio.h>
 #include <errno.h>
 
-#define FSM(_FROM_, _FF_, _FL_, _TOKEN_, _TO_, _TF_, _TL_, _STATUS_) \
+#define FSM(_FROM_, _FF_, _FL_, _TOKEN_, _TO_, _TF_, _TL_, _EVENT_) \
     do { \
         obelisk_state_t state = (obelisk_state_t)-1; \
         obelisk_token_t token = (obelisk_token_t)-1; \
         obelisk_buffer_t buffer = { 0 }; \
         obelisk_frame_t frame = { 0 }; \
-        obelisk_status_t status = (obelisk_status_t)-1; \
+        obelisk_event_t event = (obelisk_event_t)-1; \
         int field = _FF_; \
         int length = _FL_; \
         state = OBELISK_STATE_ ## _FROM_; \
         token = OBELISK_TOKEN_ ## _TOKEN_; \
-        status = obelisk_parse(&state, token, &field, &length, &buffer, &frame); \
+        event = obelisk_parse(&state, token, &field, &length, &buffer, &frame); \
         EXPECT(state == OBELISK_STATE_ ## _TO_); \
         EXPECT(field == _TF_); \
         EXPECT(length == _TL_); \
-        EXPECT(status == OBELISK_STATUS_ ## _STATUS_); \
+        EXPECT(event == OBELISK_EVENT_ ## _EVENT_); \
     } while (0)
 
 /*

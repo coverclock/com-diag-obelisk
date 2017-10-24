@@ -18,9 +18,9 @@
 
 #include "com/diag/obelisk/databases.h"
 
-static obelisk_status_t parse(obelisk_frame_t * framep, const char * sentence)
+static obelisk_event_t parse(obelisk_frame_t * framep, const char * sentence)
 {
-    obelisk_status_t status = OBELISK_STATUS_INVALID;
+    obelisk_event_t event = OBELISK_EVENT_INVALID;
     obelisk_state_t state = OBELISK_STATE_START;
     obelisk_state_t state_prime;
     obelisk_token_t token;
@@ -38,11 +38,11 @@ static obelisk_status_t parse(obelisk_frame_t * framep, const char * sentence)
         default:  token = OBELISK_TOKEN_ZERO;   break;
         }
         state_prime = state;
-        status = obelisk_parse(&state, token, &field, &length, &buffer, framep);
-        fprintf(stderr, "parse %s %s %s %s\n", STATE[state], TOKEN[token], STATE[state_prime], STATUS[status]);
+        event = obelisk_parse(&state, token, &field, &length, &buffer, framep);
+        fprintf(stderr, "parse %s %s %s %s\n", STATE[state], TOKEN[token], STATE[state_prime], EVENT[event]);
     }
 
-    return status;
+    return event;
 }
 
 int main(int argc, char ** argv)
@@ -53,12 +53,12 @@ int main(int argc, char ** argv)
 
     {
         obelisk_frame_t frame;
-        obelisk_status_t status;
+        obelisk_event_t event;
 
         TEST();
 
-        status = parse(&frame, "0MM01100000M000000111M000000110M011000010M001100000M100001000M");
-        EXPECT(status == OBELISK_STATUS_FRAME);
+        event = parse(&frame, "0MM01100000M000000111M000000110M011000010M001100000M100001000M");
+        EXPECT(event == OBELISK_EVENT_FRAME);
         EXPECT(frame.minutes10 == 3);
         EXPECT(frame.minutes1 == 0);
         EXPECT(frame.hours10 == 0);
@@ -79,12 +79,12 @@ int main(int argc, char ** argv)
 
     {
         obelisk_frame_t frame;
-        obelisk_status_t status;
+        obelisk_event_t event;
 
         TEST();
 
-        status = parse(&frame, "0MM01100000M000000111M000000110M011000010M001100000M100001000MM");
-        EXPECT(status == OBELISK_STATUS_TIME);
+        event = parse(&frame, "0MM01100000M000000111M000000110M011000010M001100000M100001000MM");
+        EXPECT(event == OBELISK_EVENT_TIME);
         EXPECT(frame.minutes10 == 3);
         EXPECT(frame.minutes1 == 0);
         EXPECT(frame.hours10 == 0);
@@ -105,12 +105,12 @@ int main(int argc, char ** argv)
 
     {
         obelisk_frame_t frame;
-        obelisk_status_t status;
+        obelisk_event_t event;
 
         TEST();
 
-        status = parse(&frame, "0MM01100000M000000111M000000110M011000010M001100000M100001000MMM");
-        EXPECT(status == OBELISK_STATUS_LEAP);
+        event = parse(&frame, "0MM01100000M000000111M000000110M011000010M001100000M100001000MMM");
+        EXPECT(event == OBELISK_EVENT_LEAP);
         EXPECT(frame.minutes10 == 3);
         EXPECT(frame.minutes1 == 0);
         EXPECT(frame.hours10 == 0);
@@ -131,24 +131,24 @@ int main(int argc, char ** argv)
 
     {
         obelisk_frame_t frame;
-        obelisk_status_t status;
+        obelisk_event_t event;
 
         TEST();
 
-        status = parse(&frame, "0MM01100000M000000111M000000110M011000010M001100000M100001000MMMM");
-        EXPECT(status == OBELISK_STATUS_INVALID);
+        event = parse(&frame, "0MM01100000M000000111M000000110M011000010M001100000M100001000MMMM");
+        EXPECT(event == OBELISK_EVENT_INVALID);
 
         STATUS();
     }
 
     {
         obelisk_frame_t frame;
-        obelisk_status_t status;
+        obelisk_event_t event;
 
         TEST();
 
-        status = parse(&frame, "0MMM01100000M000000111M000000110M011000010M001100000M100001000M");
-        EXPECT(status == OBELISK_STATUS_FRAME);
+        event = parse(&frame, "0MMM01100000M000000111M000000110M011000010M001100000M100001000M");
+        EXPECT(event == OBELISK_EVENT_FRAME);
         EXPECT(frame.minutes10 == 3);
         EXPECT(frame.minutes1 == 0);
         EXPECT(frame.hours10 == 0);
@@ -169,12 +169,12 @@ int main(int argc, char ** argv)
 
     {
         obelisk_frame_t frame;
-        obelisk_status_t status;
+        obelisk_event_t event;
 
         TEST();
 
-        status = parse(&frame, "0MMMM01100000M000000111M000000110M011000010M001100000M100001000M");
-        EXPECT(status == OBELISK_STATUS_WAITING);
+        event = parse(&frame, "0MMMM01100000M000000111M000000110M011000010M001100000M100001000M");
+        EXPECT(event == OBELISK_EVENT_WAITING);
 
         STATUS();
     }

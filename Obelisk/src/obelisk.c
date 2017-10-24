@@ -83,9 +83,9 @@ static const int8_t LENGTH[] = {
     9,  /* year1, lyi, lsw, dst */
 };
 
-obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, int * fieldp, int * lengthp, obelisk_buffer_t * bufferp, obelisk_frame_t * framep)
+obelisk_event_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, int * fieldp, int * lengthp, obelisk_buffer_t * bufferp, obelisk_frame_t * framep)
 {
-    obelisk_status_t status = OBELISK_STATUS_NOMINAL;
+    obelisk_event_t event = OBELISK_EVENT_NOMINAL;
     obelisk_state_t state = OBELISK_STATE_START;
     obelisk_action_t action = OBELISK_ACTION_NONE;
 
@@ -124,17 +124,17 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
 
         case OBELISK_TOKEN_ZERO:
         case OBELISK_TOKEN_ONE:
-            status = OBELISK_STATUS_WAITING;
+            event = OBELISK_EVENT_WAITING;
             break;
 
         case OBELISK_TOKEN_MARKER:
             /* First MARKER could be END, BNEGIN, or LEAP. */
-            status = OBELISK_STATUS_WAITING;
+            event = OBELISK_EVENT_WAITING;
             state = OBELISK_STATE_WAIT;
             break;
 
         default:
-            status = OBELISK_STATUS_INVALID;
+            event = OBELISK_EVENT_INVALID;
             break;
 
         }
@@ -147,19 +147,19 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
 
         case OBELISK_TOKEN_ZERO:
         case OBELISK_TOKEN_ONE:
-            status = OBELISK_STATUS_WAITING;
+            event = OBELISK_EVENT_WAITING;
             state = OBELISK_STATE_START;
             break;
 
         case OBELISK_TOKEN_MARKER:
             /* Second MARKER could be BEGIN or LEAP. */
-            status = OBELISK_STATUS_WAITING;
+            event = OBELISK_EVENT_WAITING;
             action = OBELISK_ACTION_CLEAR;
             state = OBELISK_STATE_SYNC;
             break;
 
         default:
-            status = OBELISK_STATUS_INVALID;
+            event = OBELISK_EVENT_INVALID;
             state = OBELISK_STATE_START;
             break;
 
@@ -187,7 +187,7 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
             break;
 
         default:
-            status = OBELISK_STATUS_INVALID;
+            event = OBELISK_EVENT_INVALID;
             state = OBELISK_STATE_START;
             break;
 
@@ -222,7 +222,7 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
             break;
 
         default:
-            status = OBELISK_STATUS_INVALID;
+            event = OBELISK_EVENT_INVALID;
             state = OBELISK_STATE_START;
             break;
 
@@ -240,7 +240,7 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
             break;
 
         default:
-            status = OBELISK_STATUS_INVALID;
+            event = OBELISK_EVENT_INVALID;
             state = OBELISK_STATE_START;
             break;
 
@@ -253,13 +253,13 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
         switch (token) {
 
         case OBELISK_TOKEN_MARKER:
-            status = OBELISK_STATUS_FRAME;
+            event = OBELISK_EVENT_FRAME;
             action = OBELISK_ACTION_FINAL;
             state = OBELISK_STATE_BEGIN;
             break;
 
         default:
-            status = OBELISK_STATUS_INVALID;
+            event = OBELISK_EVENT_INVALID;
             state = OBELISK_STATE_START;
             break;
 
@@ -272,13 +272,13 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
         switch (token) {
 
         case OBELISK_TOKEN_MARKER:
-            status = OBELISK_STATUS_TIME;
+            event = OBELISK_EVENT_TIME;
             action = OBELISK_ACTION_CLEAR;
             state = OBELISK_STATE_LEAP;
             break;
 
         default:
-            status = OBELISK_STATUS_INVALID;
+            event = OBELISK_EVENT_INVALID;
             state = OBELISK_STATE_START;
             break;
 
@@ -301,12 +301,12 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
             break;
 
         case OBELISK_TOKEN_MARKER:
-            status = OBELISK_STATUS_LEAP;
+            event = OBELISK_EVENT_LEAP;
             state = OBELISK_STATE_DATA;
             break;
 
         default:
-            status = OBELISK_STATUS_INVALID;
+            event = OBELISK_EVENT_INVALID;
             state = OBELISK_STATE_START;
             break;
 
@@ -315,7 +315,7 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
         break;
 
     default:
-        status = OBELISK_STATUS_INVALID;
+        event = OBELISK_EVENT_INVALID;
         state = OBELISK_STATE_START;
         break;
 
@@ -367,9 +367,9 @@ obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, 
 
     }
 
-    assert((OBELISK_STATUS_FIRST <= status) && (status <= OBELISK_STATUS_LAST));
+    assert((OBELISK_EVENT_FIRST <= event) && (event <= OBELISK_EVENT_LAST));
 
-    return status;
+    return event;
 }
 
 static const int8_t DAYS[2][12] = {

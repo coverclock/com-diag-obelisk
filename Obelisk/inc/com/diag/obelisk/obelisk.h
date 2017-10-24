@@ -66,19 +66,19 @@ typedef enum ObeliskState {
 } obelisk_state_t;
 
 /**
- * THese are the indications the state machine returns to the caller to
+ * THese are the events the state machine returns to the caller to
  * suggest what it should do based on the most recent state transition.
  */
-typedef enum ObeliskStatus {
-    OBELISK_STATUS_WAITING, /* Waiting for frame synchronization. */
-    OBELISK_STATUS_NOMINAL, /* Processing input normally. */
-    OBELISK_STATUS_INVALID, /* Restarting due to invalid data. */
-    OBELISK_STATUS_TIME,    /* This is the beginning of the minute. */
-    OBELISK_STATUS_FRAME,   /* This is the end of the minute. */
-    OBELISK_STATUS_LEAP,    /* A leap second was inserted. */
-    OBELISK_STATUS_FIRST = OBELISK_STATUS_WAITING,
-    OBELISK_STATUS_LAST = OBELISK_STATUS_LEAP,
-} obelisk_status_t;
+typedef enum ObeliskEvent {
+    OBELISK_EVENT_WAITING,  /* Waiting for frame synchronization. */
+    OBELISK_EVENT_NOMINAL,  /* Processing input normally. */
+    OBELISK_EVENT_INVALID,  /* Restarting due to invalid data. */
+    OBELISK_EVENT_TIME,     /* This is the beginning of the minute. */
+    OBELISK_EVENT_FRAME,    /* This is the end of the minute. */
+    OBELISK_EVENT_LEAP,     /* A leap second was inserted. */
+    OBELISK_EVENT_FIRST = OBELISK_EVENT_WAITING,
+    OBELISK_EVENT_LAST = OBELISK_EVENT_LEAP,
+} obelisk_event_t;
 
 /**
  * This type describes the buffer into which the IRIQ timecode frame is
@@ -165,9 +165,9 @@ typedef struct ObeliskFrame {           /* TIME       */    /* SPACE    */
  * @param fieldp points to the number of the field being processed.
  * @param lengthp points to the unconnsumed number of bits in the field.
  * @param framep points to a frame into which a completed frame is stored.
- * @return the status that tells the caller what, if anything, to do.
+ * @return the event that tells the caller what, if anything, to do.
  */
-extern obelisk_status_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, int * fieldp, int * lengthp, obelisk_buffer_t * bufferp, obelisk_frame_t * framep);
+extern obelisk_event_t obelisk_parse(obelisk_state_t * statep, obelisk_token_t token, int * fieldp, int * lengthp, obelisk_buffer_t * bufferp, obelisk_frame_t * framep);
 
 /**
  * Validity check the individual fields in the frame structure. This only

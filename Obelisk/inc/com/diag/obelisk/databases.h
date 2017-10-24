@@ -28,13 +28,13 @@ static const char * STATE[] = {
     "LEAP",     /* OBELISK_STATE_LEAP */
 };
 
-static const char * STATUS[] = {
-    "WAITING",  /* OBELISK_STATUS_WAITING */
-    "NOMINAL",  /* OBELISK_STATUS_NOMINAL */
-    "INVALID",  /* OBELISK_STATUS_INVALID */
-    "TIME",     /* OBELISK_STATUS_TIME */
-    "FRAME",    /* OBELISK_STATUS_FRAME */
-    "LEAP",     /* OBELISK_STATUS_LEAP */
+static const char * EVENT[] = {
+    "WAITING",  /* OBELISK_EVENT_WAITING */
+    "NOMINAL",  /* OBELISK_EVENT_NOMINAL */
+    "INVALID",  /* OBELISK_EVENT_INVALID */
+    "TIME",     /* OBELISK_EVENT_TIME */
+    "FRAME",    /* OBELISK_EVENT_FRAME */
+    "LEAP",     /* OBELISK_EVENT_LEAP */
 };
 
 static const char * DAY[] = {
