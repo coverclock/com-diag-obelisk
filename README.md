@@ -299,7 +299,7 @@ Before enabling the NTP peerstats capability in /etc/ntp.conf, do this.
 Sometimes NTP seems relatively happy with the GPS NMEA and PPS synthesized
 by wwvbtool.
 
-    $ networktime
+    $ ntpq -c peer -c as -c rl localhost
          remote           refid      st t when poll reach   delay   offset   jitter
     ===============================================================================
     *SHM(1)          .PPS.            0 l   36   64  377   0.0000 -12.9271  39.0038
@@ -336,55 +336,84 @@ by wwvbtool.
     offset=-12.927091, frequency=-144.019516, sys_jitter=39.003832,
     clk_jitter=27.85568, clk_wander=4.046512
 
+Sometimes not so much, for the synthesized PPS at least.
+
+    $ ntpq -c peer -c as -c rl localhost
+         remote           refid      st t when poll reach   delay   offset   jitter
+    ===============================================================================
+    xSHM(1)          .PPS.            1 l   29   64  377   0.0000 -30.0354   4.6376
+    *SHM(0)          .GPS.            1 l   27   64  377   0.0000 -15.7650   4.6256
+     us.pool.ntp.org .POOL.          16 p    -  256    0   0.0000   0.0000   0.0010
+    -mirror1.sjc02.s 162.213.2.253    2 u   64   64  377  41.6896  27.2100   6.2153
+    +ns2.intrax.com  .GPSD.           1 u   35   64  377  76.4996  34.6403   4.0932
+    -palpatine.steve 132.239.1.6      2 u   52   64  377  45.5836  28.6521   5.0903
+     zombie.frizzen. 200.130.17.247   3 u  53m 1024    0  54.9129  58.2962  29.1178
+    -paladin.latt.ne 204.123.2.72     2 u   32  128  377  58.2541  41.3394   4.2073
+    -dev.smatwebdesi 192.168.204.60   3 u  101  128  377  34.9645  39.0102   3.2400
+    +test.diarizer.c 216.239.35.4     2 u  100   64  376  40.2588  35.6555   2.4089
+    
+    ind assid status  conf reach auth condition  last_event cnt
+    ===========================================================
+      1 58034  91ca   yes   yes  none falsetick    sys_peer 12
+      2 58035  96ea   yes   yes  none  sys.peer    sys_peer 14
+      3 58036  8811   yes  none  none    reject    mobilize  1
+      4 58037  1314    no   yes  none   outlier   reachable  1
+      5 58038  14ca    no   yes  none candidate    sys_peer 12
+      6 58039  131a    no   yes  none   outlier    sys_peer  1
+      7 58041  0013    no    no  none    reject unreachable  1
+      8 58042  1314    no   yes  none   outlier   reachable  1
+      9 58043  1314    no   yes  none   outlier   reachable  1
+     10 58044  141a    no   yes  none candidate    sys_peer  1
+    associd=0 status=0415 leap_none, sync_uhf_radio, 1 event, clock_sync,
+    version="ntpd ntpsec-0.9.7+1473 2017-10-06T16:43:31Z", processor="armv7l",
+    system="Linux/4.9.41-v7+", leap=00, stratum=2, precision=-20, rootdelay=0.0,
+    rootdisp=57.119, refid=127.127.28.0,
+    reftime=dd9b196b.ad43ea60 2017-10-25T14:08:43.676Z,
+    clock=dd9b1b07.1bdc7d73 2017-10-25T14:15:35.108Z, peer=58035, tc=6, mintc=0,
+    offset=1.6395, frequency=-6.460846, sys_jitter=5.240931,
+    clk_jitter=11.573969, clk_wander=0.676028
+
 The wwvbtool utility writes some stuff to the system log at the "notice"
 level when signficant events occur, or periodically at fifty-nine minutes
-after the hour, or whenever it receives a SIGHUP signal. My version
-of Raspbian extracts messages at this level from the /var/log/syslog
-and saves them in /var/log/messages. Here are an extended example. You
-can see that the system lost the WWVB signal and reacquired it. The NTP
-query shows a "falsetick" logged against the PPS, which I attribute to
-the signal loss. You can also see that the system is set up to set the
-time initially, to update it after 1:30AM local time, and to log the
-received data once an hour.
+after the hour, or whenever it receives a SIGHUP signal. My version of
+Raspbian extracts messages at this level from the /var/log/syslog and
+saves them in /var/log/messages. Here are an extended example.
 
-    Oct 19 07:42:24 obelisk wwvbtool[13140]: wwvbtool: terminated.
-    Oct 19 07:42:24 obelisk wwvbtool[13140]: wwvbtool: exiting.
-    Oct 19 08:43:42 obelisk wwvbtool[17464]: wwvbtool: running pid=17464.
-    Oct 19 08:44:59 obelisk wwvbtool[17464]: wwvbtool: time zulu=2017-10-19T14:44:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 08:44:59 obelisk wwvbtool[17464]: wwvbtool: acquired.
-    Oct 19 08:45:00 obelisk wwvbtool[17464]: wwvbtool: set zulu=2017-10-19T14:45:00.000020130.
-    Oct 19 08:52:17 obelisk wwvbtool[17464]: wwvbtool: terminated.
-    Oct 19 08:52:17 obelisk wwvbtool[17464]: wwvbtool: exiting.
-    Oct 19 08:58:32 obelisk wwvbtool[18641]: wwvbtool: running pid=18641.
-    Oct 19 08:59:59 obelisk wwvbtool[18641]: wwvbtool: time zulu=2017-10-19T14:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 08:59:59 obelisk wwvbtool[18641]: wwvbtool: acquired.
-    Oct 19 09:00:00 obelisk wwvbtool[18641]: wwvbtool: set zulu=2017-10-19T15:00:00.000020116.
-    Oct 19 09:59:59 obelisk wwvbtool[18641]: wwvbtool: time zulu=2017-10-19T15:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 10:25:54 obelisk wwvbtool[18641]: wwvbtool: terminated.
-    Oct 19 10:25:54 obelisk wwvbtool[18641]: wwvbtool: exiting.
-    Oct 19 10:25:55 obelisk wwvbtool[19139]: wwvbtool: running pid=19139.
-    Oct 19 10:26:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T16:26:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 10:26:59 obelisk wwvbtool[19139]: wwvbtool: acquired.
-    Oct 19 10:27:00 obelisk wwvbtool[19139]: wwvbtool: set zulu=2017-10-19T16:27:00.000020102.
-    Oct 19 10:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T16:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 11:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T17:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 12:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T18:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 13:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T19:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 14:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T20:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 15:28:29 obelisk wwvbtool[19139]: wwvbtool: lost risings=0 fallings=0.
-    Oct 19 15:30:59 obelisk wwvbtool[19139]: wwvbtool: acquired.
-    Oct 19 15:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T21:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 16:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T22:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 17:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-19T23:59:59 julian=2017/292 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 18:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T00:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 19:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T01:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 20:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T02:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 21:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T03:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 22:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T04:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 19 23:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T05:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 20 00:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T06:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 20 01:31:00 obelisk wwvbtool[19139]: wwvbtool: set zulu=2017-10-20T07:31:00.000023819.
-    Oct 20 01:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T07:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 20 02:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T08:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 20 03:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T09:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
-    Oct 20 04:59:59 obelisk wwvbtool[19139]: wwvbtool: time zulu=2017-10-20T10:59:59 julian=2017/293 day=FRI dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 24 15:50:32 obelisk wwvbtool[21005]: wwvbtool: running pid=21005.
+    Oct 24 15:50:33 obelisk wwvbtool[21005]: wwvbtool: synchronizing.
+    Oct 24 15:51:01 obelisk wwvbtool[21005]: wwvbtool: synchronized.
+    Oct 24 15:51:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-24T21:51:59 julian=2017/297 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 24 15:51:59 obelisk wwvbtool[21005]: wwvbtool: acquired.
+    Oct 24 15:52:00 obelisk wwvbtool[21005]: wwvbtool: set zulu=2017-10-24T21:52:00.000020113.
+    Oct 24 15:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-24T21:59:59 julian=2017/297 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 24 16:01:13 obelisk wwvbtool[21005]: wwvbtool: hungup synchronized=1 acquired=1 disciplined=1 armed=0 risings=1 fallings=1 cycles=60.
+    Oct 24 16:01:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-24T22:01:59 julian=2017/297 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 24 16:02:00 obelisk wwvbtool[21005]: wwvbtool: set zulu=2017-10-24T22:02:00.000023835.
+    Oct 24 16:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-24T22:59:59 julian=2017/297 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 24 17:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-24T23:59:59 julian=2017/297 day=TUE dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 24 18:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T00:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 24 19:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T01:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 24 20:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T02:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 24 21:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T03:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 24 22:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T04:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 24 23:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T05:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 00:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T06:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 01:31:00 obelisk wwvbtool[21005]: wwvbtool: set zulu=2017-10-25T07:31:00.000020050.
+    Oct 25 01:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T07:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 02:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T08:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 03:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T09:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 04:56:28 obelisk wwvbtool[21005]: wwvbtool: lost risings=1 fallings=0.
+    Oct 25 04:56:33 obelisk wwvbtool[21005]: wwvbtool: synchronizing.
+    Oct 25 06:05:01 obelisk wwvbtool[21005]: wwvbtool: synchronized.
+    Oct 25 06:05:59 obelisk wwvbtool[21005]: wwvbtool: acquired.
+    Oct 25 06:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T12:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 07:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T13:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+
+You can see that the system lost the WWVB signal for a little over
+two hours before finally reacquiring it. No clue why. That morning
+I noticed the LED on the radio board was blinking sporadically and
+apparently randomly. It was still dark, sunrise not until 7:21 local
+time. The NTP query that shows a "falsetick" logged against the PPS
+above I attribute to that signal loss. You can also see that the system
+is set up to set the time initially, to update it after 1:30AM local time,
+and to log the received data once an hour.
