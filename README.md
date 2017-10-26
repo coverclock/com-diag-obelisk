@@ -128,18 +128,18 @@ SYM-RFT-60
 ## Notes
 Here is the SYM-RFT-60 pinouts and to what they are connected.
 
-    A1                          antenna
-    A2                          antenna
+    A1                          --> antenna
+    A2                          --> antenna
 
-    Vdd IN                      Pi pin 1 3.3V OUT
-    Tcon OUT                    Pi pin 18 GPIO 24 IN
-    Pon IN                      Pi pin 16 GPIO 23 OUT
-    GND IN                      Pi pin 14 GND OUT
-    N/C                         N/A
+    Vdd IN                      --> Pi pin 1 3.3V OUT
+    Tcon OUT                    --> Pi pin 18 GPIO 24 IN
+    Pon IN                      --> Pi pin 16 GPIO 23 OUT
+    GND IN                      --> Pi pin 14 GND OUT
+    N/C                         --> N/A
 
 Here are the additional pins used on the Raspberry Pi.
 
-    Pi pin 22 GPIO 25 OUT      Pi pin 12 GPIO 18 CLK IN
+    Pi pin 22 GPIO 25 OUT      --> Pi pin 12 GPIO 18 CLK IN
 
 Here is a partial list of additional packages needed.
 
