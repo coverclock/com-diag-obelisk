@@ -408,12 +408,65 @@ saves them in /var/log/messages. Here are an extended example.
     Oct 25 06:05:59 obelisk wwvbtool[21005]: wwvbtool: acquired.
     Oct 25 06:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T12:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
     Oct 25 07:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T13:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 08:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T14:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 09:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T15:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 10:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T16:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 11:19:10 obelisk wwvbtool[21005]: wwvbtool: lost risings=1 fallings=0.
+    Oct 25 11:19:17 obelisk wwvbtool[21005]: wwvbtool: synchronizing.
+    Oct 25 11:25:01 obelisk wwvbtool[21005]: wwvbtool: synchronized.
+    Oct 25 11:25:59 obelisk wwvbtool[21005]: wwvbtool: acquired.
+    Oct 25 11:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T17:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 12:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T18:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 13:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T19:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 14:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T20:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 15:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T21:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 16:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T22:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 17:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-25T23:59:59 julian=2017/298 day=WED dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 18:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T00:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 19:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T01:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 20:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T02:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 21:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T03:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 22:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T04:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 25 23:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T05:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 26 00:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T06:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 26 01:31:00 obelisk wwvbtool[21005]: wwvbtool: set zulu=2017-10-26T07:31:00.000020056.
+    Oct 26 01:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T07:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 26 02:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T08:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 26 03:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T09:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 26 04:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T10:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 26 05:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T11:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 26 06:25:02 obelisk liblogging-stdlog:  [origin software="rsyslogd" swVersion="8.24.0" x-pid="352" x-info="http://www.rsyslog.com"] rsyslogd was HUPed
+    Oct 26 06:56:14 obelisk wwvbtool[21005]: wwvbtool: lost state=DATA token=INVALID state=START.
+    Oct 26 06:56:15 obelisk wwvbtool[21005]: wwvbtool: synchronizing.
+    Oct 26 06:57:01 obelisk wwvbtool[21005]: wwvbtool: synchronized.
+    Oct 26 06:57:59 obelisk wwvbtool[21005]: wwvbtool: acquired.
+    Oct 26 06:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T12:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 26 07:28:05 obelisk wwvbtool[21005]: wwvbtool: lost state=DATA token=INVALID state=START.
+    Oct 26 07:28:06 obelisk wwvbtool[21005]: wwvbtool: synchronizing.
+    Oct 26 07:29:01 obelisk wwvbtool[21005]: wwvbtool: synchronized.
+    Oct 26 07:29:18 obelisk wwvbtool[21005]: wwvbtool: synchronizing.
+    Oct 26 07:29:20 obelisk wwvbtool[21005]: wwvbtool: synchronized.
+    Oct 26 07:29:29 obelisk wwvbtool[21005]: wwvbtool: synchronizing.
+    Oct 26 07:30:01 obelisk wwvbtool[21005]: wwvbtool: synchronized.
+    Oct 26 07:30:59 obelisk wwvbtool[21005]: wwvbtool: acquired.
+    Oct 26 07:39:18 obelisk wwvbtool[21005]: wwvbtool: lost risings=0 fallings=0.
+    Oct 26 07:39:21 obelisk wwvbtool[21005]: wwvbtool: synchronizing.
+    Oct 26 07:40:01 obelisk wwvbtool[21005]: wwvbtool: synchronized.
+    Oct 26 07:40:59 obelisk wwvbtool[21005]: wwvbtool: acquired.
+    Oct 26 07:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T13:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 26 08:10:14 obelisk wwvbtool[21005]: wwvbtool: lost risings=1 fallings=0.
+    Oct 26 08:10:18 obelisk wwvbtool[21005]: wwvbtool: synchronizing.
+    Oct 26 08:11:01 obelisk wwvbtool[21005]: wwvbtool: synchronized.
+    Oct 26 08:11:59 obelisk wwvbtool[21005]: wwvbtool: acquired.
+    Oct 26 08:42:37 obelisk wwvbtool[21005]: wwvbtool: lost state=DATA token=MARKER state=START.
+    Oct 26 08:42:38 obelisk wwvbtool[21005]: wwvbtool: synchronizing.
+    Oct 26 08:43:01 obelisk wwvbtool[21005]: wwvbtool: synchronized.
+    Oct 26 08:43:51 obelisk wwvbtool[21005]: wwvbtool: synchronizing.
+    Oct 26 08:45:01 obelisk wwvbtool[21005]: wwvbtool: synchronized.
+    Oct 26 08:45:59 obelisk wwvbtool[21005]: wwvbtool: acquired.
+    Oct 26 08:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T14:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
+    Oct 26 09:59:59 obelisk wwvbtool[21005]: wwvbtool: time zulu=2017-10-26T15:59:59 julian=2017/299 day=THU dst=+ dUT1=+0.3 lyi=0 lsw=0.
 
-You can see that the system lost the WWVB signal for a little over
-two hours before finally reacquiring it. No clue why. That morning
-I noticed the LED on the radio board was blinking sporadically and
-apparently randomly. It was still dark, sunrise not until 7:21 local
-time. The NTP query that shows a "falsetick" logged against the PPS
-above I attribute to that signal loss. You can also see that the system
-is set up to set the time initially, to update it after 1:30AM local time,
-and to log the received data once an hour.
+You can see that the system looses the WWVB signal on several occasions and
+eventually reacquires it. When I catch the system in this state, I can see
+the LED on the radio board blinking sporadically and apparently randomly.
