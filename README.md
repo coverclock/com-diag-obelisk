@@ -156,8 +156,8 @@ Clone, build, and install Diminuto in /usr/local.
     mkdir -p src
     cd src
     git clone https://github.com/coverclock/com-diag-diminuto
-    cd com-diag-diminuto
-    make
+    cd com-diag-diminuto/Diminuto
+    make pristine all
     sudo make install
 
 Clone, build, and install Hazer in /usr/local.
@@ -166,8 +166,8 @@ Clone, build, and install Hazer in /usr/local.
     mkdir -p src
     cd src
     git clone https://github.com/coverclock/com-diag-hazer
-    cd com-diag-hazer
-    make
+    cd com-diag-hazer/Hazer
+    make pristine all
     sudo make install
 
 Clone, build, and install Obelisk in /usr/local.
@@ -176,8 +176,8 @@ Clone, build, and install Obelisk in /usr/local.
     mkdir -p src
     cd src
     git clone https://github.com/coverclock/com-diag-obelisk
-    cd com-diag-obelisk
-    make
+    cd com-diag-obelisk/Obelisk
+    make pristine all
     sudo make install
 
 Clone, build, and install NTPsec daemon in /usr/local. Note that the
