@@ -163,7 +163,6 @@ Clone, build, and install Diminuto 44.1.0 in /usr/local.
 
 Clone, build, and install Hazer 1.1.0 in /usr/local.
 
-
     cd ~
     mkdir -p src
     cd src
