@@ -157,7 +157,7 @@ Clone, build, and install Diminuto 44.1.0 in /usr/local.
     cd src
     git clone https://github.com/coverclock/com-diag-diminuto
     cd com-diag-diminuto/Diminuto
-    git checkout bb1ff7d8324bd5d693d49e0afd692999479eee00
+    git checkout 44.1.0
     make pristine all
     sudo make install
 
@@ -169,7 +169,7 @@ Clone, build, and install Hazer 1.1.0 in /usr/local.
     cd src
     git clone https://github.com/coverclock/com-diag-hazer
     cd com-diag-hazer/Hazer
-    git checkout 42c442cdde9af352490344013eef063923414e04
+    git checkout 1.1.0
     make pristine all
     sudo make install
 
