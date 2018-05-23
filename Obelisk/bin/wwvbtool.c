@@ -31,12 +31,15 @@
 #include "com/diag/diminuto/diminuto_cue.h"
 #include "com/diag/diminuto/diminuto_countof.h"
 #include "com/diag/diminuto/diminuto_terminator.h"
+#include "com/diag/diminuto/diminuto_interrupter.h"
 #include "com/diag/diminuto/diminuto_hangup.h"
 #include "com/diag/diminuto/diminuto_daemon.h"
 #include "com/diag/diminuto/diminuto_lock.h"
 #include "com/diag/diminuto/diminuto_serial.h"
 #include "com/diag/diminuto/diminuto_log.h"
 #include "com/diag/diminuto/diminuto_phex.h"
+#include "com/diag/diminuto/diminuto_ipc4.h"
+#include "com/diag/diminuto/diminuto_ipc6.h"
 #include "com/diag/hazer/hazer.h"
 #include "com/diag/obelisk/obelisk.h"
 
@@ -81,6 +84,7 @@ static int nice_priority = 0;
 static const char * run_path = (char *)0;
 static char nmea_talker[sizeof("GP")] = { '\0', '\0', '\0' };
 static const char * nmea_path = (char *)0;
+static const char * nmea_endpoint = (char *)0;
 static int serial_bitspersecond = DIMINUTO_SERIAL_BITSPERSECOND_NOMINAL;
 static diminuto_serial_databits_t serial_databits = DIMINUTO_SERIAL_DATABITS_NOMINAL;
 static diminuto_serial_paritybit_t serial_paritybit = DIMINUTO_SERIAL_PARITYBIT_NOMINAL;
@@ -91,7 +95,7 @@ static int serial_rtscts = 0;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -a ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -i ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]\n", program);
+    fprintf(stderr, "usage: %s [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -U ENDPOINT ] [ -a ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -i ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]\n", program);
     fprintf(stderr, "       -1              Use one stop bit for OUTPUT (default).\n");
     fprintf(stderr, "       -2              Use two stop bits for OUTPUT.\n");
     fprintf(stderr, "       -7              Use seven data bits for OUTPUT.\n");
@@ -106,6 +110,7 @@ static void usage(void)
     fprintf(stderr, "       -P PIN          Use P1 output GPIO PIN (%d).\n", pin_out_p1);
     fprintf(stderr, "       -S PIN          Use PPS output GPIO PIN (%d).\n", pin_out_pps);
     fprintf(stderr, "       -T PIN          Use T input GPIO PIN (%d).\n", pin_in_t);
+    fprintf(stderr, "       -U ENDPOINT     Write NMEA sentences to UDP ENDPOINT.\n");
     fprintf(stderr, "       -a              Set time of day when leap second occurs.\n");
     fprintf(stderr, "       -b              Daemonize into the background.\n");
     fprintf(stderr, "       -c              Use RTS/CTS for OUTPUT.\n");
@@ -146,6 +151,9 @@ int main(int argc, char ** argv)
     FILE * pin_out_pps_fp = (FILE *)0;
     FILE * pin_in_t_fp = (FILE *)0;
     FILE * nmea_out_fp = (FILE *)0;
+    diminuto_ipc_endpoint_t nmea_out_endpoint = { 0 };
+    int nmea_out_sock4 = -1;
+    int nmea_out_sock6 = -1;
     diminuto_sticks_t ticks_frequency = -1;
     diminuto_ticks_t ticks_delay = -1;
     diminuto_ticks_t ticks_timer = -1;
@@ -194,6 +202,10 @@ int main(int argc, char ** argv)
     uint8_t checksum = -1;
     int fd = -1;
     float dut1 = 0.0;
+    diminuto_ipv4_t address4 = 0;
+    diminuto_ipv6_t address6 = { 0 };
+    char printable[sizeof("XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX")];
+    diminuto_port_t port = 0;
 
     assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
     assert(sizeof(obelisk_frame_t) == sizeof(uint64_t));
@@ -219,7 +231,7 @@ int main(int argc, char ** argv)
 
     error = 0;
 
-    while ((opt = getopt(argc, argv, "1278B:C:H:L:M:N:O:P:S:T:abcdeghiklmonprsuvx")) >= 0) {
+    while ((opt = getopt(argc, argv, "1278B:C:H:L:M:N:O:P:S:T:U:abcdeghiklmonprsuvx")) >= 0) {
 
         switch (opt) {
 
@@ -263,7 +275,7 @@ int main(int argc, char ** argv)
             serial_bitspersecond = strtoul(optarg, &endptr, 0);
             if ((*endptr != '\0') || (serial_bitspersecond < 0)) {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
             break;
@@ -272,7 +284,7 @@ int main(int argc, char ** argv)
             nice_priority = strtoul(optarg, &endptr, 0);
             if ((*endptr != '\0') || (nice_priority < NICE_MINIMUM) || (nice_priority > NICE_MAXIMUM)) {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
             break;
@@ -281,7 +293,7 @@ int main(int argc, char ** argv)
             hour_juliet = strtol(optarg, &endptr, 0);
             if ((*endptr != '\0') || (hour_juliet < 0) || (hour_juliet > 23)) {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
             break;
@@ -294,7 +306,7 @@ int main(int argc, char ** argv)
             minute_juliet = strtol(optarg, &endptr, 0);
             if ((*endptr != '\0') || (minute_juliet < 0) || (minute_juliet > 59)) {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
             break;
@@ -304,20 +316,21 @@ int main(int argc, char ** argv)
                 strncpy(nmea_talker, optarg, sizeof(nmea_talker) - 1);
             } else {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
             break;
 
         case 'O':
             nmea_path = optarg;
+            nmea_endpoint = (const char *)0;
             break;
 
         case 'P':
             pin_out_p1 = strtol(optarg, &endptr, 0);
             if ((*endptr != '\0') || (pin_out_p1 < 0)) {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
             break;
@@ -326,7 +339,7 @@ int main(int argc, char ** argv)
             pin_out_pps = strtol(optarg, &endptr, 0);
             if ((*endptr != '\0') || (pin_out_pps < 0)) {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
             break;
@@ -335,9 +348,14 @@ int main(int argc, char ** argv)
             pin_in_t = strtol(optarg, &endptr, 0);
             if ((*endptr != '\0') || (pin_in_t < 0)) {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
+            break;
+
+        case 'U':
+            nmea_endpoint = optarg;
+            nmea_path = (const char *)0;
             break;
 
         case 'a':
@@ -437,7 +455,7 @@ int main(int argc, char ** argv)
         LOG("TERMINATING %d.", pid);
         rc = kill(pid, SIGTERM);
         if (rc < 0) {
-            perror("kill");
+            diminuto_perror("kill");
             return 2;
         }
         return 0;
@@ -454,7 +472,7 @@ int main(int argc, char ** argv)
         LOG("HANGINGUP %d.", pid);
         rc = kill(pid, SIGHUP);
         if (rc < 0) {
-            perror("kill");
+            diminuto_perror("kill");
             return 2;
         }
         return 0;
@@ -467,9 +485,25 @@ int main(int argc, char ** argv)
          * as the background child process.
          */
 
-        LOG("DAEMONIZING.");
-        rc = diminuto_daemon(program, run_path);
+        LOG("PRELOCKING.");
+        rc = diminuto_lock_prelock(run_path);
         if (rc < 0) { return 2; }
+
+        LOG("DAEMONIZING.");
+        rc = diminuto_daemon(program);
+        if (rc < 0) {
+            LOG("UNLOCKING.");
+            (void)diminuto_lock_unlock(run_path);
+            return 2;
+        }
+
+        LOG("POSTLOCKING.");
+        rc = diminuto_lock_postlock(run_path);
+        if (rc < 0) {
+            LOG("UNLOCKING.");
+            (void)diminuto_lock_unlock(run_path);
+            return 2;
+        }
 
     } else {
 
@@ -490,7 +524,7 @@ int main(int argc, char ** argv)
     if (nice_priority != NICE_NONE) {
         LOG("PRIORITY %d.\n", nice_priority);
         rc = setpriority(PRIO_PROCESS, 0, nice_priority);
-        if (rc < 0) { perror("setpriority"); }
+        if (rc < 0) { diminuto_perror("setpriority"); }
         assert(rc >= 0);
     }
 
@@ -572,20 +606,24 @@ int main(int argc, char ** argv)
      * above.
      */
 
-    if (nmea) {
+    if (!nmea) {
+
+        /* Do nothing. */
+
+    } else if (nmea_path != (const char *)0) {
 
         LOG("NMEAPATH \"%s\".", nmea_path);
 
         if (strcmp(nmea_path, NMEA_PATH) == 0) {
             nmea_out_fp = stdout;
         } else if ((nmea_out_fp = fopen(nmea_path, "a+")) == (FILE *)0) {
-            perror(nmea_path);
+            diminuto_perror(nmea_path);
             assert(nmea_out_fp != (FILE *)0);
         } else if ((fd = fileno(nmea_out_fp)) < 0) {
-            perror(nmea_path);
+            diminuto_perror(nmea_path);
             assert(fd >= 0);
         } else if ((rc = isfdtype(fd, S_IFCHR)) < 0) {
-            perror(nmea_path);
+            diminuto_perror(nmea_path);
             assert(rc >= 0);
         } else if (rc) {
             rc = diminuto_serial_set(fd, serial_bitspersecond, serial_databits, serial_paritybit, serial_stopbits, serial_modemcontrol, serial_xonxoff, serial_rtscts);
@@ -595,6 +633,46 @@ int main(int argc, char ** argv)
         } else {
             /* Do nothing. */
         }
+
+    } else if (nmea_endpoint != (const char *)0) {
+
+        LOG("NMEAENDPOINT \"%s\".", nmea_endpoint);
+
+        if ((rc = diminuto_ipc_endpoint(nmea_endpoint, &nmea_out_endpoint)) < 0) {
+            /* Do nothing. */
+        } else if (nmea_out_endpoint.udp <= 0) {
+            /* Do nothing. */
+        } else if (!diminuto_ipc6_is_unspecified(&nmea_out_endpoint.ipv6)) {
+            nmea_out_sock6 = diminuto_ipc6_datagram_peer(0);
+        } else if (!diminuto_ipc4_is_unspecified(&nmea_out_endpoint.ipv4)) {
+            nmea_out_sock4 = diminuto_ipc4_datagram_peer(0);
+        } else {
+            /* Do nothing. */
+        }
+
+        if (nmea_out_sock6 >= 0) {
+            diminuto_ipc6_nearend(nmea_out_sock6, &address6, &port);
+            diminuto_ipc6_address2string(address6, printable, sizeof(printable));
+            LOG("NMEANEAREND [%s]:%d.", printable, port);
+            diminuto_ipc6_address2string(nmea_out_endpoint.ipv6, printable, sizeof(printable));
+            LOG("NMEAFARREND [%s]:%d.", printable, nmea_out_endpoint.udp);
+        } else if (nmea_out_sock4 >= 0) {
+            diminuto_ipc4_nearend(nmea_out_sock4, &address4, &port);
+            diminuto_ipc4_address2string(address4, printable, sizeof(printable));
+            LOG("NMEANEAREND %s:%d.", printable, port);
+            diminuto_ipc4_address2string(nmea_out_endpoint.ipv4, printable, sizeof(printable));
+            LOG("NMEAFARREND %s:%d.", printable, nmea_out_endpoint.udp);
+        } else {
+            errno = EINVAL;
+            diminuto_perror(nmea_endpoint);
+            assert((nmea_out_sock6 >= 0) || (nmea_out_sock4 >= 0));
+        }
+
+    } else {
+
+        /* SHould be impossible */
+
+        nmea = 0;
 
     }
 
@@ -628,6 +706,9 @@ int main(int argc, char ** argv)
     rc = diminuto_terminator_install(0);
     assert(rc >= 0);
 
+    rc = diminuto_interrupter_install(0);
+    assert(rc >= 0);
+
     ticks_timer = ticks_frequency / HERTZ_TIMER;
 
     ticks_slack = diminuto_timer_periodic(ticks_timer);
@@ -659,6 +740,15 @@ int main(int argc, char ** argv)
 
         if (diminuto_terminator_check()) {
             DIMINUTO_LOG_NOTICE("%s: terminated.\n", program);
+            break;
+        }
+
+        /*
+         * Check for SIGINT and if seen leave work loop.
+         */
+
+        if (diminuto_interrupter_check()) {
+            DIMINUTO_LOG_NOTICE("%s: interrupted.\n", program);
             break;
         }
 
@@ -779,8 +869,18 @@ int main(int argc, char ** argv)
                     emit(stderr, sentence);
                     fputs("\".\n", stderr);
                 }
-                fputs(sentence, nmea_out_fp);
-                fflush(nmea_out_fp);
+                if (nmea_out_fp != (FILE *)0) {
+                    fputs(sentence, nmea_out_fp);
+                    fflush(nmea_out_fp);
+                } else if (nmea_out_sock6 >= 0) {
+                    rc = diminuto_ipc6_datagram_send(nmea_out_sock6, sentence, strlen(sentence), nmea_out_endpoint.ipv6, nmea_out_endpoint.udp);
+                    assert(rc >= 0);
+                } else if (nmea_out_sock4 >= 0) {
+                    rc = diminuto_ipc4_datagram_send(nmea_out_sock4, sentence, strlen(sentence), nmea_out_endpoint.ipv4, nmea_out_endpoint.udp);
+                    assert(rc >= 0);
+                } else {
+                    /* Do nothing. */
+                }
             }
 
             /*
@@ -935,7 +1035,7 @@ int main(int argc, char ** argv)
                  */
     
                 if ((rc = settimeofday(&epoch, (struct timezone *)0)) < 0) {
-                    perror("settimeodday");
+                    diminuto_perror("settimeodday");
                 } else {
     
                     disciplined = !0;
@@ -1217,8 +1317,20 @@ int main(int argc, char ** argv)
 
     if (nmea_out_fp != (FILE *)0) {
         rc = fclose(nmea_out_fp);
-        if (rc != 0) { perror(nmea_path); }
+        if (rc != 0) { diminuto_perror(nmea_path); }
         assert(rc == 0);
+    }
+
+    if (nmea_out_sock6 >= 0) {
+        rc = diminuto_ipc6_close(nmea_out_sock6);
+        if (rc < 0) { diminuto_perror(nmea_endpoint); }
+        assert(rc >= 0);
+    }
+
+    if (nmea_out_sock4 >= 0) {
+        rc = diminuto_ipc4_close(nmea_out_sock4);
+        if (rc < 0) { diminuto_perror(nmea_endpoint); }
+        assert(rc >= 0);
     }
 
     (void)diminuto_lock_unlock(run_path);

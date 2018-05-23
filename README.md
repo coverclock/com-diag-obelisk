@@ -150,7 +150,7 @@ Here is a partial list of additional packages needed.
     sudo apt-get install libssl-dev
     sudo apt-get install libcap-dev
 
-Clone, build, and install Diminuto 44.1.0 in /usr/local.
+Clone, build, and install Diminuto 48.12.0 in /usr/local.
 
     cd ~
     mkdir -p src
@@ -161,7 +161,7 @@ Clone, build, and install Diminuto 44.1.0 in /usr/local.
     make pristine all
     sudo make install
 
-Clone, build, and install Hazer 1.1.0 in /usr/local.
+Clone, build, and install Hazer 1.4.1 in /usr/local.
 
     cd ~
     mkdir -p src
@@ -172,13 +172,14 @@ Clone, build, and install Hazer 1.1.0 in /usr/local.
     make pristine all
     sudo make install
 
-Clone, build, and install Obelisk in /usr/local.
+Clone, build, and install Obelisk 3.1.0 in /usr/local.
 
     cd ~
     mkdir -p src
     cd src
     git clone https://github.com/coverclock/com-diag-obelisk
     cd com-diag-obelisk/Obelisk
+    git checkout 3.1.0
     make pristine all
     sudo make install
 
@@ -197,14 +198,16 @@ this (as far as I can remember anyway).
     ./waf build
     sudo ./waf install
 
-Clone, build, and install GPS daemon in /usr/local.
+Clone, build, and install GPS daemon in /usr/local. We have to enable the NETFEED
+option so that we can sent it UDP datagrams. The timeservice start up script is
+set to use UDP port 60180; this is trivial to edit to change it.
 
     cd ~
     mkdir -p src
     cd src
     git clone https://git.savannah.gnu.org/git/gpsd.git
     cd gpsd
-    scons timeservice=yes nmea0183=yes prefix="/usr/local" pps=yes ntpshm=yes
+    scons timeservice=yes nmea0183=yes prefix="/usr/local" pps=yes ntpshm=yes netfeed=yes
     sudo scons install
 
 These user IDs in /etc/passwd may be required by the GPS daemon and the
