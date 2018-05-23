@@ -1,7 +1,7 @@
 # com-diag-obelisk
 A home brew NIST WWVB radio clock.
 ## Copyright
-Copyright 2017 by the Digital Aggregates Corporation, Arvada Colorado U.S.A.
+Copyright 2017-2018 by the Digital Aggregates Corporation, Arvada Colorado U.S.A.
 ## License
 Licensed under the terms of the FSF GNU GPL v2.0.
 ## Contact
@@ -253,7 +253,7 @@ Stop time service.
 
     service timeservice stop
 
-Process Obelisk wwvbtool NMEA output using Hazer gpstool (for testing).
+Process Obelisk wwvbtool NMEA output using Hazer gpstool.
 
     wwvbtool -r -s -u -l -n -p | gpstool -R
    
@@ -275,7 +275,7 @@ Process Obelisk wwvbtool NMEA output using Hazer gpstool (for testing).
     RMC  0.000000,  0.000000     0.000m   0.000*    0.000knots [00] 0 0 0 0 0 
 
 Make a FIFO (First In First Out), that is, a named pipe in the file
-system. Run wwvbtool to write to the FIFO, gpsd to read from the FIFO,
+system Run wwvbtool to write to the FIFO, gpsd to read from the FIFO,
 and gpsmon to read from gpsd. gpsd, wwvbtool, and gpsmon are all run in
 the foreground from three different windows.
 
@@ -285,6 +285,16 @@ the foreground from three different windows.
     wwvbtool -N GP -r -s -u -l -n -p -O ./wwvb.fifo
 
     gpsmon
+
+Similarly, use a UDP socket for gpsd and wwvbtool to communicate. This
+requires a gpsd built with the NETFEED option.
+
+    gpsd -b -N -D 2 -n udp://localhost:60180
+
+    wwvbtool -N GP -r -s -u -l -n -p -U localhost:60180
+
+    gpsmon
+
 
 Configure and test Pulse Per Second (PPS) when using -p flag on wwvbtool. Note
 that in this example gpiopin=18 is GPIO18 a.k.a. physical pin 12.
