@@ -59,11 +59,11 @@ if $ENABNLENTP; then
 
 fi
 
-ENDPOINT="127.0.0.1:60180"
+ENDPOINT="localhost:60180"
 PPS0="/dev/pps0"
 
 WWVB_OPTS="-C -20 -N GP -U $ENDPOINT -n -p -l -u -r -i -s -a -b"
-GPSD_OPTS="-b -r -n udp://$ENDPOINT $PPS0"
+GPSD_OPTS="-b -n udp://$ENDPOINT $PPS0"
 
 case $1 in
 	start)
@@ -79,9 +79,6 @@ case $1 in
 		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEW --startas $DAEMONW -- $WWVB_OPTS
 		status=$?
 		log_end_msg $status
-
-		# Cheap way to allow the WWVB daemon to establish its UDP port.
-		sleep 1
 
 		# Launch gpsd
 		log_daemon_msg "Starting GPS daemon" "timeservice"
