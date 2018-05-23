@@ -295,6 +295,11 @@ requires a gpsd built with the NETFEED option.
 
     gpsmon
 
+Use socat instead of gpsd to receive UDP datagrams from wwvbtool.
+
+    wwvbtool -N GP -r -s -u -l -n -p -U localhost:60180
+
+    socat udp-recv:60180 -
 
 Configure and test Pulse Per Second (PPS) when using -p flag on wwvbtool. Note
 that in this example gpiopin=18 is GPIO18 a.k.a. physical pin 12.
