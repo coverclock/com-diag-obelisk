@@ -70,12 +70,17 @@ kind of language interpreter: a tokenizer classifies pulses into one of
 four symbols, ZERO, ONE, MARKER or INVALID; and a finite state machine
 parses the symbols according to a simple grammer, rejecting any input
 that violates what is in effect a language specification.
-## Links
+## Repositories
 <https://github.com/coverclock/com-diag-obelisk>    
 <https://github.com/coverclock/com-diag-hazer>    
 <https://github.com/coverclock/com-diag-diminuto>    
+<https://git.savannah.gnu.org/git/gpsd.git>    
+<https://gitlab.com/NTPsec/ntpsec.git>    
+## Articles
 <http://coverclock.blogspot.com/2017/10/my-wwvb-radio-clock.html>    
+## Images
 <https://www.flickr.com/photos/johnlsloan/albums/72157689295451755>    
+## References
 <https://en.wikipedia.org/wiki/WWVB>    
 <http://www.pvelectronics.co.uk/rftime/SYM-RFT-XX.pdf>    
 <https://universal-solder.com/product/60khz-wwvb-atomic-radio-clock-receiver-replaces-c-max-cmmr-6p-60/>    
@@ -91,7 +96,7 @@ gcc 6.3.0
 Linux 4.9.41    
 SYM-RFT-60    
 ## Usage
-    usage: wwvbtool [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -a ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -i ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]
+    usage: wwvbtool [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -U ENDPOINT ] [ -a ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -i ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]
            -1              Use one stop bit for OUTPUT (default).
            -2              Use two stop bits for OUTPUT.
            -7              Use seven data bits for OUTPUT.
@@ -106,6 +111,7 @@ SYM-RFT-60
            -P PIN          Use P1 output GPIO PIN (23).
            -S PIN          Use PPS output GPIO PIN (25).
            -T PIN          Use T input GPIO PIN (24).
+           -U ENDPOINT     Write NMEA sentences to UDP ENDPOINT.
            -a              Set time of day when leap second occurs.
            -b              Daemonize into the background.
            -c              Use RTS/CTS for OUTPUT.
@@ -172,14 +178,14 @@ Clone, build, and install Hazer 1.4.1 in /usr/local.
     make pristine all
     sudo make install
 
-Clone, build, and install Obelisk 3.0.1 in /usr/local.
+Clone, build, and install Obelisk 3.1.0 in /usr/local.
 
     cd ~
     mkdir -p src
     cd src
     git clone https://github.com/coverclock/com-diag-obelisk
     cd com-diag-obelisk/Obelisk
-    git checkout 3.0.1
+    git checkout 3.1.0
     make pristine all
     sudo make install
 
@@ -198,14 +204,16 @@ this (as far as I can remember anyway).
     ./waf build
     sudo ./waf install
 
-Clone, build, and install GPS daemon in /usr/local.
+Clone, build, and install GPS daemon in /usr/local. We have to enable the NETFEED
+option so that we can sent it UDP datagrams. The timeservice start up script is
+set to use UDP port 60180; this is trivial to edit to change it.
 
     cd ~
     mkdir -p src
     cd src
     git clone https://git.savannah.gnu.org/git/gpsd.git
     cd gpsd
-    scons timeservice=yes nmea0183=yes prefix="/usr/local" pps=yes ntpshm=yes
+    scons timeservice=yes nmea0183=yes prefix="/usr/local" pps=yes ntpshm=yes netfeed=yes
     sudo scons install
 
 These user IDs in /etc/passwd may be required by the GPS daemon and the
@@ -251,7 +259,7 @@ Stop time service.
 
     service timeservice stop
 
-Process Obelisk wwvbtool NMEA output using Hazer gpstool (for testing).
+Process Obelisk wwvbtool NMEA output using Hazer gpstool.
 
     wwvbtool -r -s -u -l -n -p | gpstool -R
    
@@ -273,7 +281,7 @@ Process Obelisk wwvbtool NMEA output using Hazer gpstool (for testing).
     RMC  0.000000,  0.000000     0.000m   0.000*    0.000knots [00] 0 0 0 0 0 
 
 Make a FIFO (First In First Out), that is, a named pipe in the file
-system. Run wwvbtool to write to the FIFO, gpsd to read from the FIFO,
+system Run wwvbtool to write to the FIFO, gpsd to read from the FIFO,
 and gpsmon to read from gpsd. gpsd, wwvbtool, and gpsmon are all run in
 the foreground from three different windows.
 
@@ -283,6 +291,21 @@ the foreground from three different windows.
     wwvbtool -N GP -r -s -u -l -n -p -O ./wwvb.fifo
 
     gpsmon
+
+Similarly, use a UDP socket for gpsd and wwvbtool to communicate. This
+requires a gpsd built with the NETFEED option.
+
+    gpsd -b -N -D 2 -n udp://localhost:60180
+
+    wwvbtool -N GP -r -s -u -l -n -p -U localhost:60180
+
+    gpsmon
+
+Use socat instead of gpsd to receive UDP datagrams from wwvbtool.
+
+    wwvbtool -N GP -r -s -u -l -n -p -U localhost:60180
+
+    socat udp-recv:60180 -
 
 Configure and test Pulse Per Second (PPS) when using -p flag on wwvbtool. Note
 that in this example gpiopin=18 is GPIO18 a.k.a. physical pin 12.
