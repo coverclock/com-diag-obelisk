@@ -76,7 +76,7 @@ case $1 in
 
 		# Launch wwvbtool
 		log_daemon_msg "Starting WWVB daemon" "timeservice"
-		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEW --startas $DAEMONW -- $WWVB_OPTS
+		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEW --startas $DAEMONW --nicelevel -20 -- $WWVB_OPTS
 		status=$?
 		log_end_msg $status
 

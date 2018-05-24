@@ -70,6 +70,14 @@ kind of language interpreter: a tokenizer classifies pulses into one of
 four symbols, ZERO, ONE, MARKER or INVALID; and a finite state machine
 parses the symbols according to a simple grammer, rejecting any input
 that violates what is in effect a language specification.
+
+Part of this paranoia prevented me from using the blocking select(2)
+system call, available in the Diminuto API, to wait for the GPIO pin
+from the radio receiver to change. Instead, wwvbtool samples the pin
+according to an interval timer and uses a software signal level debouncer
+to deal with periods of high interference. My concern is that with the
+more efficient former approach, interrupts might overwhelm the system.
+
 ## Repositories
 <https://github.com/coverclock/com-diag-obelisk>    
 <https://github.com/coverclock/com-diag-hazer>    
