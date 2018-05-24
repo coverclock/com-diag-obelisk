@@ -70,12 +70,17 @@ kind of language interpreter: a tokenizer classifies pulses into one of
 four symbols, ZERO, ONE, MARKER or INVALID; and a finite state machine
 parses the symbols according to a simple grammer, rejecting any input
 that violates what is in effect a language specification.
-## Links
+## Repositories
 <https://github.com/coverclock/com-diag-obelisk>    
 <https://github.com/coverclock/com-diag-hazer>    
 <https://github.com/coverclock/com-diag-diminuto>    
+<https://git.savannah.gnu.org/git/gpsd.git>    
+<https://gitlab.com/NTPsec/ntpsec.git>    
+## Articles
 <http://coverclock.blogspot.com/2017/10/my-wwvb-radio-clock.html>    
+## Images
 <https://www.flickr.com/photos/johnlsloan/albums/72157689295451755>    
+## References
 <https://en.wikipedia.org/wiki/WWVB>    
 <http://www.pvelectronics.co.uk/rftime/SYM-RFT-XX.pdf>    
 <https://universal-solder.com/product/60khz-wwvb-atomic-radio-clock-receiver-replaces-c-max-cmmr-6p-60/>    
