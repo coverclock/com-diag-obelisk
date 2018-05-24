@@ -1,7 +1,7 @@
 # com-diag-obelisk
 A home brew NIST WWVB radio clock.
 ## Copyright
-Copyright 2017 by the Digital Aggregates Corporation, Arvada Colorado U.S.A.
+Copyright 2017-2018 by the Digital Aggregates Corporation, Arvada Colorado U.S.A.
 ## License
 Licensed under the terms of the FSF GNU GPL v2.0.
 ## Contact
@@ -150,35 +150,36 @@ Here is a partial list of additional packages needed.
     sudo apt-get install libssl-dev
     sudo apt-get install libcap-dev
 
-Clone, build, and install Diminuto 44.1.0 in /usr/local.
+Clone, build, and install Diminuto 48.12.0 in /usr/local.
 
     cd ~
     mkdir -p src
     cd src
     git clone https://github.com/coverclock/com-diag-diminuto
     cd com-diag-diminuto/Diminuto
-    git checkout 44.1.0
+    git checkout 48.12.0
     make pristine all
     sudo make install
 
-Clone, build, and install Hazer 1.1.0 in /usr/local.
+Clone, build, and install Hazer 1.4.1 in /usr/local.
 
     cd ~
     mkdir -p src
     cd src
     git clone https://github.com/coverclock/com-diag-hazer
     cd com-diag-hazer/Hazer
-    git checkout 1.1.0
+    git checkout 1.4.1
     make pristine all
     sudo make install
 
-Clone, build, and install Obelisk in /usr/local.
+Clone, build, and install Obelisk 3.0.1 in /usr/local.
 
     cd ~
     mkdir -p src
     cd src
     git clone https://github.com/coverclock/com-diag-obelisk
     cd com-diag-obelisk/Obelisk
+    git checkout 3.0.1
     make pristine all
     sudo make install
 
