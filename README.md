@@ -186,7 +186,7 @@ Clone, build, and install Hazer 1.4.1 in /usr/local.
     make pristine all
     sudo make install
 
-Clone, build, and install Obelisk 3.1.4 in /usr/local. (The latest version
+Clone, build, and install Obelisk 3.1.5 in /usr/local. (The latest version
 will probably work just fine, if you want to omit the git checkout.)
 
     cd ~
@@ -194,7 +194,7 @@ will probably work just fine, if you want to omit the git checkout.)
     cd src
     git clone https://github.com/coverclock/com-diag-obelisk
     cd com-diag-obelisk/Obelisk
-    git checkout 3.1.4
+    git checkout 3.1.5
     make pristine all
     sudo make install
 
