@@ -712,6 +712,11 @@ int main(int argc, char ** argv)
     assert(rc >= 0);
 
     ticks_timer = ticks_frequency / HERTZ_TIMER;
+    if (ticks_timer == 0) {
+    	ticks_timer = 1;
+    }
+
+    LOG("PERIODIC %lldticks.", ticks_timer);
 
     ticks_slack = diminuto_timer_periodic(ticks_timer);
     assert(ticks_slack == 0);
@@ -734,6 +739,22 @@ int main(int argc, char ** argv)
 
     while (!0) {
 
+    	/*
+    	 * We wait for a timer interrupt. I implemented this as polling, but
+    	 * have thought a lot about using the interrupt GPIO feature, supported
+    	 * in the Raspberry Pi HW, the Raspbian SW, and by the Diminuto library.
+    	 * But having lived with this for a while, I see a *lot* of noise on
+    	 * the GPIO line caused by EMF on the AM band. This can be caused, in my
+    	 * home office, by lots of stuff, most notably the nearby electric
+    	 * pencil sharpener. In any case, it's very susceptible to EMF, and
+    	 * I am concerned that it could overwhelm the Pi/Raspbian with
+    	 * interrupts. This need for SW debouncing also limits the period that
+    	 * we can poll the GPIO line. (If you want a really good inexpensive
+    	 * NTP time source, you should be using GPS instead of WWVB, anyway.
+    	 * It's actually much simpler, too. Note that the very low power CDMA
+    	 * transmissions of GPS can be easily jammed, as well.)
+    	 */
+
         rc = pause();
         assert(rc == -1);
 
@@ -753,21 +774,6 @@ int main(int argc, char ** argv)
         if (diminuto_interrupter_check()) {
             DIMINUTO_LOG_NOTICE("%s: interrupted.\n", program);
             break;
-        }
-
-        /*
-         * Check for SIGHUP and if seen report and dediscipline.
-         *
-         * initialized:    true if the debouncer has been initialized.
-         * synchronized:    true if we are synced to the IRIQ framing.
-         * acquired:        true if we have received a complete valid frame.
-         * armed:           true if we have constructed a valid time stamp.
-         * disciplined:     true if we have set the system clock.
-         */
-
-        if (diminuto_hangup_check()) {
-            DIMINUTO_LOG_NOTICE("%s: hungup initialized=%d synchronized=%d acquired=%d disciplined=%d armed=%d risings=%d fallings=%d cycles=%d.\n", program, initialized, synchronized, acquired, disciplined, armed, risings, fallings, cycles);
-            disciplined = 0;
         }
 
         /*
@@ -884,7 +890,7 @@ int main(int argc, char ** argv)
                     time.tm_hour,
                     time.tm_min,
                     time.tm_sec,
-                    epoch.tv_usec / (1000000 / 100),
+                    epoch.tv_usec / (1000000 / 100), /* Round down. */
                     time.tm_mday,
                     time.tm_mon + 1,
                     (time.tm_year + 1900) % 100,
@@ -979,6 +985,21 @@ int main(int argc, char ** argv)
             risings = 0;
             fallings = 0;
             cycles = 0;
+        }
+
+        /*
+         * Check for SIGHUP and if seen report and dediscipline.
+         *
+         * initialized:    true if the debouncer has been initialized.
+         * synchronized:    true if we are synced to the IRIQ framing.
+         * acquired:        true if we have received a complete valid frame.
+         * armed:           true if we have constructed a valid time stamp.
+         * disciplined:     true if we have set the system clock.
+         */
+
+        if (diminuto_hangup_check()) {
+            DIMINUTO_LOG_NOTICE("%s: hungup initialized=%d synchronized=%d acquired=%d disciplined=%d armed=%d risings=%d fallings=%d cycles=%d.\n", program, initialized, synchronized, acquired, disciplined, armed, risings, fallings, cycles);
+            disciplined = 0;
         }
 
         /*
