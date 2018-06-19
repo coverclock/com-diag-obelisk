@@ -159,10 +159,14 @@ int main(int argc, char ** argv)
     diminuto_ticks_t ticks_timer = -1;
     diminuto_sticks_t ticks_slack = -1;
     diminuto_sticks_t ticks_now = -1;
+    diminuto_sticks_t ticks_begin = -1;
+    diminuto_sticks_t ticks_end = -1;
     diminuto_cue_state_t cue = { 0 };
     diminuto_cue_edge_t edge = (diminuto_cue_edge_t)-1;
     int level_raw = -1;
     int level_cooked = -1;
+    int level_old = -1;
+    int initialized = -1;
     int milliseconds_cycle = -1;
     int milliseconds_pulse = -1;
     int cycles_limit = -1;
@@ -684,8 +688,6 @@ int main(int argc, char ** argv)
 
     tzset();
 
-    diminuto_cue_init(&cue, 0);
-
     milliseconds_pulse = 0;
 
     milliseconds_cycle  = 1000 / HERTZ_TIMER;
@@ -718,6 +720,7 @@ int main(int argc, char ** argv)
     fallings = 0;
     cycles = 0;
 
+    initialized = 0;
     synchronized = !0;
     acquired = 0;
     armed = 0;
@@ -755,6 +758,7 @@ int main(int argc, char ** argv)
         /*
          * Check for SIGHUP and if seen report and dediscipline.
          *
+         * initialized:    true if the debouncer has been initialized.
          * synchronized:    true if we are synced to the IRIQ framing.
          * acquired:        true if we have received a complete valid frame.
          * armed:           true if we have constructed a valid time stamp.
@@ -762,7 +766,7 @@ int main(int argc, char ** argv)
          */
 
         if (diminuto_hangup_check()) {
-            DIMINUTO_LOG_NOTICE("%s: hungup synchronized=%d acquired=%d disciplined=%d armed=%d risings=%d fallings=%d cycles=%d.\n", program, synchronized, acquired, disciplined, armed, risings, fallings, cycles);
+            DIMINUTO_LOG_NOTICE("%s: hungup initialized=%d synchronized=%d acquired=%d disciplined=%d armed=%d risings=%d fallings=%d cycles=%d.\n", program, initialized, synchronized, acquired, disciplined, armed, risings, fallings, cycles);
             disciplined = 0;
         }
 
@@ -777,17 +781,39 @@ int main(int argc, char ** argv)
         if (verbose) { LOG("SIGALRM."); }
 
         /*
-        ** Poll T input pin state and submit to debouncer.
-        */
+         * Poll T input pin state and submit to the debouncer. We also keep
+         * track of the raw undebounced change and remember when it occurred
+         * so we can compute the latency later.
+         */
+
+        if (initialized) {
+            level_old = level_raw;
+        }
 
         level_raw = diminuto_pin_get(pin_in_t_fp);
         assert(level_raw >= 0);
+        level_raw = !!level_raw;
+
+        if (!initialized) {
+            level_old = level_raw;
+            diminuto_cue_init(&cue, level_raw);
+            initialized = !0;
+        }
+
+        if (level_raw == level_old) {
+            /* Do nothing. */
+        } else if (level_raw) {
+            ticks_begin = diminuto_time_elapsed();
+            assert(ticks_begin >= 0);
+        } else {
+            /* Do nothing. */
+        }
 
         level_cooked = diminuto_cue_debounce(&cue, level_raw);
 
         /*
-        ** Look for edge transitions and measure pulse duration.
-        */
+         * Look for edge transitions and measure pulse duration.
+         */
 
         edge = diminuto_cue_edge(&cue);
 
@@ -821,17 +847,24 @@ int main(int argc, char ** argv)
              * Advance the epoch second by one second. Each pulse indicates
              * the start of the next second. This has the useful side effect
              * of keeping the epoch updated in case we want to set the time,
-             * and also in the event a leap second was inserted.
+             * and also in the event a leap second was inserted. We also
+             * compute the debounce latency, which may not be useful if it's
+             * less than a hundredth of a second, the resolution of the NMEA
+             * timestamp.
              */
 
             if (acquired) {
                 epoch.tv_sec += 1;
+            	ticks_end = diminuto_time_elapsed();
+            	assert(ticks_end >= 0);
+                epoch.tv_usec = diminuto_frequency_ticks2units(ticks_end - ticks_begin, 1000000);
+                LOG("TOTAL %ld.%06lds.", epoch.tv_sec, epoch.tv_usec);
             }
 
             /*
              * Generate a synthesized NMEA RMC timestamp. Since we
              * do this as the rise of the T pulse, we generate a
-             * timestamp every second, phaselocked - subject to fixed
+             * timestamp every second, phaselocked - subject to measured
              * latency in the debouncer - to WWVB.
              */
 
@@ -851,7 +884,7 @@ int main(int argc, char ** argv)
                     time.tm_hour,
                     time.tm_min,
                     time.tm_sec,
-                    epoch.tv_usec / (1000000000 / 100),
+                    epoch.tv_usec / (1000000 / 100),
                     time.tm_mday,
                     time.tm_mon + 1,
                     (time.tm_year + 1900) % 100,
@@ -1189,23 +1222,16 @@ int main(int argc, char ** argv)
                 } else {
                     epoch.tv_sec += 3600;
                 }
-    
-                /*
-                 * The microsecond offset accounts for the latency in the
-                 * cue debouncer: two cycles of 10ms (10000usec) each.
-                 */
 
-                epoch.tv_usec = (2 * milliseconds_cycle) * 1000;
+                LOG("EPOCH %lds.", epoch.tv_sec);
 
                 if (!acquired) {
                     acquired = !0;
                     DIMINUTO_LOG_NOTICE("%s: acquired.\n", program);
                 }
 
-                LOG("EPOCH %ld.%06ld.", epoch.tv_sec, epoch.tv_usec);
-
                 /*
-                 * THis time stamp is usable only in the very next
+                 * This time stamp is usable only in the very next
                  * TIME event.
                  */
 
