@@ -78,6 +78,9 @@ according to an interval timer and uses a software signal level debouncer
 to deal with periods of high interference. My concern is that with the
 more efficient former approach, interrupts might overwhelm the system.
 
+Besides the SYMTRIK AM receiver, my implementation of Obelisk includes a
+battery-backed real-time clock and an LCD display. My software assumes these
+are present.
 ## Repositories
 <https://github.com/coverclock/com-diag-obelisk>    
 <https://github.com/coverclock/com-diag-hazer>    
@@ -102,7 +105,9 @@ Raspberry Pi 3
 Raspbian 9    
 gcc 6.3.0    
 Linux 4.9.41    
-SYM-RFT-60    
+PV Electronics SYMTRIK SYM-RFT-60    
+Nation Electronics DS1307 RTC HAT    
+SainSmart LCD Module 20x4 White On Blue    
 ## Usage
     usage: wwvbtool [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -U ENDPOINT ] [ -a ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -i ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]
            -1              Use one stop bit for OUTPUT (default).
@@ -224,6 +229,10 @@ set to use UDP port 60180; this is trivial to edit to change it.
     cd gpsd
     scons timeservice=yes nmea0183=yes prefix="/usr/local" pps=yes ntpshm=yes netfeed=yes
     sudo scons install
+
+Install the files in the overlay directory in the corresponding places in the
+file system. I could give you a command sequence to do this, but I encourage
+you to do it by hand so you understand how your system files are being modified.
 
 These user IDs in /etc/passwd may be required by the GPS daemon and the
 NTP daemon; Obelisk runs as root. Change the user ID values as necessary.
@@ -520,3 +529,6 @@ saves them in /var/log/messages. Here are an extended example.
 You can see that the system looses the WWVB signal on several occasions and
 eventually reacquires it. When I catch the system in this state, I can see
 the LED on the radio board blinking sporadically and apparently randomly.
+## Acknowledgements
+Thanks to Paul Theodoropoulos for point out several issues (my euphemism for
+stupid mistakes on my part) and typos.
