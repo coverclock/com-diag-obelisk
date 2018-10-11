@@ -199,7 +199,7 @@ will probably work just fine, if you want to omit the git checkout.)
     cd src
     git clone https://github.com/coverclock/com-diag-obelisk
     cd com-diag-obelisk/Obelisk
-    git checkout 5.0.0
+    git checkout 5.0.1
     make pristine all
     sudo make install
 
