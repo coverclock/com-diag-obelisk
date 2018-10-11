@@ -28,7 +28,7 @@ test -x $DAEMONG || exit 5
 test -x $DAEMONW || exit 5
 test -x $DAEMONH || exit 5
 
-if $ENABNLENTP; then
+if $ENABLENTP; then
 
 	test -x $DAEMONN || exit 5
 
