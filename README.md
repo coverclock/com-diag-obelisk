@@ -264,6 +264,12 @@ Send SIGTERM to terminate (equivalent commands).
 
     sudo wwvbtool -k
 
+EXPERIMENTAL (but it worked for me): Disable systemd-timesyncd.service that
+uses NTP (only needed once ever).
+
+    sudo systemctl stop systemd-timesyncd.service
+    sudo systemctl disable systemd-timesyncd.service
+
 Disable gpsd and enable time service (only needed once ever).
 
     sudo systemctl disable gpsd
