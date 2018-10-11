@@ -20,7 +20,7 @@ default:	all
 
 TITLE				:=	Obelisk
 
-MAJOR				:=	4# API changes that may require that applications be modified.
+MAJOR				:=	5# API changes that may require that applications be modified.
 MINOR				:=	0# Only functionality or features added with no legacy API changes.
 BUILD				:=	0# Only bugs fixed with no API changes or new functionality.
 
