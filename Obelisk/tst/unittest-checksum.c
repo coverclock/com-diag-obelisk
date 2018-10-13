@@ -35,21 +35,21 @@ int main(void)
         }
     }
 
-    cs = hazer_checksum("", 0);
+    hazer_checksum("", 0, &cs);
     /* There is no wrong answer here, we just want to make sure it doesn't core dump. */
 
-    cs = hazer_checksum("$V*TU\r\n", 8);
+    hazer_checksum("$V*TU\r\n", 8, &cs);
     assert(cs == 0x56);
 
-    cs = hazer_checksum("$VW*TU\r\n", 9);
+    hazer_checksum("$VW*TU\r\n", 9, &cs);
     assert(cs == 0x01);
 
-    cs = hazer_checksum("$VWX*TU\r\n", 10);
+    hazer_checksum("$VWX*TU\r\n", 10, &cs);
     assert(cs == 0x59);
 
-    cs = hazer_checksum("$VWXY*TU\r\n", 11);
+    hazer_checksum("$VWXY*TU\r\n", 11, &cs);
     assert(cs == 0x00);
 
-    cs = hazer_checksum("$VWXYZ*TU\r\n", 12);
+    hazer_checksum("$VWXYZ*TU\r\n", 12, &cs);
     assert(cs == 0x5A);
 }

@@ -229,7 +229,7 @@ int main(int argc, char ** argv)
     pin_in_t = PIN_IN_T;
     hour_juliet = HOUR_JULIET;
     minute_juliet = MINUTE_JULIET;
-    strncpy(nmea_talker, HAZER_NMEA_RADIO_TALKER, sizeof(nmea_talker) - 1);
+    strncpy(nmea_talker, HAZER_TALKER_NAME[HAZER_TALKER_RADIO], sizeof(nmea_talker) - 1);
     nmea_path = NMEA_PATH;
     nice_priority = NICE_NONE;
 
@@ -716,7 +716,7 @@ int main(int argc, char ** argv)
     	ticks_timer = 1;
     }
 
-    LOG("PERIODIC %lldticks.", ticks_timer);
+    LOG("PERIODIC %lldticks.", (long long int)ticks_timer);
 
     ticks_slack = diminuto_timer_periodic(ticks_timer);
     assert(ticks_slack == 0);
@@ -883,10 +883,10 @@ int main(int argc, char ** argv)
                 assert(timep == &time);
                 rc = snprintf(
                     sentence, sizeof(sentence) - 1,
-                    "%c%2.2s%3.3s,%02d%02d%02d.%02d,A,,,,,,,%02d%02d%02d,,,D%cXX\r\n",
+                    "%c%2.2s%3.3s,%02d%02d%02d.%02ld,A,,,,,,,%02d%02d%02d,,,D%cXX\r\n",
                     HAZER_STIMULUS_START,
                     nmea_talker,
-                    HAZER_NMEA_GPS_MESSAGE_RMC,
+                    HAZER_NMEA_SENTENCE_RMC,
                     time.tm_hour,
                     time.tm_min,
                     time.tm_sec,
@@ -898,7 +898,8 @@ int main(int argc, char ** argv)
                 );
                 assert(rc < (sizeof(sentence) - 1));
                 sentence[sizeof(sentence) - 1] = '\0';
-                checksum = hazer_checksum(sentence, sizeof(sentence));
+                checksum = 0;
+                hazer_checksum(sentence, sizeof(sentence), &checksum);
                 assert(sentence[rc - 4] == 'X');
                 assert(sentence[rc - 3] == 'X');
                 rc = hazer_checksum2characters(checksum, &sentence[rc - 4], &sentence[rc - 3]);
@@ -1029,7 +1030,7 @@ int main(int argc, char ** argv)
         assert((0 <= token) && (token < countof(TOKEN)));
         assert((0 <= event) && (event < countof(EVENT)));
 
-        LOG("PARSE %s %s %s %s %d %d 0x%llx.", STATE[state_old], TOKEN[token], STATE[state], EVENT[event], field, length, buffer);
+        LOG("PARSE %s %s %s %s %d %d 0x%llx.", STATE[state_old], TOKEN[token], STATE[state], EVENT[event], field, length, (long long unsigned int)buffer);
 
         switch (event) {
 
@@ -1104,7 +1105,7 @@ int main(int argc, char ** argv)
                         program,
                         year, month, day,
                         hour, minute, second,
-                        fraction / 1000
+                        (long long unsigned int)(fraction / 1000)
                     );
     
                 }
@@ -1123,8 +1124,8 @@ int main(int argc, char ** argv)
              * Once we have a complete frame, extract it from the buffer.
              */
 
-            LOG("FRAME 0x%016lld %d %d %d %d %d %d %d %d %d %d %d %d %d %d.",
-                 buffer,
+            LOG("FRAME 0x%016llx %d %d %d %d %d %d %d %d %d %d %d %d %d %d.",
+                 (long long unsigned int)buffer,
                  frame.year10, frame.year1,
                  frame.day100, frame.day10, frame.day1,
                  frame.hours10, frame.hours1,
@@ -1311,7 +1312,7 @@ int main(int argc, char ** argv)
                 /* Do nothing. */
             } else {
                 disciplined = 0;
-                LOG("READY %d.", epoch.tv_sec);
+                LOG("READY %ld.", epoch.tv_sec);
             }
 
             armed = 0;

@@ -2,7 +2,7 @@
 /**
  * @file
  *
- * Copyright 2017 Digital Aggregates Corporation, Colorado, USA<BR>
+ * Copyright 2017-2018 Digital Aggregates Corporation, Colorado, USA<BR>
  * Licensed under the terms in README.h<BR>
  * Chip Overclock (coverclock@diag.com)<BR>
  * http://www.diag.com/navigation/downloads/Diminuto.html<BR>
@@ -17,7 +17,8 @@
 #include <errno.h>
 
 /*
- * Runs about 4 hours 10 minutes on the Pi 3.
+ * Runs about 4 hours 10 minutes on the Pi 3,
+ * about 25 minutes on an Intel i7.
  */
 
 int main(int argc, char ** argv)
@@ -31,6 +32,7 @@ int main(int argc, char ** argv)
         obelisk_frame_t frame = { 0 };
         struct tm time = { 0 };
         long long count = -1;
+        static const long long EXPECTED = (60LL * 24LL * (365LL + 366LL) * 2LL * 10LL * 100LL * 2LL * 4LL);
         int days = -1;
 
         TEST();
@@ -111,8 +113,8 @@ int main(int argc, char ** argv)
             }
         }
 
-        CHECKPOINT("count %lld\n", count);
-        ASSERT(count == (60LL * 24LL * (365LL + 366LL) * 2LL * 100LL * 2LL * 4LL));
+        CHECKPOINT("count %lld %lld\n", count, EXPECTED);
+        ASSERT(count == EXPECTED);
         // computed  16,842,240,000
         // measured  16,842,240,000
 

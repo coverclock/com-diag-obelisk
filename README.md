@@ -176,7 +176,7 @@ Clone, build, and install Diminuto 48.12.0 in /usr/local.
     cd src
     git clone https://github.com/coverclock/com-diag-diminuto
     cd com-diag-diminuto/Diminuto
-    git checkout 48.12.0
+    git checkout 53.0.1
     make pristine all
     sudo make install
 
@@ -187,7 +187,7 @@ Clone, build, and install Hazer 1.4.1 in /usr/local.
     cd src
     git clone https://github.com/coverclock/com-diag-hazer
     cd com-diag-hazer/Hazer
-    git checkout 1.4.1
+    git checkout 9.0.0
     make pristine all
     sudo make install
 
@@ -200,7 +200,7 @@ for each repo indicate the combinations I've tested most recently.)
     cd src
     git clone https://github.com/coverclock/com-diag-obelisk
     cd com-diag-obelisk/Obelisk
-    git checkout 3.1.5
+    git checkout 5.0.1
     make pristine all
     sudo make install
 
@@ -264,6 +264,12 @@ Send SIGTERM to terminate (equivalent commands).
     sudo kill -TERM `cat /var/run/wwvbtool.pid`
 
     sudo wwvbtool -k
+
+EXPERIMENTAL (but it worked for me): Disable systemd-timesyncd.service that
+uses NTP (only needed once ever).
+
+    sudo systemctl stop systemd-timesyncd.service
+    sudo systemctl disable systemd-timesyncd.service
 
 Disable gpsd and enable time service (only needed once ever).
 
