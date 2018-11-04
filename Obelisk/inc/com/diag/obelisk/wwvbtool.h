@@ -42,7 +42,7 @@ static const char * DAY[] = {
     "MON",		/* Monday */
     "TUE",		/* Tuesday */
     "WED",		/* Wednesday */
-    "THU",		/* THursday */
+    "THU",		/* Thursday */
     "FRI",		/* Friday */
     "SAT",		/* Saturday */
 };

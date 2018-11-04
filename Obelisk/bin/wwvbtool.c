@@ -1129,8 +1129,8 @@ int main(int argc, char ** argv)
                  frame.day100, frame.day10, frame.day1,
                  frame.hours10, frame.hours1,
                  frame.minutes10, frame.minutes1,
-                 frame.dutonesign,
-                 frame.dutone1,
+                 frame.dut1sign,
+                 frame.dut1magnitude,
                  frame.lyi,
                  frame.lsw,
                  frame.dst
@@ -1179,9 +1179,9 @@ int main(int argc, char ** argv)
                  * second would have been inserted.
                  */
 
-                dut1 = frame.dutone1;
+                dut1 = frame.dut1magnitude;
                 dut1 /= 10.0;
-                if (frame.dutonesign == OBELISK_SIGN_NEGATIVE) { dut1 = -dut1; }
+                if (frame.dut1sign == OBELISK_SIGN_NEGATIVE) { dut1 = -dut1; }
 
                 assert((0 <= time.tm_wday) && (time.tm_wday < countof(DAY)));
                 LOG("TIME %d %04d-%02d-%02dT%02d:%02d:%02dZ %04d/%03d %s %s %+4.1f.",
@@ -1195,54 +1195,38 @@ int main(int argc, char ** argv)
                 );
 
                 /*
-                 * Logging the received one per hour doesn't overrun
-                 * the logging system. And doing so at the 59th minute
-                 * captures the leap second at :59:60 if it occurs.
-                 */
-
-                if (!disciplined || (time.tm_min == 59)) {
-                    DIMINUTO_LOG_NOTICE("%s: time zulu=%04d-%02d-%02dT%02d:%02d:%02d julian=%04d/%03d day=%s dst=%c dUT1=%c0.%d lyi=%d lsw=%d.",
-                        program,
-                        time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
-                        time.tm_hour, time.tm_min, time.tm_sec,
-                        time.tm_year + 1900, time.tm_yday + 1,
-                        DAY[time.tm_wday],
-						DST[frame.dst],
-						SIGN[frame.dutonesign],
-                        frame.dutone1,
-                        frame.lyi,
-                        frame.lsw
-                    );
-                }
-
-                /*
                  * Derive the seconds since the POSIX Epoch that our time
                  * code represents.
                  */
 
-                epoch.tv_sec = mktime(&time);
-
-                /*
-                 * mktime(3) always assumes that the tm structure contains local
-                 * time. So we have to adjust our value to account for the time
-                 * zone of the host on which we are running. Similarly, we have
-                 * to account for Daylight Saving Time in the local time zone.
-                 */
-
-                epoch.tv_sec -= timezone;
-                if (!daylight) {
-                    /* Do nothing. */
-                } else if (!time.tm_isdst) {
-                    /* Do nothing. */
-                } else {
-                    epoch.tv_sec -= 3600; /* Spring forward, fall back. */
-                }
+                epoch.tv_sec = timegm(&time);
 
                 LOG("EPOCH %lds.", epoch.tv_sec);
 
                 if (!acquired) {
                     acquired = !0;
                     DIMINUTO_LOG_NOTICE("%s: acquired.\n", program);
+                }
+
+                /*
+                 * Logging the received one per hour doesn't overrun
+                 * the logging system. And doing so at the 59th minute
+                 * captures the leap second at :59:60 if it occurs.
+                 */
+
+                if (!disciplined || (time.tm_min == 59)) {
+                    DIMINUTO_LOG_NOTICE("%s: time zulu=%04d-%02d-%02dT%02d:%02d:%02d julian=%04d/%03d day=%s dst=%c dUT1=%+4.1fs lyi=%d lsw=%d epoch=%lds.",
+                        program,
+                        time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
+                        time.tm_hour, time.tm_min, time.tm_sec,
+                        time.tm_year + 1900, time.tm_yday + 1,
+                        DAY[time.tm_wday],
+						DST[frame.dst],
+						dut1,
+                        frame.lyi,
+                        frame.lsw,
+						epoch.tv_sec
+                    );
                 }
 
                 /*
