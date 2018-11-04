@@ -191,8 +191,9 @@ Clone, build, and install Hazer 1.4.1 in /usr/local.
     make pristine all
     sudo make install
 
-Clone, build, and install Obelisk 3.1.5 in /usr/local. (The latest version
-will probably work just fine, if you want to omit the git checkout.)
+Clone, build, and install Obelisk 3.1.5 in /usr/local. (Diminuto and
+Hazer are moving targets, used in other projects. The version numbers
+for each repo indicate the combinations I've tested most recently.)
 
     cd ~
     mkdir -p src
@@ -279,7 +280,7 @@ Start time service.
 
     service timeservice start
 
-Stop time service.
+Stop time service (useful while you're changing anything).
 
     service timeservice stop
 
