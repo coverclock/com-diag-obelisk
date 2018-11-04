@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "com/diag/obelisk/databases.h"
+#include "../inc/com/diag/obelisk/wwvbtool.h"
 
 static obelisk_event_t parse(obelisk_frame_t * framep, const char * sentence)
 {

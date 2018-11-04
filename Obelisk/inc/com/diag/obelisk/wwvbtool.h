@@ -1,9 +1,9 @@
 /* vim: set ts=4 expandtab shiftwidth=4: */
-#ifndef _COM_DIAG_OBELISK_DATABASES_H_
-#define _COM_DIAG_OBELISK_DATABASES_H_
+#ifndef _COM_DIAG_OBELISK_WWVBTOOL_H_
+#define _COM_DIAG_OBELISK_WWVBTOOL_H_
 
 /**
- * Copyright 2017 Digital Aggregates Corporation, Colorado, USA<BR>
+ * Copyright 2017-2018 Digital Aggregates Corporation, Colorado, USA<BR>
  * Licensed under the terms in LICENSE.txt<BR>
  * Chip Overclock<BR>
  * mailto:coverclock@diag.com<BR>
@@ -38,13 +38,31 @@ static const char * EVENT[] = {
 };
 
 static const char * DAY[] = {
-    "SUN",	/* Sunday */
-    "MON",	/* Monday */
-    "TUE",	/* Tuesday */
-    "WED",	/* Wednesday */
-    "THU",	/* THursday */
-    "FRI",	/* Friday */
-    "SAT",	/* Saturday */
+    "SUN",		/* Sunday */
+    "MON",		/* Monday */
+    "TUE",		/* Tuesday */
+    "WED",		/* Wednesday */
+    "THU",		/* THursday */
+    "FRI",		/* Friday */
+    "SAT",		/* Saturday */
 };
 
-#endif /*  _COM_DIAG_OBELISK_DATABASES_H_ */
+static const char DST[] = {
+	'-',		/* OBELISK_DST_OFF */
+	'<',		/* OBELISK_DST_ENDS */
+	'>',		/* OBELISK_DST_BEGINS */
+	'+',		/* OBELISK_DST_ON */
+};
+
+static const char SIGN[] = {
+	'?',
+	'?',
+	'-',		/* OBELISK_SIGN_NEGATIVE */
+	'?',
+	'?',
+	'+',		/* OBELISK_SIGN_POSITIVE */
+	'?',
+	'?',
+};
+
+#endif /*  _COM_DIAG_OBELISK_WWVBTOOL_H_ */

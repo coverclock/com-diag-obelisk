@@ -42,6 +42,7 @@
 #include "com/diag/diminuto/diminuto_ipc6.h"
 #include "com/diag/hazer/hazer.h"
 #include "com/diag/obelisk/obelisk.h"
+#include "com/diag/obelisk/wwvbtool.h"
 
 #define LOG(_FORMAT_, ...) do { if (debug) { fprintf(stderr, "%s: " _FORMAT_ "\n", program, ## __VA_ARGS__); } } while (0)
 
@@ -57,8 +58,6 @@ static const int MINUTE_JULIET = 30;
 static const int NICE_MINIMUM = -20;
 static const int NICE_MAXIMUM = 19;
 static const int NICE_NONE = -21;
-
-#include "com/diag/obelisk/databases.h"
 
 static const char * program = (const char *)0;
 
@@ -1208,14 +1207,8 @@ int main(int argc, char ** argv)
                         time.tm_hour, time.tm_min, time.tm_sec,
                         time.tm_year + 1900, time.tm_yday + 1,
                         DAY[time.tm_wday],
-                        (frame.dst == OBELISK_DST_OFF) ? '-'
-                            : (frame.dst == OBELISK_DST_ENDS) ? '<'
-                            : (frame.dst == OBELISK_DST_BEGINS) ? '>'
-                            : (frame.dst == OBELISK_DST_ON) ? '+'
-                            : '?',
-                        (frame.dutonesign == OBELISK_SIGN_NEGATIVE) ? '-'
-                            : (frame.dutonesign == OBELISK_SIGN_POSITIVE) ? '+'
-                            : '?',
+						DST[frame.dst],
+						SIGN[frame.dutonesign],
                         frame.dutone1,
                         frame.lyi,
                         frame.lsw
@@ -1242,7 +1235,7 @@ int main(int argc, char ** argv)
                 } else if (!time.tm_isdst) {
                     /* Do nothing. */
                 } else {
-                    epoch.tv_sec += 3600;
+                    epoch.tv_sec -= 3600; /* Spring forward, fall back. */
                 }
 
                 LOG("EPOCH %lds.", epoch.tv_sec);
