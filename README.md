@@ -200,7 +200,7 @@ for each repo indicate the combinations I've tested most recently.)
     cd src
     git clone https://github.com/coverclock/com-diag-obelisk
     cd com-diag-obelisk/Obelisk
-    git checkout 5.0.1
+    git checkout 6.0.0
     make pristine all
     sudo make install
 
