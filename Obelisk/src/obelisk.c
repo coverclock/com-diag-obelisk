@@ -11,6 +11,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 #include "com/diag/obelisk/obelisk.h"
 #include "obelisk.h"
@@ -484,6 +485,8 @@ int obelisk_decode(struct tm * timep, const obelisk_frame_t * framep)
 {
     int rc = -1;
     int days = -1;
+
+    memset(timep, 0, sizeof(*timep));
 
     timep->tm_sec = 0;
     timep->tm_min = (framep->minutes10 * 10) + framep->minutes1;
