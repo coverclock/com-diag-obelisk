@@ -144,7 +144,11 @@ SainSmart LCD Module 20x4 White On Blue
            -u              Unexport pins initially ignoring errors.
            -v              Display verbose output.
            -x              Use XON/XOFF for OUTPUT.
-## Notes
+
+## Installation
+
+### Hardware
+
 Here is the SYM-RFT-60 pinouts and to what they are connected.
 
     A1                          --> antenna
@@ -160,6 +164,8 @@ Here are the additional pins used on the Raspberry Pi.
 
     Pi pin 22 GPIO 25 OUT      --> Pi pin 12 GPIO 18 CLK IN
 
+### Software
+
 Here is a partial list of additional packages needed.
 
     sudo apt-get install pps-tools
@@ -169,45 +175,47 @@ Here is a partial list of additional packages needed.
     sudo apt-get install libssl-dev
     sudo apt-get install libcap-dev
 
-Clone, build, and install Diminuto 48.12.0 in /usr/local.
+Diminuto and Hazer are moving targets, used in other projects. The version
+numbers for each repo indicate the combinations I've tested most recently
+running Obelisk on my own home-brew WWVB clock.
+
+Clone, build, and install Diminuto in /usr/local.
 
     cd ~
     mkdir -p src
     cd src
     git clone https://github.com/coverclock/com-diag-diminuto
     cd com-diag-diminuto/Diminuto
-    git checkout 53.0.1
+    git checkout 54.2.0
     make pristine all
     sudo make install
 
-Clone, build, and install Hazer 1.4.1 in /usr/local.
+Clone, build, and install Hazer in /usr/local.
 
     cd ~
     mkdir -p src
     cd src
     git clone https://github.com/coverclock/com-diag-hazer
     cd com-diag-hazer/Hazer
-    git checkout 9.0.0
+    git checkout 9.2.0
     make pristine all
     sudo make install
 
-Clone, build, and install Obelisk 3.1.5 in /usr/local. (Diminuto and
-Hazer are moving targets, used in other projects. The version numbers
-for each repo indicate the combinations I've tested most recently.)
+Clone, build, and install Obelisk in /usr/local.
 
     cd ~
     mkdir -p src
     cd src
     git clone https://github.com/coverclock/com-diag-obelisk
     cd com-diag-obelisk/Obelisk
-    git checkout 6.0.0
+    git checkout 6.0.1
     make pristine all
     sudo make install
 
-Clone, build, and install NTPsec daemon in /usr/local. Note that the
-version of ntpsec that I used in Obelisk requires the refclock configuration
-option; the earlier version I used in Hourglass and Astrolabe did not require
-this (as far as I can remember anyway).
+Clone, build, and install NTPsec daemon in /usr/local. Note that
+the version of ntpsec that I used in Obelisk requires the refclock
+configuration option; the earlier version I used in Hourglass and
+Astrolabe did not require this (as far as I can remember anyway).
 
     cd ~
     mkdir -p src
@@ -219,9 +227,10 @@ this (as far as I can remember anyway).
     ./waf build
     sudo ./waf install
 
-Clone, build, and install GPS daemon in /usr/local. We have to enable the NETFEED
-option so that we can sent it UDP datagrams. The timeservice start up script is
-set to use UDP port 60180; this is trivial to edit to change it.
+Clone, build, and install GPS daemon in /usr/local. We have to enable
+the NETFEED option so that we can sent it UDP datagrams. The timeservice
+start up script is set to use UDP port 60180; this is trivial to edit
+to change it.
 
     cd ~
     mkdir -p src
@@ -231,9 +240,10 @@ set to use UDP port 60180; this is trivial to edit to change it.
     scons timeservice=yes nmea0183=yes prefix="/usr/local" pps=yes ntpshm=yes netfeed=yes
     sudo scons install
 
-Install the files in the overlay directory in the corresponding places in the
-file system. I could give you a command sequence to do this, but I encourage
-you to do it by hand so you understand how your system files are being modified.
+Install the files in the overlay directory in the corresponding places
+in the file system. I could give you a command sequence to do this,
+but I encourage you to do it by hand so you understand how your system
+files are being modified.
 
 These user IDs in /etc/passwd may be required by the GPS daemon and the
 NTP daemon; Obelisk runs as root. Change the user ID values as necessary.
@@ -241,13 +251,39 @@ NTP daemon; Obelisk runs as root. Change the user ID values as necessary.
     gpsd:x:111:20:GPSD system user,,,:/run/gpsd:/bin/false
     ntp:x:112:65534:,,,:/home/ntp:/bin/false
 
-Run interactively for debugging.
+Disable systemd-timesyncd.service that uses NTP (it will be started
+instead by our own script; only needed once ever).
+
+    sudo systemctl stop systemd-timesyncd.service
+    sudo systemctl disable systemd-timesyncd.service
+
+Disable gpsd (it will be started instead by our own script; only needed
+once ever).
+
+    sudo systemctl stop gpsd
+    sudo systemctl disable gpsd
+
+Enable time service (only needed once ever).
+
+    sudo systemctl enable timeservice
+
+Start time service.
+
+    service timeservice start
+
+## Notes
+
+Stop time service (useful while you're changing anything).
+
+    service timeservice stop
+
+Run interactively for testing.
 
     sudo su
     . out/host/bin/setup
     out/host/bin/wwvbtool -d -n -p -l -u -r -i -s -a
 
-Run as a daemon in the background.
+Run as a daemon in the background for testing.
 
     sudo su
     . out/host/bin/setup
@@ -264,25 +300,6 @@ Send SIGTERM to terminate (equivalent commands).
     sudo kill -TERM `cat /var/run/wwvbtool.pid`
 
     sudo wwvbtool -k
-
-EXPERIMENTAL (but it worked for me): Disable systemd-timesyncd.service that
-uses NTP (only needed once ever).
-
-    sudo systemctl stop systemd-timesyncd.service
-    sudo systemctl disable systemd-timesyncd.service
-
-Disable gpsd and enable time service (only needed once ever).
-
-    sudo systemctl disable gpsd
-    sudo systemctl enable timeservice
-
-Start time service.
-
-    service timeservice start
-
-Stop time service (useful while you're changing anything).
-
-    service timeservice stop
 
 Process Obelisk wwvbtool NMEA output using Hazer gpstool.
 
@@ -536,6 +553,8 @@ saves them in /var/log/messages. Here are an extended example.
 You can see that the system looses the WWVB signal on several occasions and
 eventually reacquires it. When I catch the system in this state, I can see
 the LED on the radio board blinking sporadically and apparently randomly.
+
 ## Acknowledgements
+
 Thanks to Paul Theodoropoulos for point out several issues (my euphemism for
 stupid mistakes on my part) and typos.
