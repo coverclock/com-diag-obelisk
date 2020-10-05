@@ -3,7 +3,7 @@
 /**
  * @file
  *
- * Copyright 2017 Digital Aggregates Corporation, Colorado, USA<BR>
+ * Copyright 2017-2018 Digital Aggregates Corporation, Colorado, USA<BR>
  * Licensed under the terms in LICENSE.txt<BR>
  * Chip Overclock<BR>
  * mailto:coverclock@diag.com<BR>
@@ -31,14 +31,18 @@
 #include "com/diag/diminuto/diminuto_cue.h"
 #include "com/diag/diminuto/diminuto_countof.h"
 #include "com/diag/diminuto/diminuto_terminator.h"
+#include "com/diag/diminuto/diminuto_interrupter.h"
 #include "com/diag/diminuto/diminuto_hangup.h"
 #include "com/diag/diminuto/diminuto_daemon.h"
 #include "com/diag/diminuto/diminuto_lock.h"
 #include "com/diag/diminuto/diminuto_serial.h"
 #include "com/diag/diminuto/diminuto_log.h"
 #include "com/diag/diminuto/diminuto_phex.h"
+#include "com/diag/diminuto/diminuto_ipc4.h"
+#include "com/diag/diminuto/diminuto_ipc6.h"
 #include "com/diag/hazer/hazer.h"
 #include "com/diag/obelisk/obelisk.h"
+#include "com/diag/obelisk/wwvbtool.h"
 
 #define LOG(_FORMAT_, ...) do { if (debug) { fprintf(stderr, "%s: " _FORMAT_ "\n", program, ## __VA_ARGS__); } } while (0)
 
@@ -54,8 +58,6 @@ static const int MINUTE_JULIET = 30;
 static const int NICE_MINIMUM = -20;
 static const int NICE_MAXIMUM = 19;
 static const int NICE_NONE = -21;
-
-#include "com/diag/obelisk/databases.h"
 
 static const char * program = (const char *)0;
 
@@ -81,6 +83,7 @@ static int nice_priority = 0;
 static const char * run_path = (char *)0;
 static char nmea_talker[sizeof("GP")] = { '\0', '\0', '\0' };
 static const char * nmea_path = (char *)0;
+static const char * nmea_endpoint = (char *)0;
 static int serial_bitspersecond = DIMINUTO_SERIAL_BITSPERSECOND_NOMINAL;
 static diminuto_serial_databits_t serial_databits = DIMINUTO_SERIAL_DATABITS_NOMINAL;
 static diminuto_serial_paritybit_t serial_paritybit = DIMINUTO_SERIAL_PARITYBIT_NOMINAL;
@@ -91,7 +94,7 @@ static int serial_rtscts = 0;
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: %s [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -a ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -i ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]\n", program);
+    fprintf(stderr, "usage: %s [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -U ENDPOINT ] [ -a ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -i ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]\n", program);
     fprintf(stderr, "       -1              Use one stop bit for OUTPUT (default).\n");
     fprintf(stderr, "       -2              Use two stop bits for OUTPUT.\n");
     fprintf(stderr, "       -7              Use seven data bits for OUTPUT.\n");
@@ -106,6 +109,7 @@ static void usage(void)
     fprintf(stderr, "       -P PIN          Use P1 output GPIO PIN (%d).\n", pin_out_p1);
     fprintf(stderr, "       -S PIN          Use PPS output GPIO PIN (%d).\n", pin_out_pps);
     fprintf(stderr, "       -T PIN          Use T input GPIO PIN (%d).\n", pin_in_t);
+    fprintf(stderr, "       -U ENDPOINT     Write NMEA sentences to UDP ENDPOINT.\n");
     fprintf(stderr, "       -a              Set time of day when leap second occurs.\n");
     fprintf(stderr, "       -b              Daemonize into the background.\n");
     fprintf(stderr, "       -c              Use RTS/CTS for OUTPUT.\n");
@@ -146,15 +150,22 @@ int main(int argc, char ** argv)
     FILE * pin_out_pps_fp = (FILE *)0;
     FILE * pin_in_t_fp = (FILE *)0;
     FILE * nmea_out_fp = (FILE *)0;
+    diminuto_ipc_endpoint_t nmea_out_endpoint = { 0 };
+    int nmea_out_sock4 = -1;
+    int nmea_out_sock6 = -1;
     diminuto_sticks_t ticks_frequency = -1;
     diminuto_ticks_t ticks_delay = -1;
     diminuto_ticks_t ticks_timer = -1;
     diminuto_sticks_t ticks_slack = -1;
     diminuto_sticks_t ticks_now = -1;
+    diminuto_sticks_t ticks_begin = -1;
+    diminuto_sticks_t ticks_end = -1;
     diminuto_cue_state_t cue = { 0 };
     diminuto_cue_edge_t edge = (diminuto_cue_edge_t)-1;
     int level_raw = -1;
     int level_cooked = -1;
+    int level_old = -1;
+    int initialized = -1;
     int milliseconds_cycle = -1;
     int milliseconds_pulse = -1;
     int cycles_limit = -1;
@@ -194,6 +205,10 @@ int main(int argc, char ** argv)
     uint8_t checksum = -1;
     int fd = -1;
     float dut1 = 0.0;
+    diminuto_ipv4_t address4 = 0;
+    diminuto_ipv6_t address6 = { 0 };
+    char printable[sizeof("XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX")];
+    diminuto_port_t port = 0;
 
     assert(sizeof(obelisk_buffer_t) == sizeof(uint64_t));
     assert(sizeof(obelisk_frame_t) == sizeof(uint64_t));
@@ -213,13 +228,13 @@ int main(int argc, char ** argv)
     pin_in_t = PIN_IN_T;
     hour_juliet = HOUR_JULIET;
     minute_juliet = MINUTE_JULIET;
-    strncpy(nmea_talker, HAZER_NMEA_RADIO_TALKER, sizeof(nmea_talker) - 1);
+    strncpy(nmea_talker, HAZER_TALKER_NAME[HAZER_TALKER_RADIO], sizeof(nmea_talker) - 1);
     nmea_path = NMEA_PATH;
     nice_priority = NICE_NONE;
 
     error = 0;
 
-    while ((opt = getopt(argc, argv, "1278B:C:H:L:M:N:O:P:S:T:abcdeghiklmonprsuvx")) >= 0) {
+    while ((opt = getopt(argc, argv, "1278B:C:H:L:M:N:O:P:S:T:U:abcdeghiklmonprsuvx")) >= 0) {
 
         switch (opt) {
 
@@ -263,7 +278,7 @@ int main(int argc, char ** argv)
             serial_bitspersecond = strtoul(optarg, &endptr, 0);
             if ((*endptr != '\0') || (serial_bitspersecond < 0)) {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
             break;
@@ -272,7 +287,7 @@ int main(int argc, char ** argv)
             nice_priority = strtoul(optarg, &endptr, 0);
             if ((*endptr != '\0') || (nice_priority < NICE_MINIMUM) || (nice_priority > NICE_MAXIMUM)) {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
             break;
@@ -281,7 +296,7 @@ int main(int argc, char ** argv)
             hour_juliet = strtol(optarg, &endptr, 0);
             if ((*endptr != '\0') || (hour_juliet < 0) || (hour_juliet > 23)) {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
             break;
@@ -294,7 +309,7 @@ int main(int argc, char ** argv)
             minute_juliet = strtol(optarg, &endptr, 0);
             if ((*endptr != '\0') || (minute_juliet < 0) || (minute_juliet > 59)) {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
             break;
@@ -304,20 +319,21 @@ int main(int argc, char ** argv)
                 strncpy(nmea_talker, optarg, sizeof(nmea_talker) - 1);
             } else {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
             break;
 
         case 'O':
             nmea_path = optarg;
+            nmea_endpoint = (const char *)0;
             break;
 
         case 'P':
             pin_out_p1 = strtol(optarg, &endptr, 0);
             if ((*endptr != '\0') || (pin_out_p1 < 0)) {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
             break;
@@ -326,7 +342,7 @@ int main(int argc, char ** argv)
             pin_out_pps = strtol(optarg, &endptr, 0);
             if ((*endptr != '\0') || (pin_out_pps < 0)) {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
             break;
@@ -335,9 +351,14 @@ int main(int argc, char ** argv)
             pin_in_t = strtol(optarg, &endptr, 0);
             if ((*endptr != '\0') || (pin_in_t < 0)) {
                 errno = EINVAL;
-                perror(optarg);
+                diminuto_perror(optarg);
                 error = !0;
             }
+            break;
+
+        case 'U':
+            nmea_endpoint = optarg;
+            nmea_path = (const char *)0;
             break;
 
         case 'a':
@@ -437,7 +458,7 @@ int main(int argc, char ** argv)
         LOG("TERMINATING %d.", pid);
         rc = kill(pid, SIGTERM);
         if (rc < 0) {
-            perror("kill");
+            diminuto_perror("kill");
             return 2;
         }
         return 0;
@@ -454,7 +475,7 @@ int main(int argc, char ** argv)
         LOG("HANGINGUP %d.", pid);
         rc = kill(pid, SIGHUP);
         if (rc < 0) {
-            perror("kill");
+            diminuto_perror("kill");
             return 2;
         }
         return 0;
@@ -467,9 +488,25 @@ int main(int argc, char ** argv)
          * as the background child process.
          */
 
-        LOG("DAEMONIZING.");
-        rc = diminuto_daemon(program, run_path);
+        LOG("PRELOCKING.");
+        rc = diminuto_lock_prelock(run_path);
         if (rc < 0) { return 2; }
+
+        LOG("DAEMONIZING.");
+        rc = diminuto_daemon(program);
+        if (rc < 0) {
+            LOG("UNLOCKING.");
+            (void)diminuto_lock_unlock(run_path);
+            return 2;
+        }
+
+        LOG("POSTLOCKING.");
+        rc = diminuto_lock_postlock(run_path);
+        if (rc < 0) {
+            LOG("UNLOCKING.");
+            (void)diminuto_lock_unlock(run_path);
+            return 2;
+        }
 
     } else {
 
@@ -490,7 +527,7 @@ int main(int argc, char ** argv)
     if (nice_priority != NICE_NONE) {
         LOG("PRIORITY %d.\n", nice_priority);
         rc = setpriority(PRIO_PROCESS, 0, nice_priority);
-        if (rc < 0) { perror("setpriority"); }
+        if (rc < 0) { diminuto_perror("setpriority"); }
         assert(rc >= 0);
     }
 
@@ -572,20 +609,24 @@ int main(int argc, char ** argv)
      * above.
      */
 
-    if (nmea) {
+    if (!nmea) {
+
+        /* Do nothing. */
+
+    } else if (nmea_path != (const char *)0) {
 
         LOG("NMEAPATH \"%s\".", nmea_path);
 
         if (strcmp(nmea_path, NMEA_PATH) == 0) {
             nmea_out_fp = stdout;
         } else if ((nmea_out_fp = fopen(nmea_path, "a+")) == (FILE *)0) {
-            perror(nmea_path);
+            diminuto_perror(nmea_path);
             assert(nmea_out_fp != (FILE *)0);
         } else if ((fd = fileno(nmea_out_fp)) < 0) {
-            perror(nmea_path);
+            diminuto_perror(nmea_path);
             assert(fd >= 0);
         } else if ((rc = isfdtype(fd, S_IFCHR)) < 0) {
-            perror(nmea_path);
+            diminuto_perror(nmea_path);
             assert(rc >= 0);
         } else if (rc) {
             rc = diminuto_serial_set(fd, serial_bitspersecond, serial_databits, serial_paritybit, serial_stopbits, serial_modemcontrol, serial_xonxoff, serial_rtscts);
@@ -596,6 +637,46 @@ int main(int argc, char ** argv)
             /* Do nothing. */
         }
 
+    } else if (nmea_endpoint != (const char *)0) {
+
+        LOG("NMEAENDPOINT \"%s\".", nmea_endpoint);
+
+        if ((rc = diminuto_ipc_endpoint(nmea_endpoint, &nmea_out_endpoint)) < 0) {
+            /* Do nothing. */
+        } else if (nmea_out_endpoint.udp <= 0) {
+            /* Do nothing. */
+        } else if (!diminuto_ipc6_is_unspecified(&nmea_out_endpoint.ipv6)) {
+            nmea_out_sock6 = diminuto_ipc6_datagram_peer(0);
+        } else if (!diminuto_ipc4_is_unspecified(&nmea_out_endpoint.ipv4)) {
+            nmea_out_sock4 = diminuto_ipc4_datagram_peer(0);
+        } else {
+            /* Do nothing. */
+        }
+
+        if (nmea_out_sock6 >= 0) {
+            diminuto_ipc6_nearend(nmea_out_sock6, &address6, &port);
+            diminuto_ipc6_address2string(address6, printable, sizeof(printable));
+            LOG("NMEANEAREND [%s]:%d.", printable, port);
+            diminuto_ipc6_address2string(nmea_out_endpoint.ipv6, printable, sizeof(printable));
+            LOG("NMEAFARREND [%s]:%d.", printable, nmea_out_endpoint.udp);
+        } else if (nmea_out_sock4 >= 0) {
+            diminuto_ipc4_nearend(nmea_out_sock4, &address4, &port);
+            diminuto_ipc4_address2string(address4, printable, sizeof(printable));
+            LOG("NMEANEAREND %s:%d.", printable, port);
+            diminuto_ipc4_address2string(nmea_out_endpoint.ipv4, printable, sizeof(printable));
+            LOG("NMEAFARREND %s:%d.", printable, nmea_out_endpoint.udp);
+        } else {
+            errno = EINVAL;
+            diminuto_perror(nmea_endpoint);
+            assert((nmea_out_sock6 >= 0) || (nmea_out_sock4 >= 0));
+        }
+
+    } else {
+
+        /* SHould be impossible */
+
+        nmea = 0;
+
     }
 
     /*
@@ -605,8 +686,6 @@ int main(int argc, char ** argv)
     LOG("INITIALIZE.");
 
     tzset();
-
-    diminuto_cue_init(&cue, 0);
 
     milliseconds_pulse = 0;
 
@@ -628,7 +707,15 @@ int main(int argc, char ** argv)
     rc = diminuto_terminator_install(0);
     assert(rc >= 0);
 
+    rc = diminuto_interrupter_install(0);
+    assert(rc >= 0);
+
     ticks_timer = ticks_frequency / HERTZ_TIMER;
+    if (ticks_timer == 0) {
+    	ticks_timer = 1;
+    }
+
+    LOG("PERIODIC %lldticks.", (long long int)ticks_timer);
 
     ticks_slack = diminuto_timer_periodic(ticks_timer);
     assert(ticks_slack == 0);
@@ -637,6 +724,7 @@ int main(int argc, char ** argv)
     fallings = 0;
     cycles = 0;
 
+    initialized = 0;
     synchronized = !0;
     acquired = 0;
     armed = 0;
@@ -649,6 +737,22 @@ int main(int argc, char ** argv)
     */
 
     while (!0) {
+
+    	/*
+    	 * We wait for a timer interrupt. I implemented this as polling, but
+    	 * have thought a lot about using the interrupt GPIO feature, supported
+    	 * in the Raspberry Pi HW, the Raspbian SW, and by the Diminuto library.
+    	 * But having lived with this for a while, I see a *lot* of noise on
+    	 * the GPIO line caused by EMF on the AM band. This can be caused, in my
+    	 * home office, by lots of stuff, most notably the nearby electric
+    	 * pencil sharpener. In any case, it's very susceptible to EMF, and
+    	 * I am concerned that it could overwhelm the Pi/Raspbian with
+    	 * interrupts. This need for SW debouncing also limits the period that
+    	 * we can poll the GPIO line. (If you want a really good inexpensive
+    	 * NTP time source, you should be using GPS instead of WWVB, anyway.
+    	 * It's actually much simpler, too. Note that the very low power CDMA
+    	 * transmissions of GPS can be easily jammed, as well.)
+    	 */
 
         rc = pause();
         assert(rc == -1);
@@ -663,17 +767,12 @@ int main(int argc, char ** argv)
         }
 
         /*
-         * Check for SIGHUP and if seen report and dediscipline.
-         *
-         * synchronized:    true if we are synced to the IRIQ framing.
-         * acquired:        true if we have received a complete valid frame.
-         * armed:           true if we have constructed a valid time stamp.
-         * disciplined:     true if we have set the system clock.
+         * Check for SIGINT and if seen leave work loop.
          */
 
-        if (diminuto_hangup_check()) {
-            DIMINUTO_LOG_NOTICE("%s: hungup synchronized=%d acquired=%d disciplined=%d armed=%d risings=%d fallings=%d cycles=%d.\n", program, synchronized, acquired, disciplined, armed, risings, fallings, cycles);
-            disciplined = 0;
+        if (diminuto_interrupter_check()) {
+            DIMINUTO_LOG_NOTICE("%s: interrupted.\n", program);
+            break;
         }
 
         /*
@@ -687,17 +786,39 @@ int main(int argc, char ** argv)
         if (verbose) { LOG("SIGALRM."); }
 
         /*
-        ** Poll T input pin state and submit to debouncer.
-        */
+         * Poll T input pin state and submit to the debouncer. We also keep
+         * track of the raw undebounced change and remember when it occurred
+         * so we can compute the latency later.
+         */
+
+        if (initialized) {
+            level_old = level_raw;
+        }
 
         level_raw = diminuto_pin_get(pin_in_t_fp);
         assert(level_raw >= 0);
+        level_raw = !!level_raw;
+
+        if (!initialized) {
+            level_old = level_raw;
+            diminuto_cue_init(&cue, level_raw);
+            initialized = !0;
+        }
+
+        if (level_raw == level_old) {
+            /* Do nothing. */
+        } else if (level_raw) {
+            ticks_begin = diminuto_time_elapsed();
+            assert(ticks_begin >= 0);
+        } else {
+            /* Do nothing. */
+        }
 
         level_cooked = diminuto_cue_debounce(&cue, level_raw);
 
         /*
-        ** Look for edge transitions and measure pulse duration.
-        */
+         * Look for edge transitions and measure pulse duration.
+         */
 
         edge = diminuto_cue_edge(&cue);
 
@@ -731,17 +852,24 @@ int main(int argc, char ** argv)
              * Advance the epoch second by one second. Each pulse indicates
              * the start of the next second. This has the useful side effect
              * of keeping the epoch updated in case we want to set the time,
-             * and also in the event a leap second was inserted.
+             * and also in the event a leap second was inserted. We also
+             * compute the debounce latency, which may not be useful if it's
+             * less than a hundredth of a second, the resolution of the NMEA
+             * timestamp.
              */
 
             if (acquired) {
                 epoch.tv_sec += 1;
+            	ticks_end = diminuto_time_elapsed();
+            	assert(ticks_end >= 0);
+                epoch.tv_usec = diminuto_frequency_ticks2units(ticks_end - ticks_begin, 1000000);
+                LOG("TOTAL %ld.%06lds.", epoch.tv_sec, epoch.tv_usec);
             }
 
             /*
              * Generate a synthesized NMEA RMC timestamp. Since we
              * do this as the rise of the T pulse, we generate a
-             * timestamp every second, phaselocked - subject to fixed
+             * timestamp every second, phaselocked - subject to measured
              * latency in the debouncer - to WWVB.
              */
 
@@ -754,14 +882,14 @@ int main(int argc, char ** argv)
                 assert(timep == &time);
                 rc = snprintf(
                     sentence, sizeof(sentence) - 1,
-                    "%c%2.2s%3.3s,%02d%02d%02d.%02d,A,,,,,,,%02d%02d%02d,,,D%cXX\r\n",
+                    "%c%2.2s%3.3s,%02d%02d%02d.%02ld,A,,,,,,,%02d%02d%02d,,,D%cXX\r\n",
                     HAZER_STIMULUS_START,
                     nmea_talker,
-                    HAZER_NMEA_GPS_MESSAGE_RMC,
+                    HAZER_NMEA_SENTENCE_RMC,
                     time.tm_hour,
                     time.tm_min,
                     time.tm_sec,
-                    epoch.tv_usec / (1000000000 / 100),
+                    epoch.tv_usec / (1000000 / 100), /* Round down. */
                     time.tm_mday,
                     time.tm_mon + 1,
                     (time.tm_year + 1900) % 100,
@@ -769,7 +897,8 @@ int main(int argc, char ** argv)
                 );
                 assert(rc < (sizeof(sentence) - 1));
                 sentence[sizeof(sentence) - 1] = '\0';
-                checksum = hazer_checksum(sentence, sizeof(sentence));
+                checksum = 0;
+                hazer_checksum(sentence, sizeof(sentence), &checksum);
                 assert(sentence[rc - 4] == 'X');
                 assert(sentence[rc - 3] == 'X');
                 rc = hazer_checksum2characters(checksum, &sentence[rc - 4], &sentence[rc - 3]);
@@ -779,8 +908,18 @@ int main(int argc, char ** argv)
                     emit(stderr, sentence);
                     fputs("\".\n", stderr);
                 }
-                fputs(sentence, nmea_out_fp);
-                fflush(nmea_out_fp);
+                if (nmea_out_fp != (FILE *)0) {
+                    fputs(sentence, nmea_out_fp);
+                    fflush(nmea_out_fp);
+                } else if (nmea_out_sock6 >= 0) {
+                    rc = diminuto_ipc6_datagram_send(nmea_out_sock6, sentence, strlen(sentence), nmea_out_endpoint.ipv6, nmea_out_endpoint.udp);
+                    assert(rc >= 0);
+                } else if (nmea_out_sock4 >= 0) {
+                    rc = diminuto_ipc4_datagram_send(nmea_out_sock4, sentence, strlen(sentence), nmea_out_endpoint.ipv4, nmea_out_endpoint.udp);
+                    assert(rc >= 0);
+                } else {
+                    /* Do nothing. */
+                }
             }
 
             /*
@@ -849,6 +988,21 @@ int main(int argc, char ** argv)
         }
 
         /*
+         * Check for SIGHUP and if seen report and dediscipline.
+         *
+         * initialized:    true if the debouncer has been initialized.
+         * synchronized:    true if we are synced to the IRIQ framing.
+         * acquired:        true if we have received a complete valid frame.
+         * armed:           true if we have constructed a valid time stamp.
+         * disciplined:     true if we have set the system clock.
+         */
+
+        if (diminuto_hangup_check()) {
+            DIMINUTO_LOG_NOTICE("%s: hungup initialized=%d synchronized=%d acquired=%d disciplined=%d armed=%d risings=%d fallings=%d cycles=%d.\n", program, initialized, synchronized, acquired, disciplined, armed, risings, fallings, cycles);
+            disciplined = 0;
+        }
+
+        /*
          * Wait for a complete pulse.
          */
 
@@ -875,7 +1029,7 @@ int main(int argc, char ** argv)
         assert((0 <= token) && (token < countof(TOKEN)));
         assert((0 <= event) && (event < countof(EVENT)));
 
-        LOG("PARSE %s %s %s %s %d %d 0x%llx.", STATE[state_old], TOKEN[token], STATE[state], EVENT[event], field, length, buffer);
+        LOG("PARSE %s %s %s %s %d %d 0x%llx.", STATE[state_old], TOKEN[token], STATE[state], EVENT[event], field, length, (long long unsigned int)buffer);
 
         switch (event) {
 
@@ -935,7 +1089,7 @@ int main(int argc, char ** argv)
                  */
     
                 if ((rc = settimeofday(&epoch, (struct timezone *)0)) < 0) {
-                    perror("settimeodday");
+                    diminuto_perror("settimeodday");
                 } else {
     
                     disciplined = !0;
@@ -950,7 +1104,7 @@ int main(int argc, char ** argv)
                         program,
                         year, month, day,
                         hour, minute, second,
-                        fraction / 1000
+                        (long long unsigned int)(fraction / 1000)
                     );
     
                 }
@@ -969,14 +1123,14 @@ int main(int argc, char ** argv)
              * Once we have a complete frame, extract it from the buffer.
              */
 
-            LOG("FRAME 0x%016lld %d %d %d %d %d %d %d %d %d %d %d %d %d %d.",
-                 buffer,
+            LOG("FRAME 0x%016llx %d %d %d %d %d %d %d %d %d %d %d %d %d %d.",
+                 (long long unsigned int)buffer,
                  frame.year10, frame.year1,
                  frame.day100, frame.day10, frame.day1,
                  frame.hours10, frame.hours1,
                  frame.minutes10, frame.minutes1,
-                 frame.dutonesign,
-                 frame.dutone1,
+                 frame.dut1sign,
+                 frame.dut1magnitude,
                  frame.lyi,
                  frame.lsw,
                  frame.dst
@@ -1025,9 +1179,9 @@ int main(int argc, char ** argv)
                  * second would have been inserted.
                  */
 
-                dut1 = frame.dutone1;
+                dut1 = frame.dut1magnitude;
                 dut1 /= 10.0;
-                if (frame.dutonesign == OBELISK_SIGN_NEGATIVE) { dut1 = -dut1; }
+                if (frame.dut1sign == OBELISK_SIGN_NEGATIVE) { dut1 = -dut1; }
 
                 assert((0 <= time.tm_wday) && (time.tm_wday < countof(DAY)));
                 LOG("TIME %d %04d-%02d-%02dT%02d:%02d:%02dZ %04d/%03d %s %s %+4.1f.",
@@ -1041,71 +1195,42 @@ int main(int argc, char ** argv)
                 );
 
                 /*
-                 * Logging the received one per hour doesn't overrun
-                 * the logging system. And doing so at the 59th minute
-                 * captures the leap second at :59:60 if it occurs.
-                 */
-
-                if (!disciplined || (time.tm_min == 59)) {
-                    DIMINUTO_LOG_NOTICE("%s: time zulu=%04d-%02d-%02dT%02d:%02d:%02d julian=%04d/%03d day=%s dst=%c dUT1=%c0.%d lyi=%d lsw=%d.",
-                        program,
-                        time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
-                        time.tm_hour, time.tm_min, time.tm_sec,
-                        time.tm_year + 1900, time.tm_yday + 1,
-                        DAY[time.tm_wday],
-                        (frame.dst == OBELISK_DST_OFF) ? '-'
-                            : (frame.dst == OBELISK_DST_ENDS) ? '<'
-                            : (frame.dst == OBELISK_DST_BEGINS) ? '>'
-                            : (frame.dst == OBELISK_DST_ON) ? '+'
-                            : '?',
-                        (frame.dutonesign == OBELISK_SIGN_NEGATIVE) ? '-'
-                            : (frame.dutonesign == OBELISK_SIGN_POSITIVE) ? '+'
-                            : '?',
-                        frame.dutone1,
-                        frame.lyi,
-                        frame.lsw
-                    );
-                }
-
-                /*
                  * Derive the seconds since the POSIX Epoch that our time
                  * code represents.
                  */
 
-                epoch.tv_sec = mktime(&time);
+                epoch.tv_sec = timegm(&time);
 
-                /*
-                 * mktime(3) always assumes that the tm structure contains local
-                 * time. So we have to adjust our value to account for the time
-                 * zone of the host on which we are running. Similarly, we have
-                 * to account for Daylight Saving Time in the local time zone.
-                 */
-
-                epoch.tv_sec -= timezone;
-                if (!daylight) {
-                    /* Do nothing. */
-                } else if (!time.tm_isdst) {
-                    /* Do nothing. */
-                } else {
-                    epoch.tv_sec += 3600;
-                }
-    
-                /*
-                 * The microsecond offset accounts for the latency in the
-                 * cue debouncer: two cycles of 10ms (10000usec) each.
-                 */
-
-                epoch.tv_usec = (2 * milliseconds_cycle) * 1000;
+                LOG("EPOCH %lds.", epoch.tv_sec);
 
                 if (!acquired) {
                     acquired = !0;
                     DIMINUTO_LOG_NOTICE("%s: acquired.\n", program);
                 }
 
-                LOG("EPOCH %ld.%06ld.", epoch.tv_sec, epoch.tv_usec);
+                /*
+                 * Logging the received one per hour doesn't overrun
+                 * the logging system. And doing so at the 59th minute
+                 * captures the leap second at :59:60 if it occurs.
+                 */
+
+                if (!disciplined || (time.tm_min == 59)) {
+                    DIMINUTO_LOG_NOTICE("%s: time zulu=%04d-%02d-%02dT%02d:%02d:%02d julian=%04d/%03d day=%s dst=%c dUT1=%+4.1fs lyi=%d lsw=%d epoch=%lds.",
+                        program,
+                        time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
+                        time.tm_hour, time.tm_min, time.tm_sec,
+                        time.tm_year + 1900, time.tm_yday + 1,
+                        DAY[time.tm_wday],
+						DST[frame.dst],
+						dut1,
+                        frame.lyi,
+                        frame.lsw,
+						epoch.tv_sec
+                    );
+                }
 
                 /*
-                 * THis time stamp is usable only in the very next
+                 * This time stamp is usable only in the very next
                  * TIME event.
                  */
 
@@ -1164,7 +1289,7 @@ int main(int argc, char ** argv)
                 /* Do nothing. */
             } else {
                 disciplined = 0;
-                LOG("READY %d.", epoch.tv_sec);
+                LOG("READY %ld.", epoch.tv_sec);
             }
 
             armed = 0;
@@ -1217,8 +1342,20 @@ int main(int argc, char ** argv)
 
     if (nmea_out_fp != (FILE *)0) {
         rc = fclose(nmea_out_fp);
-        if (rc != 0) { perror(nmea_path); }
+        if (rc != 0) { diminuto_perror(nmea_path); }
         assert(rc == 0);
+    }
+
+    if (nmea_out_sock6 >= 0) {
+        rc = diminuto_ipc6_close(nmea_out_sock6);
+        if (rc < 0) { diminuto_perror(nmea_endpoint); }
+        assert(rc >= 0);
+    }
+
+    if (nmea_out_sock4 >= 0) {
+        rc = diminuto_ipc4_close(nmea_out_sock4);
+        if (rc < 0) { diminuto_perror(nmea_endpoint); }
+        assert(rc >= 0);
     }
 
     (void)diminuto_lock_unlock(run_path);

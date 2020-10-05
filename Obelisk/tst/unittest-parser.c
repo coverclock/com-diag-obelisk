@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "com/diag/obelisk/databases.h"
+#include "../inc/com/diag/obelisk/wwvbtool.h"
 
 static obelisk_event_t parse(obelisk_frame_t * framep, const char * sentence)
 {
@@ -66,8 +66,8 @@ int main(int argc, char ** argv)
         EXPECT(frame.day100 == 0);
         EXPECT(frame.day10 == 6);
         EXPECT(frame.day1 == 6);
-        EXPECT(frame.dutonesign == 2);
-        EXPECT(frame.dutone1 == 3);
+        EXPECT(frame.dut1sign == 2);
+        EXPECT(frame.dut1magnitude == 3);
         EXPECT(frame.year10 == 0);
         EXPECT(frame.year1 == 8);
         EXPECT(frame.lyi == 1);
@@ -92,8 +92,8 @@ int main(int argc, char ** argv)
         EXPECT(frame.day100 == 0);
         EXPECT(frame.day10 == 6);
         EXPECT(frame.day1 == 6);
-        EXPECT(frame.dutonesign == 2);
-        EXPECT(frame.dutone1 == 3);
+        EXPECT(frame.dut1sign == 2);
+        EXPECT(frame.dut1magnitude == 3);
         EXPECT(frame.year10 == 0);
         EXPECT(frame.year1 == 8);
         EXPECT(frame.lyi == 1);
@@ -118,8 +118,8 @@ int main(int argc, char ** argv)
         EXPECT(frame.day100 == 0);
         EXPECT(frame.day10 == 6);
         EXPECT(frame.day1 == 6);
-        EXPECT(frame.dutonesign == 2);
-        EXPECT(frame.dutone1 == 3);
+        EXPECT(frame.dut1sign == 2);
+        EXPECT(frame.dut1magnitude == 3);
         EXPECT(frame.year10 == 0);
         EXPECT(frame.year1 == 8);
         EXPECT(frame.lyi == 1);
@@ -156,8 +156,8 @@ int main(int argc, char ** argv)
         EXPECT(frame.day100 == 0);
         EXPECT(frame.day10 == 6);
         EXPECT(frame.day1 == 6);
-        EXPECT(frame.dutonesign == 2);
-        EXPECT(frame.dutone1 == 3);
+        EXPECT(frame.dut1sign == 2);
+        EXPECT(frame.dut1magnitude == 3);
         EXPECT(frame.year10 == 0);
         EXPECT(frame.year1 == 8);
         EXPECT(frame.lyi == 1);

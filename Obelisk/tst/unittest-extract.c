@@ -39,8 +39,8 @@ int main(int argc, char ** argv)
         before.day100 = 0x3;
         before.day10 = 0xf;
         before.day1 = 0xf;
-        before.dutonesign = 0x7;
-        before.dutone1 = 0xf;
+        before.dut1sign = 0x7;
+        before.dut1magnitude = 0xf;
         before.year10 = 0xf;
         before.year1 = 0xf;
         before.lyi = 0x1;
@@ -62,8 +62,8 @@ int main(int argc, char ** argv)
                     ((obelisk_buffer_t)before.day100        << (OFFSET - 23)) |
                     ((obelisk_buffer_t)before.day10         << (OFFSET - 28)) |
                     ((obelisk_buffer_t)before.day1          << (OFFSET - 33)) |
-                    ((obelisk_buffer_t)before.dutonesign    << (OFFSET - 38)) |
-                    ((obelisk_buffer_t)before.dutone1       << (OFFSET - 43)) |
+                    ((obelisk_buffer_t)before.dut1sign		<< (OFFSET - 38)) |
+                    ((obelisk_buffer_t)before.dut1magnitude	<< (OFFSET - 43)) |
                     ((obelisk_buffer_t)before.year10        << (OFFSET - 48)) |
                     ((obelisk_buffer_t)before.year1         << (OFFSET - 53)) |
                     ((obelisk_buffer_t)before.lyi           << (OFFSET - 55)) |
@@ -85,8 +85,8 @@ int main(int argc, char ** argv)
         EXPECT(before.day100 == after.day100);
         EXPECT(before.day10 == after.day10);
         EXPECT(before.day1 == after.day1);
-        EXPECT(before.dutonesign == after.dutonesign);
-        EXPECT(before.dutone1 == after.dutone1);
+        EXPECT(before.dut1sign == after.dut1sign);
+        EXPECT(before.dut1magnitude == after.dut1magnitude);
         EXPECT(before.year10 == after.year10);
         EXPECT(before.year1 == after.year1);
         EXPECT(before.lyi == after.lyi);
@@ -111,8 +111,8 @@ int main(int argc, char ** argv)
         before.day100 = 0x3;
         before.day10 = 0xa;
         before.day1 = 0xb;
-        before.dutonesign = 0x5;
-        before.dutone1 = 0xc;
+        before.dut1sign = 0x5;
+        before.dut1magnitude = 0xc;
         before.year10 = 0xd;
         before.year1 = 0xe;
         before.lyi = 0x1;
@@ -131,13 +131,13 @@ int main(int argc, char ** argv)
                     ((obelisk_buffer_t)before.minutes1      << (OFFSET -  8)) |
                     ((obelisk_buffer_t)before.hours10       << (OFFSET - 13)) |
                     ((obelisk_buffer_t)before.hours1        << (OFFSET - 18)) |
-                    ((obelisk_buffer_t)before.day100        << (OFFSET - 23)) |
+                    ((obelisk_buffer_t)before.day100       	<< (OFFSET - 23)) |
                     ((obelisk_buffer_t)before.day10         << (OFFSET - 28)) |
-                    ((obelisk_buffer_t)before.day1          << (OFFSET - 33)) |
-                    ((obelisk_buffer_t)before.dutonesign    << (OFFSET - 38)) |
-                    ((obelisk_buffer_t)before.dutone1       << (OFFSET - 43)) |
+                    ((obelisk_buffer_t)before.day1         	<< (OFFSET - 33)) |
+                    ((obelisk_buffer_t)before.dut1sign		<< (OFFSET - 38)) |
+                    ((obelisk_buffer_t)before.dut1magnitude	<< (OFFSET - 43)) |
                     ((obelisk_buffer_t)before.year10        << (OFFSET - 48)) |
-                    ((obelisk_buffer_t)before.year1         << (OFFSET - 53)) |
+                    ((obelisk_buffer_t)before.year1        	<< (OFFSET - 53)) |
                     ((obelisk_buffer_t)before.lyi           << (OFFSET - 55)) |
                     ((obelisk_buffer_t)before.lsw           << (OFFSET - 56)) |
                     ((obelisk_buffer_t)before.dst           << (OFFSET - 58));
@@ -157,8 +157,8 @@ int main(int argc, char ** argv)
         EXPECT(before.day100 == after.day100);
         EXPECT(before.day10 == after.day10);
         EXPECT(before.day1 == after.day1);
-        EXPECT(before.dutonesign == after.dutonesign);
-        EXPECT(before.dutone1 == after.dutone1);
+        EXPECT(before.dut1sign == after.dut1sign);
+        EXPECT(before.dut1magnitude == after.dut1magnitude);
         EXPECT(before.year10 == after.year10);
         EXPECT(before.year1 == after.year1);
         EXPECT(before.lyi == after.lyi);

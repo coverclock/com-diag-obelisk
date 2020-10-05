@@ -1,7 +1,7 @@
 # com-diag-obelisk
 A home brew NIST WWVB radio clock.
 ## Copyright
-Copyright 2017 by the Digital Aggregates Corporation, Arvada Colorado U.S.A.
+Copyright 2017-2018 by the Digital Aggregates Corporation, Arvada Colorado U.S.A.
 ## License
 Licensed under the terms of the FSF GNU GPL v2.0.
 ## Contact
@@ -70,12 +70,28 @@ kind of language interpreter: a tokenizer classifies pulses into one of
 four symbols, ZERO, ONE, MARKER or INVALID; and a finite state machine
 parses the symbols according to a simple grammer, rejecting any input
 that violates what is in effect a language specification.
-## Links
+
+Part of this paranoia prevented me from using the blocking select(2)
+system call, available in the Diminuto API, to wait for the GPIO pin
+from the radio receiver to change. Instead, wwvbtool samples the pin
+according to an interval timer and uses a software signal level debouncer
+to deal with periods of high interference. My concern is that with the
+more efficient former approach, interrupts might overwhelm the system.
+
+Besides the SYMTRIK AM receiver, my implementation of Obelisk includes a
+battery-backed real-time clock and an LCD display. My software assumes these
+are present.
+## Repositories
 <https://github.com/coverclock/com-diag-obelisk>    
 <https://github.com/coverclock/com-diag-hazer>    
 <https://github.com/coverclock/com-diag-diminuto>    
+<https://git.savannah.gnu.org/git/gpsd.git>    
+<https://gitlab.com/NTPsec/ntpsec.git>    
+## Articles
 <http://coverclock.blogspot.com/2017/10/my-wwvb-radio-clock.html>    
+## Images
 <https://www.flickr.com/photos/johnlsloan/albums/72157689295451755>    
+## References
 <https://en.wikipedia.org/wiki/WWVB>    
 <http://www.pvelectronics.co.uk/rftime/SYM-RFT-XX.pdf>    
 <https://universal-solder.com/product/60khz-wwvb-atomic-radio-clock-receiver-replaces-c-max-cmmr-6p-60/>    
@@ -88,9 +104,11 @@ Raspberry Pi 3
 Raspbian 9    
 gcc 6.3.0    
 Linux 4.9.41    
-SYM-RFT-60    
+PV Electronics SYMTRIK SYM-RFT-60    
+Nation Electronics DS1307 RTC HAT    
+SainSmart LCD Module 20x4 White On Blue    
 ## Usage
-    usage: wwvbtool [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -a ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -i ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]
+    usage: wwvbtool [ -1 | -2 ] [ -7 | -8 ] [ -B BAUD ] [ -C NICE ] [ -H HOUR ] [ -L PATH ] [ -M MINUTE ] [ -N TALKER ] [ -O PATH ] [ -P PIN ] [ -S PIN ] [ -T PIN ] [ -U ENDPOINT ] [ -a ] [ -b ] [ -c ] [ -d ] [ -e | -o ] [ -g ] [ -h ] [ -i ] [ -k ] [ -l ] [ -m ] [ -n ] [ -p ]  [ -r ] [ -s ] [ -u ] [ -v ] [ -x ]
            -1              Use one stop bit for OUTPUT (default).
            -2              Use two stop bits for OUTPUT.
            -7              Use seven data bits for OUTPUT.
@@ -105,6 +123,7 @@ SYM-RFT-60
            -P PIN          Use P1 output GPIO PIN (23).
            -S PIN          Use PPS output GPIO PIN (25).
            -T PIN          Use T input GPIO PIN (24).
+           -U ENDPOINT     Write NMEA sentences to UDP ENDPOINT.
            -a              Set time of day when leap second occurs.
            -b              Daemonize into the background.
            -c              Use RTS/CTS for OUTPUT.
@@ -124,7 +143,11 @@ SYM-RFT-60
            -u              Unexport pins initially ignoring errors.
            -v              Display verbose output.
            -x              Use XON/XOFF for OUTPUT.
-## Notes
+
+## Installation
+
+### Hardware
+
 Here is the SYM-RFT-60 pinouts and to what they are connected.
 
     A1                          --> antenna
@@ -140,6 +163,8 @@ Here are the additional pins used on the Raspberry Pi.
 
     Pi pin 22 GPIO 25 OUT      --> Pi pin 12 GPIO 18 CLK IN
 
+### Software
+
 Here is a partial list of additional packages needed.
 
     sudo apt-get install pps-tools
@@ -149,25 +174,29 @@ Here is a partial list of additional packages needed.
     sudo apt-get install libssl-dev
     sudo apt-get install libcap-dev
 
-Clone, build, and install Diminuto 44.1.0 in /usr/local.
+Diminuto and Hazer are moving targets, used in other projects. The version
+numbers for each repo indicate the combinations I've tested most recently
+running Obelisk on my own home-brew WWVB clock.
+
+Clone, build, and install Diminuto in /usr/local.
 
     cd ~
     mkdir -p src
     cd src
     git clone https://github.com/coverclock/com-diag-diminuto
     cd com-diag-diminuto/Diminuto
-    git checkout 44.1.0
+    git checkout 54.2.0
     make pristine all
     sudo make install
 
-Clone, build, and install Hazer 1.1.0 in /usr/local.
+Clone, build, and install Hazer in /usr/local.
 
     cd ~
     mkdir -p src
     cd src
     git clone https://github.com/coverclock/com-diag-hazer
     cd com-diag-hazer/Hazer
-    git checkout 1.1.0
+    git checkout 9.2.0
     make pristine all
     sudo make install
 
@@ -178,13 +207,14 @@ Clone, build, and install Obelisk in /usr/local.
     cd src
     git clone https://github.com/coverclock/com-diag-obelisk
     cd com-diag-obelisk/Obelisk
+    git checkout 6.0.1
     make pristine all
     sudo make install
 
-Clone, build, and install NTPsec daemon in /usr/local. Note that the
-version of ntpsec that I used in Obelisk requires the refclock configuration
-option; the earlier version I used in Hourglass and Astrolabe did not require
-this (as far as I can remember anyway).
+Clone, build, and install NTPsec daemon in /usr/local. Note that
+the version of ntpsec that I used in Obelisk requires the refclock
+configuration option; the earlier version I used in Hourglass and
+Astrolabe did not require this (as far as I can remember anyway).
 
     cd ~
     mkdir -p src
@@ -196,15 +226,23 @@ this (as far as I can remember anyway).
     ./waf build
     sudo ./waf install
 
-Clone, build, and install GPS daemon in /usr/local.
+Clone, build, and install GPS daemon in /usr/local. We have to enable
+the NETFEED option so that we can sent it UDP datagrams. The timeservice
+start up script is set to use UDP port 60180; this is trivial to edit
+to change it.
 
     cd ~
     mkdir -p src
     cd src
     git clone https://git.savannah.gnu.org/git/gpsd.git
     cd gpsd
-    scons timeservice=yes nmea0183=yes prefix="/usr/local" pps=yes ntpshm=yes
+    scons timeservice=yes nmea0183=yes prefix="/usr/local" pps=yes ntpshm=yes netfeed=yes
     sudo scons install
+
+Install the files in the overlay directory in the corresponding places
+in the file system. I could give you a command sequence to do this,
+but I encourage you to do it by hand so you understand how your system
+files are being modified.
 
 These user IDs in /etc/passwd may be required by the GPS daemon and the
 NTP daemon; Obelisk runs as root. Change the user ID values as necessary.
@@ -212,13 +250,39 @@ NTP daemon; Obelisk runs as root. Change the user ID values as necessary.
     gpsd:x:111:20:GPSD system user,,,:/run/gpsd:/bin/false
     ntp:x:112:65534:,,,:/home/ntp:/bin/false
 
-Run interactively for debugging.
+Disable systemd-timesyncd.service that uses NTP (it will be started
+instead by our own script; only needed once ever).
+
+    sudo systemctl stop systemd-timesyncd.service
+    sudo systemctl disable systemd-timesyncd.service
+
+Disable gpsd (it will be started instead by our own script; only needed
+once ever).
+
+    sudo systemctl stop gpsd
+    sudo systemctl disable gpsd
+
+Enable time service (only needed once ever).
+
+    sudo systemctl enable timeservice
+
+Start time service.
+
+    service timeservice start
+
+## Notes
+
+Stop time service (useful while you're changing anything).
+
+    service timeservice stop
+
+Run interactively for testing.
 
     sudo su
     . out/host/bin/setup
     out/host/bin/wwvbtool -d -n -p -l -u -r -i -s -a
 
-Run as a daemon in the background.
+Run as a daemon in the background for testing.
 
     sudo su
     . out/host/bin/setup
@@ -236,20 +300,7 @@ Send SIGTERM to terminate (equivalent commands).
 
     sudo wwvbtool -k
 
-Disable gpsd and enable time service (only needed once ever).
-
-    sudo systemctl disable gpsd
-    sudo systemctl enable timeservice
-
-Start time service.
-
-    service timeservice start
-
-Stop time service.
-
-    service timeservice stop
-
-Process Obelisk wwvbtool NMEA output using Hazer gpstool (for testing).
+Process Obelisk wwvbtool NMEA output using Hazer gpstool.
 
     wwvbtool -r -s -u -l -n -p | gpstool -R
    
@@ -271,7 +322,7 @@ Process Obelisk wwvbtool NMEA output using Hazer gpstool (for testing).
     RMC  0.000000,  0.000000     0.000m   0.000*    0.000knots [00] 0 0 0 0 0 
 
 Make a FIFO (First In First Out), that is, a named pipe in the file
-system. Run wwvbtool to write to the FIFO, gpsd to read from the FIFO,
+system Run wwvbtool to write to the FIFO, gpsd to read from the FIFO,
 and gpsmon to read from gpsd. gpsd, wwvbtool, and gpsmon are all run in
 the foreground from three different windows.
 
@@ -281,6 +332,21 @@ the foreground from three different windows.
     wwvbtool -N GP -r -s -u -l -n -p -O ./wwvb.fifo
 
     gpsmon
+
+Similarly, use a UDP socket for gpsd and wwvbtool to communicate. This
+requires a gpsd built with the NETFEED option.
+
+    gpsd -b -N -D 2 -n udp://localhost:60180
+
+    wwvbtool -N GP -r -s -u -l -n -p -U localhost:60180
+
+    gpsmon
+
+Use socat instead of gpsd to receive UDP datagrams from wwvbtool.
+
+    wwvbtool -N GP -r -s -u -l -n -p -U localhost:60180
+
+    socat udp-recv:60180 -
 
 Configure and test Pulse Per Second (PPS) when using -p flag on wwvbtool. Note
 that in this example gpiopin=18 is GPIO18 a.k.a. physical pin 12.
@@ -486,3 +552,8 @@ saves them in /var/log/messages. Here are an extended example.
 You can see that the system looses the WWVB signal on several occasions and
 eventually reacquires it. When I catch the system in this state, I can see
 the LED on the radio board blinking sporadically and apparently randomly.
+
+## Acknowledgements
+
+Thanks to Paul Theodoropoulos for point out several issues (my euphemism for
+stupid mistakes on my part) and typos.

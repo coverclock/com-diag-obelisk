@@ -11,6 +11,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 #include "com/diag/obelisk/obelisk.h"
 #include "obelisk.h"
@@ -54,20 +55,20 @@ obelisk_token_t obelisk_tokenize(int milliseconds_pulse)
  */
 void obelisk_extract(obelisk_frame_t * framep, obelisk_buffer_t buffer)
 {
-    framep->minutes10   = OBELISK_EXTRACT(buffer, MINUTES10);
-    framep->minutes1    = OBELISK_EXTRACT(buffer, MINUTES1);
-    framep->hours10     = OBELISK_EXTRACT(buffer, HOURS10);
-    framep->hours1      = OBELISK_EXTRACT(buffer, HOURS1);
-    framep->day100      = OBELISK_EXTRACT(buffer, DAY100);
-    framep->day10       = OBELISK_EXTRACT(buffer, DAY10);
-    framep->day1        = OBELISK_EXTRACT(buffer, DAY1);
-    framep->dutonesign  = OBELISK_EXTRACT(buffer, DUTONESIGN);
-    framep->dutone1     = OBELISK_EXTRACT(buffer, DUTONE1);
-    framep->year10      = OBELISK_EXTRACT(buffer, YEAR10);
-    framep->year1       = OBELISK_EXTRACT(buffer, YEAR1);
-    framep->lyi         = OBELISK_EXTRACT(buffer, LYI);
-    framep->lsw         = OBELISK_EXTRACT(buffer, LSW);
-    framep->dst         = OBELISK_EXTRACT(buffer, DST);
+    framep->minutes10   	= OBELISK_EXTRACT(buffer, MINUTES10);
+    framep->minutes1    	= OBELISK_EXTRACT(buffer, MINUTES1);
+    framep->hours10     	= OBELISK_EXTRACT(buffer, HOURS10);
+    framep->hours1      	= OBELISK_EXTRACT(buffer, HOURS1);
+    framep->day100      	= OBELISK_EXTRACT(buffer, DAY100);
+    framep->day10       	= OBELISK_EXTRACT(buffer, DAY10);
+    framep->day1        	= OBELISK_EXTRACT(buffer, DAY1);
+    framep->dut1sign 		= OBELISK_EXTRACT(buffer, DUTONESIGN);
+    framep->dut1magnitude	= OBELISK_EXTRACT(buffer, DUTONE1);
+    framep->year10      	= OBELISK_EXTRACT(buffer, YEAR10);
+    framep->year1       	= OBELISK_EXTRACT(buffer, YEAR1);
+    framep->lyi         	= OBELISK_EXTRACT(buffer, LYI);
+    framep->lsw         	= OBELISK_EXTRACT(buffer, LSW);
+    framep->dst				= OBELISK_EXTRACT(buffer, DST);
 }
 
 /**
@@ -78,8 +79,8 @@ static const int8_t LENGTH[] = {
     8,  /* minutes10, minutes1 */
     9,  /* hours10, hours1 */
     9,  /* day100, day10 */
-    9,  /* day1, dutonesign */
-    9,  /* dutone1, year10 */
+    9,  /* day1, dut1sign */
+    9,  /* dut1magnitude, year10 */
     9,  /* year1, lyi, lsw, dst */
 };
 
@@ -463,9 +464,9 @@ int obelisk_validate(const obelisk_frame_t * framep)
         rc = -7;
     } else if (!((0 <= framep->day1) && (framep->day1 <= 9))) {
         rc = -8;
-    } else if (!((framep->dutonesign == OBELISK_SIGN_NEGATIVE) || (framep->dutonesign == OBELISK_SIGN_POSITIVE))) {
+    } else if (!((framep->dut1sign == OBELISK_SIGN_NEGATIVE) || (framep->dut1sign == OBELISK_SIGN_POSITIVE))) {
         rc = -9;
-    } else if (!((0 <= framep->dutone1) && (framep->dutone1 <= 9))) {
+    } else if (!((0 <= framep->dut1magnitude) && (framep->dut1magnitude <= 9))) {
         rc = -10;
     } else if (!((0 <= framep->year10) && (framep->year10 <= 9))) {
         rc = -11;
@@ -485,12 +486,14 @@ int obelisk_decode(struct tm * timep, const obelisk_frame_t * framep)
     int rc = -1;
     int days = -1;
 
+    memset(timep, 0, sizeof(*timep));
+
     timep->tm_sec = 0;
     timep->tm_min = (framep->minutes10 * 10) + framep->minutes1;
     timep->tm_hour = (framep->hours10 * 10) + framep->hours1;
     timep->tm_year = (framep->year10 * 10) + framep->year1;
     timep->tm_year += (timep->tm_year < 17) ? 200 : 100;
-    timep->tm_isdst = !!framep->dst;
+    timep->tm_isdst = 0; // UTC has no DST despite what frame says.
     timep->tm_gmtoff = 0;
     timep->tm_zone = "UTC";
 

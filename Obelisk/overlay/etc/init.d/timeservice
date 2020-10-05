@@ -28,7 +28,7 @@ test -x $DAEMONG || exit 5
 test -x $DAEMONW || exit 5
 test -x $DAEMONH || exit 5
 
-if $ENABNLENTP; then
+if $ENABLENTP; then
 
 	test -x $DAEMONN || exit 5
 
@@ -59,13 +59,11 @@ if $ENABNLENTP; then
 
 fi
 
-FIFO="/var/run/wwvbtool.fifo"
+ENDPOINT="localhost:60180"
 PPS0="/dev/pps0"
 
-test -p $FIFO || mkfifo -m 0666 $FIFO
-
-GPSD_OPTS="-b -n $FIFO $PPS0"
-WWVB_OPTS="-C -20 -N GP -O $FIFO -n -p -l -u -r -i -s -a -b"
+WWVB_OPTS="-C -20 -N GP -U $ENDPOINT -n -p -l -u -r -i -s -a -b"
+GPSD_OPTS="-b -n udp://$ENDPOINT $PPS0"
 
 case $1 in
 	start)
@@ -76,15 +74,15 @@ case $1 in
 		status=$?
 		log_end_msg $status
 
-		# Launch gpsd
-		log_daemon_msg "Starting GPS daemon" "timeservice"
-		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEG --startas $DAEMONG -- -P $PIDFILEG $GPSD_OPTS
+		# Launch wwvbtool
+		log_daemon_msg "Starting WWVB daemon" "timeservice"
+		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEW --startas $DAEMONW --nicelevel -20 -- $WWVB_OPTS
 		status=$?
 		log_end_msg $status
 
-		# Launch wwvbtool
-		log_daemon_msg "Starting WWVB daemon" "timeservice"
-		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEW --startas $DAEMONW -- $WWVB_OPTS
+		# Launch gpsd
+		log_daemon_msg "Starting GPS daemon" "timeservice"
+		start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILEG --startas $DAEMONG -- -P $PIDFILEG $GPSD_OPTS
 		status=$?
 		log_end_msg $status
 
@@ -117,12 +115,12 @@ case $1 in
 			log_end_msg $?
 		fi
 
-		log_daemon_msg "Stopping WWVB daemon" "timeservice"
-		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILEW
-		log_end_msg $?
-
 		log_daemon_msg "Stopping GPS daemon" "timeservice"
 		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILEG
+		log_end_msg $?
+
+		log_daemon_msg "Stopping WWVB daemon" "timeservice"
+		start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILEW
 		log_end_msg $?
 
 		log_daemon_msg "Writing hardware clock" "timeservice"
