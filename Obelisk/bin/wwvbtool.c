@@ -202,7 +202,6 @@ int main(int argc, char ** argv)
     int risings = -1;
     int fallings = -1;
     ssize_t limit = -1;
-    uint8_t checksum = -1;
     int fd = -1;
     float dut1 = 0.0;
     diminuto_ipv4_t address4 = 0;
@@ -897,11 +896,9 @@ int main(int argc, char ** argv)
                 );
                 assert(rc < (sizeof(sentence) - 1));
                 sentence[sizeof(sentence) - 1] = '\0';
-                checksum = 0;
-                hazer_checksum(sentence, sizeof(sentence), &checksum);
                 assert(sentence[rc - 4] == 'X');
                 assert(sentence[rc - 3] == 'X');
-                rc = hazer_checksum2characters(checksum, &sentence[rc - 4], &sentence[rc - 3]);
+                hazer_checksum_buffer(sentence, sizeof(sentence), &sentence[rc - 4], &sentence[rc - 3]);
                 assert(rc >= 0);
                 if (debug) {
                     fprintf(stderr, "%s: NMEA \"", program);
