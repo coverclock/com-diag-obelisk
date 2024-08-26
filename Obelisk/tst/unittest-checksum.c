@@ -2,7 +2,7 @@
 /**
  * @file
  *
- * Copyright 2017 Digital Aggregates Corporation, Colorado, USA<BR>
+ * Copyright 2017-2022 Digital Aggregates Corporation, Colorado, USA<BR>
  * Licensed under the terms in README.h<BR>
  * Chip Overclock (coverclock@diag.com)<BR>
  * https://github.com/coverclock/com-diag-hazer
@@ -28,28 +28,32 @@ int main(void)
     for (lsn = 0; lsn < 16; ++lsn) {
         for (msn = 0; msn < 16; ++msn) {
             ck = (msn << 4) | lsn;
-            rc = hazer_checksum2characters(ck, &msc, &lsc);
-            assert(rc == 0);
+            hazer_checksum2characters(ck, &msc, &lsc);
             assert(msc == NIB[msn]);
             assert(lsc == NIB[lsn]);
         }
     }
 
-    hazer_checksum("", 0, &cs);
+    hazer_checksum_buffer("", 0, &msc, &lsc);
     /* There is no wrong answer here, we just want to make sure it doesn't core dump. */
 
-    hazer_checksum("$V*TU\r\n", 8, &cs);
-    assert(cs == 0x56);
+    hazer_checksum_buffer("$V*TU\r\n", 8, &msc, &lsc);
+    assert(msc == '5');
+    assert(lsc == '6');
 
-    hazer_checksum("$VW*TU\r\n", 9, &cs);
-    assert(cs == 0x01);
+    hazer_checksum_buffer("$VW*TU\r\n", 9, &msc, &lsc);
+    assert(msc == '0');
+    assert(lsc == '1');
 
-    hazer_checksum("$VWX*TU\r\n", 10, &cs);
-    assert(cs == 0x59);
+    hazer_checksum_buffer("$VWX*TU\r\n", 10, &msc, &lsc);
+    assert(msc == '5');
+    assert(lsc == '9');
 
-    hazer_checksum("$VWXY*TU\r\n", 11, &cs);
-    assert(cs == 0x00);
+    hazer_checksum_buffer("$VWXY*TU\r\n", 11, &msc, &lsc);
+    assert(msc == '0');
+    assert(lsc == '0');
 
-    hazer_checksum("$VWXYZ*TU\r\n", 12, &cs);
-    assert(cs == 0x5A);
+    hazer_checksum_buffer("$VWXYZ*TU\r\n", 12, &msc, &lsc);
+    assert(msc == '5');
+    assert(lsc == 'A');
 }

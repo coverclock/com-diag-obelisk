@@ -100,7 +100,6 @@ are present.
 <https://github.com/spuder/WWVB-Clock>    
 <https://www.rs-online.com/designspark/atomic-time-for-the-raspberry-pi>    
 ## Targets
-"obelisk"    
 Raspberry Pi 3    
 Raspbian 9    
 gcc 6.3.0    
